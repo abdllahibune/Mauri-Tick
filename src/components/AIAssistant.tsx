@@ -3,7 +3,7 @@ import { MessageCircle, X, Send, Bot, Smartphone, DollarSign, Package, Phone, Se
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, Order } from '../types';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, safeWrite } from '../lib/firebase';
 import { formatPrice, cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
@@ -118,22 +118,20 @@ export function AIAssistant({ products }: { products: Product[] }) {
     setInput('');
 
     if (flow === 'support') {
-      // Save support request
-      try {
-        await addDoc(collection(db, 'support_requests'), {
-          phone: val,
-          createdAt: serverTimestamp(),
-          status: 'pending'
-        });
-        addBotMessage(`شكراً! سيتواصل معك فريق الدعم على الرقم: ${val}\n\nللتواصل الفوري الآن:`, [
-          { label: 'ابدأ محادثة واتساب 💬', action: () => window.open(`https://wa.me/22236096100?text=مرحباً، أحتاج مساعدة (الهاتف: ${val})`), icon: MessageCircle }
-        ]);
-      } catch (e) {
-        addBotMessage('عذراً، حدث خطأ أثناء تسجيل طلبك.');
-      }
+      // Save support request (instantly)
+      safeWrite(() => addDoc(collection(db, 'support_requests'), {
+        phone: val,
+        createdAt: serverTimestamp(),
+        status: 'pending'
+      }));
+      
+      addBotMessage(`شكراً! سيتواصل معك فريق الدعم على الرقم: ${val}\n\nللتواصل الفوري الآن:`, [
+        { label: 'ابدأ محادثة واتساب 💬', action: () => window.open(`https://wa.me/22236096100?text=مرحباً، أحتاج مساعدة (الهاتف: ${val})`), icon: MessageCircle }
+      ]);
       setFlow('initial');
     } else if (flow === 'track') {
-      try {
+      // Fetch orders instantly
+      const fetchOrders = async () => {
         const q = query(collection(db, 'orders'), where('phone', '==', val), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         if (snap.empty) {
@@ -142,13 +140,12 @@ export function AIAssistant({ products }: { products: Product[] }) {
           const order = snap.docs[0].data() as Order;
           addBotMessage(`وجدنا طلبك الأخير!\nرقم الطلب: ${order.orderNumber}\nالحالة: ${order.status}\nالمجموع: ${formatPrice(order.total)}`);
         }
-      } catch (e) {
-        addBotMessage('حدث خطأ أثناء البحث عن طلباتك.');
-      }
+        addBotMessage('كيف أساعدك مرة أخرى؟', [
+           { label: 'العودة للقائمة الرئيسية', action: showInitialOptions }
+        ]);
+      };
+      fetchOrders();
       setFlow('initial');
-      addBotMessage('كيف أساعدك مرة أخرى؟', [
-         { label: 'العودة للقائمة الرئيسية', action: showInitialOptions }
-      ]);
     } else {
       addBotMessage("عذراً، أنا حالياً مبرمج للرد على الخيارات السريعة فقط.");
       showInitialOptions();

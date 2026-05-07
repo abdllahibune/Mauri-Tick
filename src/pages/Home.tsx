@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, ensureAuth } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 import { DEMO_PRODUCTS } from '../constants';
@@ -13,6 +13,7 @@ export function Home({ products }: { products: Product[] }) {
   const [config, setConfig] = useState<StoreConfig | null>(null);
 
   useEffect(() => {
+    ensureAuth();
     const unsubscribe = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });

@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { Search, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ensureAuth } from '../lib/firebase';
 
 import { DEMO_PRODUCTS } from '../constants';
 
@@ -12,6 +13,10 @@ export function Products({ products }: { products: Product[] }) {
   const [maxPrice, setMaxPrice] = useState(500000);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    ensureAuth();
+  }, []);
 
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 

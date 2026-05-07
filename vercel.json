@@ -1,7 +1,7 @@
 {
   "rewrites": [
-    {"source": "/admin", "destination": "/index.html"},
-    {"source": "/admin/(.*)", "destination": "/index.html"},
+    {"source": "/mt-2025-admin", "destination": "/index.html"},
+    {"source": "/mt-2025-admin/(.*)", "destination": "/index.html"},
     {"source": "/track", "destination": "/index.html"},
     {"source": "/wishlist", "destination": "/index.html"},
     {"source": "/product/(.*)", "destination": "/index.html"},

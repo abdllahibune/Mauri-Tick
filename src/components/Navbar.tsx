@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Heart, Search, Menu, X, User, Shield, Languages, LayoutGrid } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,6 +14,24 @@ export function Navbar() {
   const { language, setLanguage, t } = useLanguage();
   const { compareList } = useCompare();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [logoClicks, setLogoClicks] = useState(0);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleLogoClick = () => {
+    setLogoClicks(prev => prev + 1);
+    
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    
+    clickTimerRef.current = setTimeout(() => {
+      setLogoClicks(0);
+    }, 500);
+
+    if (logoClicks >= 2) { // 3rd click
+      setLogoClicks(0);
+      navigate('/mt-2025-admin');
+    }
+  };
 
   const navLinks = [
     { name: t('nav.home'), path: '/' },
@@ -26,10 +44,10 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="flex flex-col">
+          <div onClick={handleLogoClick} className="flex flex-col cursor-pointer select-none">
             <span className="text-2xl font-black text-primary tracking-tighter">MAURI TICK</span>
             <span className="text-[10px] text-accent font-bold mt--1 leading-none uppercase tracking-widest">أفضل الهواتف بأفضل الأسعار</span>
-          </Link>
+          </div>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
@@ -97,10 +115,6 @@ export function Navbar() {
                </Link>
             )}
 
-            <Link to="/admin" className="hidden sm:block p-2 text-gray-500 hover:text-primary transition-colors">
-              <Shield className="w-6 h-6" />
-            </Link>
-
             {/* Mobile Menu Toggle */}
             <button 
               className="md:hidden p-2 text-gray-500"
@@ -133,7 +147,6 @@ export function Navbar() {
           ) : (
             <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4">تسجيل الدخول</Link>
           )}
-          <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-gray-700">لوحة التحكم</Link>
         </div>
       )}
     </nav>

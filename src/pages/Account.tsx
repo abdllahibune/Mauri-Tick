@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
+import { db, ensureAuth, safeWrite } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Order, Product } from '../types';
 import { User, ShoppingCart, Heart, ShieldCheck, LogOut, Package, Clock, CheckCircle, Truck, ArrowLeft, Save, Loader2 } from 'lucide-react';
@@ -20,6 +20,7 @@ export function Account({ products }: { products: Product[] }) {
   if (!user) return <Navigate to="/login" />;
 
   useEffect(() => {
+    ensureAuth();
     if (activeTab === 'orders' && user) {
       loadOrders();
     }

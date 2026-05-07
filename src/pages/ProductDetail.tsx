@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Product } from '../types';
 import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, query, where, limit, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
 import { LiveViewers } from '../components/LiveViewers';
@@ -22,6 +22,7 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
   const { addToCart, toggleWishlist, wishlist } = useCart();
 
   useEffect(() => {
+    ensureAuth();
     async function loadProduct() {
       if (!id) return;
       setLoading(true);
@@ -41,7 +42,7 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
           const data = { id: docSnap.id, ...docSnap.data() } as Product;
           setProduct(data);
           // Increment view count
-          updateDoc(docRef, { viewCount: increment(1) });
+          safeWrite(() => updateDoc(docRef, { viewCount: increment(1) }));
         }
       } catch (error) {
         console.error('Error loading product:', error);

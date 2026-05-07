@@ -1,10 +1,9 @@
 {
-  "projectId": "gen-lang-client-0057453920",
-  "appId": "1:836775058108:web:345e6cf950bf1cc380ceb9",
-  "apiKey": "AIzaSyDeU6-nksSAcbz0PkF2O3dPbHWBgRBCJwE",
-  "authDomain": "gen-lang-client-0057453920.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-f0a7ddf3-ccf1-408d-a570-09e588e5891e",
-  "storageBucket": "gen-lang-client-0057453920.firebasestorage.app",
-  "messagingSenderId": "836775058108",
-  "measurementId": ""
+  "apiKey": "AIzaSyDibYosz-BcfA3DhhCE1yzqmJX7eGXvn4A",
+  "authDomain": "neythi-ella-hawila.firebaseapp.com",
+  "projectId": "neythi-ella-hawila",
+  "storageBucket": "neythi-ella-hawila.firebasestorage.app",
+  "messagingSenderId": "209981186556",
+  "appId": "1:209981186556:web:f08d63af6b7f6fca6dd279",
+  "measurementId": "G-DEPKHQDQRB"
 }

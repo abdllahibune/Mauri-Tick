@@ -104,7 +104,7 @@ function MainApp() {
           <Route path="/policy" element={<ReturnPolicy />} />
           <Route path="/copyright" element={<Copyright />} />
           <Route path="/review" element={<ReviewPage />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="/mt-2025-admin/*" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

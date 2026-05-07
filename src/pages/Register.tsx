@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone, Lock, UserPlus, Loader2, ShieldCheck, Mail, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../lib/firebase';
+import { db, ensureAuth } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { StoreConfig } from '../types';
 import toast from 'react-hot-toast';
@@ -21,6 +21,7 @@ export function Register() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    ensureAuth();
     const unsubscribe = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
@@ -29,14 +30,24 @@ export function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return toast.error('يرجى إدخال الاسم بالكامل');
-    if (password !== confirmPassword) return toast.error('كلمات المرور غير متطابقة');
-    if (password.length < 8) return toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
-    if ((!phone.startsWith('2') && !phone.startsWith('3')) || phone.length !== 8) {
-      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (2XXXXXXX أو 3XXXXXXX)');
+    
+    // Only validate name is not empty
+    if (!name.trim()) return toast.error('يرجى إدخال الاسم بالكامل');
+    
+    // Only validate phone format specifically
+    const isMauriPhone = (phone.startsWith('2') || phone.startsWith('3') || phone.startsWith('4')) && phone.length === 8;
+    if (!isMauriPhone) {
+      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (2/3/4XXXXXXX)');
     }
 
+    // Only validate password length
+    if (password.length < 8) return toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+    
+    // Only validate password match
+    if (password !== confirmPassword) return toast.error('كلمات المرور غير متطابقة');
+
     try {
+      await ensureAuth();
       if (config?.verificationMode === 'whatsapp') {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         setGeneratedOTP(otp);

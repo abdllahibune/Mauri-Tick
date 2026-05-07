@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Product, TradeIn } from '../types';
 import { uploadToCloudinary } from '../lib/cloudinary';
@@ -37,6 +37,7 @@ export function TradeInPage() {
   });
 
   useEffect(() => {
+    ensureAuth();
     const unsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
       setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
     });
@@ -78,7 +79,7 @@ export function TradeInPage() {
     }
     
     setLoading(true);
-    try {
+    await safeWrite(async () => {
         await addDoc(collection(db, 'tradeIns'), {
             ...formData,
             estimatedValue,
@@ -92,11 +93,8 @@ export function TradeInPage() {
 
         setStep(4);
         toast.success('تم إرسال طلبك بنجاح!');
-    } catch (e) {
-        toast.error('حدث خطأ أثناء إرسال الطلب');
-    } finally {
-        setLoading(false);
-    }
+    });
+    setLoading(false);
   };
 
   return (

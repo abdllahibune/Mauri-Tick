@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Sign-in method > Anonymous > Enable
 // Then go to Firestore > Rules > Publish rules above
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
@@ -37,6 +37,7 @@ export function AdminDashboard() {
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
 
   useEffect(() => {
+    ensureAuth();
     if (!isLoggedIn) return;
 
     const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
@@ -265,12 +266,7 @@ function ProductsSection({ products }: { products: Product[] }) {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
-    try {
-      await deleteDoc(doc(db, 'products', id));
-      toast.success('تم حذف المنتج بنجاح');
-    } catch (e) {
-      toast.error('خطأ في الحذف');
-    }
+    await safeWrite(() => deleteDoc(doc(db, 'products', id)));
   };
 
   return (
@@ -396,7 +392,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
+    await safeWrite(async () => {
       if (initial) {
         await updateDoc(doc(db, 'products', initial.id), { ...form, updatedAt: serverTimestamp() });
         toast.success('تم التحديث بنجاح');
@@ -405,11 +401,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         toast.success('تمت الإضافة بنجاح');
       }
       onClose();
-    } catch (e: any) {
-      toast.error(`خطأ: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
+    });
+    setLoading(false);
   };
 
   const handleImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -573,12 +566,10 @@ function OrdersSection({ orders }: { orders: Order[] }) {
   const filtered = orders.filter(o => filter === 'الكل' || o.status === filter);
 
   const updateStatus = async (id: string, status: string) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'orders', id), { status });
       toast.success('تم تحديث حالة الطلب');
-    } catch (e) {
-      toast.error('خطأ في التحديث');
-    }
+    });
   };
 
   return (
@@ -676,12 +667,10 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
   });
 
   const handleSave = async () => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'config', 'settings'), { ...form });
       toast.success('تم حفظ الإعدادات وتطبيق الألوان بنجاح');
-    } catch (e: any) {
-      toast.error(`خطأ في الحفظ: ${e.message}`);
-    }
+    });
   };
 
   const resetColors = () => {
@@ -973,12 +962,10 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 
 function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products: Product[] }) {
   const updateStatus = async (id: string, status: string) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'tradeIns', id), { status, updatedAt: serverTimestamp() });
       toast.success('تم تحديث الشاشة');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   return (
@@ -1039,12 +1026,10 @@ function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products
 
 function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) {
   const updateStatus = async (id: string, status: string) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'usedProducts', id), { status, updatedAt: serverTimestamp() });
       toast.success('تم تحديث حالة العرض');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   return (
@@ -1148,12 +1133,10 @@ function VisitorsSection() {
 
 function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[] }) {
   const toggleBlock = async (id: string, isBlocked: boolean) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'users', id), { isBlocked: !isBlocked });
       toast.success(isBlocked ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   return (
@@ -1207,22 +1190,18 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
 
 function SupportSection({ requests }: { requests: SupportRequest[] }) {
   const updateStatus = async (id: string, status: string) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'support_requests', id), { status });
       toast.success('تم تحديث الحالة');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   const deleteRequest = async (id: string) => {
     if (!window.confirm('حذف الطلب؟')) return;
-    try {
+    await safeWrite(async () => {
       await deleteDoc(doc(db, 'support_requests', id));
       toast.success('تم الحذف');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   return (
@@ -1277,22 +1256,18 @@ function SupportSection({ requests }: { requests: SupportRequest[] }) {
 
 function ReviewsSection({ reviews, products }: { reviews: Review[], products: Product[] }) {
   const toggleHide = async (id: string, isHidden: boolean) => {
-    try {
+    await safeWrite(async () => {
       await updateDoc(doc(db, 'reviews', id), { isHidden: !isHidden });
       toast.success(isHidden ? 'تم إظهار التقييم' : 'تم إخفاء التقييم');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   const deleteReview = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
-    try {
+    await safeWrite(async () => {
       await deleteDoc(doc(db, 'reviews', id));
       toast.success('تم حذف التقييم');
-    } catch (e) {
-      toast.error('حدث خطأ');
-    }
+    });
   };
 
   return (

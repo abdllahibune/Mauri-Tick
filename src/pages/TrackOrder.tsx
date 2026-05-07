@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, ensureAuth } from '../lib/firebase';
 import { Order } from '../types';
 import { Search, Loader2, Phone, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
@@ -11,6 +11,10 @@ export function TrackOrder() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  useEffect(() => {
+    ensureAuth();
+  }, []);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();

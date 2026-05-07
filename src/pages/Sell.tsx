@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { Smartphone, DollarSign, Upload, Trash2, CheckCircle2, Loader2, Phone, User, Package } from 'lucide-react';
@@ -15,6 +15,7 @@ export function Sell() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
+    ensureAuth();
     return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
@@ -64,7 +65,7 @@ export function Sell() {
     }
     
     setLoading(true);
-    try {
+    await safeWrite(async () => {
       await addDoc(collection(db, 'usedProducts'), {
         ...form,
         price: Number(form.price),
@@ -78,11 +79,8 @@ export function Sell() {
 
       setSubmitted(true);
       toast.success('تم إرسال إعلانك للمراجعة!');
-    } catch (err) {
-      toast.error('حدث خطأ أثناء إرسال الإعلان');
-    } finally {
-      setLoading(false);
-    }
+    });
+    setLoading(false);
   };
 
   if (submitted) {

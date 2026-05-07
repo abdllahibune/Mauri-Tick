@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Phone, Mail, MapPin, Clock, MessageSquare, Send, Loader2 } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { StoreConfig } from '../types';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ export default function Contact() {
   const [form, setForm] = useState({ name: '', phone: '', message: '' });
 
   useEffect(() => {
+    ensureAuth();
     return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
@@ -22,7 +23,7 @@ export default function Contact() {
     if (!form.name || !form.phone || !form.message) return toast.error('يرجى ملء جميع الحقول');
     
     setLoading(true);
-    try {
+    await safeWrite(async () => {
       await addDoc(collection(db, 'inquiries'), {
         ...form,
         createdAt: serverTimestamp(),
@@ -30,11 +31,8 @@ export default function Contact() {
       });
       toast.success('تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.');
       setForm({ name: '', phone: '', message: '' });
-    } catch (error) {
-      toast.error('حدث خطأ أثناء الإرسال');
-    } finally {
-      setLoading(false);
-    }
+    });
+    setLoading(false);
   };
 
   return (

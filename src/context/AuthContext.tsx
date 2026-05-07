@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { db, safeWrite } from '../lib/firebase';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import toast from 'react-hot-toast';
 
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('هذا الرقم مسجل مسبقاً');
       }
 
-      const docRef = await addDoc(collection(db, 'users'), {
+      await safeWrite(() => addDoc(collection(db, 'users'), {
         phone,
         password,
         name,
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ordersCount: 0,
         isBlocked: false,
         createdAt: serverTimestamp()
-      });
+      }));
 
       const newUser = { id: docRef.id, phone, name, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
       setUser(newUser);
@@ -84,13 +84,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
-    try {
-      await updateDoc(doc(db, 'users', user.id), data);
+      await safeWrite(() => updateDoc(doc(db, 'users', user.id), data));
       setUser(prev => prev ? { ...prev, ...data } : null);
       toast.success('تم تحديث البيانات');
-    } catch (e) {
-      toast.error('فشل التحديث');
-    }
   };
 
   return (

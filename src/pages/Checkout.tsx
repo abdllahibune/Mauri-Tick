@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { formatPrice, generateOrderNumber } from '../lib/utils';
@@ -27,6 +27,7 @@ export function Checkout() {
   });
 
   useEffect(() => {
+    ensureAuth();
     if (user) {
       setFormData({
         name: user.name || '',
@@ -85,14 +86,14 @@ export function Checkout() {
         createdAt: serverTimestamp()
       };
 
-      const docRef = await addDoc(collection(db, 'orders'), orderData);
+      const docRef = await safeWrite(() => addDoc(collection(db, 'orders'), orderData)) as any;
       
       // Update user stats
       if (user) {
-        await updateDoc(doc(db, 'users', user.id), {
+        await safeWrite(() => updateDoc(doc(db, 'users', user.id), {
           totalSpent: increment(subtotal),
           ordersCount: increment(1)
-        });
+        }));
       }
 
       // 3. WhatsApp Integration
