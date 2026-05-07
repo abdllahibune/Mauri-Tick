@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('هذا الرقم مسجل مسبقاً');
       }
 
-      await safeWrite(() => addDoc(collection(db, 'users'), {
+      const docRef = await safeWrite(() => addDoc(collection(db, 'users'), {
         phone,
         password,
         name,
@@ -69,9 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: serverTimestamp()
       }));
 
-      const newUser = { id: docRef.id, phone, name, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
-      setUser(newUser);
-      toast.success('تم إنشاء الحساب بنجاح! 🎉');
+      if (docRef) {
+        const newUser = { id: docRef.id, phone, name, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
+        setUser(newUser);
+        toast.success('تم إنشاء الحساب بنجاح! 🎉');
+      }
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-import { updateDoc } from 'firebase/firestore';
 
 export function useAuth() {
   const context = useContext(AuthContext);

@@ -35,9 +35,9 @@ export function Register() {
     if (!name.trim()) return toast.error('يرجى إدخال الاسم بالكامل');
     
     // Only validate phone format specifically
-    const isMauriPhone = (phone.startsWith('2') || phone.startsWith('3') || phone.startsWith('4')) && phone.length === 8;
+    const isMauriPhone = /^\d{8}$/.test(phone);
     if (!isMauriPhone) {
-      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (2/3/4XXXXXXX)');
+      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (8 أرقام)');
     }
 
     // Only validate password length
