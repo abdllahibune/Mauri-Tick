@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Heart, Search, Menu, X, User } from 'lucide-react';
+import { ShoppingCart, Heart, Search, Menu, X, User, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cart, wishlist } = useCart();
+  const { user } = useAuth();
   const location = useLocation();
 
   const navLinks = [
@@ -62,8 +64,20 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+            
+            {user ? (
+               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-3 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all">
+                  <User className="w-5 h-5" />
+                  <span className="text-xs font-black hidden lg:block">{user.name || user.phone}</span>
+               </Link>
+            ) : (
+               <Link to="/login" className="hidden sm:flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm">
+                 <User className="w-5 h-5" /> دخول
+               </Link>
+            )}
+
             <Link to="/admin" className="hidden sm:block p-2 text-gray-500 hover:text-primary transition-colors">
-              <User className="w-6 h-6" />
+              <Shield className="w-6 h-6" />
             </Link>
 
             {/* Mobile Menu Toggle */}
@@ -93,7 +107,12 @@ export function Navbar() {
               {link.name}
             </Link>
           ))}
-          <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-gray-700 border-t pt-4">لوحة التحكم</Link>
+          {user ? (
+            <Link to="/account" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4">حسابي</Link>
+          ) : (
+            <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4">تسجيل الدخول</Link>
+          )}
+          <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-gray-700">لوحة التحكم</Link>
         </div>
       )}
     </nav>

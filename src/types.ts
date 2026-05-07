@@ -26,8 +26,22 @@ export interface Product {
   createdAt?: any;
 }
 
+export interface UserProfile {
+  id: string;
+  phone: string;
+  password?: string; // Hashed/stored for custom auth
+  name?: string;
+  city?: string;
+  address?: string;
+  totalSpent: number;
+  ordersCount: number;
+  isBlocked?: boolean;
+  createdAt: any;
+}
+
 export interface Order {
   id: string;
+  userId?: string; // Link to user profile if logged in
   orderNumber: string;
   customerName: string;
   phone: string;

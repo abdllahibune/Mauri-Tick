@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { formatPrice, generateOrderNumber } from '../lib/utils';
-import { ShieldCheck, Upload, Loader2, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Upload, Loader2, CheckCircle2, User, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
 export function Checkout() {
   const { cart, subtotal, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
@@ -23,6 +25,17 @@ export function Checkout() {
     city: '',
     address: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        phone: user.phone || '',
+        city: user.city || '',
+        address: user.address || ''
+      });
+    }
+  }, [user]);
 
   if (cart.length === 0) return <Navigate to="/cart" />;
 
@@ -56,6 +69,7 @@ export function Checkout() {
 
       // 2. Save order to Firebase
       const orderData = {
+        userId: user?.id || null,
         orderNumber,
         customerName: formData.name,
         phone: formData.phone,
@@ -72,6 +86,14 @@ export function Checkout() {
       };
 
       const docRef = await addDoc(collection(db, 'orders'), orderData);
+      
+      // Update user stats
+      if (user) {
+        await updateDoc(doc(db, 'users', user.id), {
+          totalSpent: increment(subtotal),
+          ordersCount: increment(1)
+        });
+      }
 
       // 3. WhatsApp Integration
       const message = `طلب جديد موري تيك! 📱%0Aالرقم: ${orderNumber}%0Aالاسم: ${formData.name}%0Aالهاتف: ${formData.phone}%0Aالمبلغ: ${subtotal} أوقية%0Aطريقة الدفع: ${paymentMethod}`;
@@ -102,7 +124,24 @@ export function Checkout() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
+    <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col gap-8">
+      {!user && (
+        <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10 flex flex-col md:flex-row items-center justify-between gap-4">
+           <div className="flex items-center gap-4">
+              <div className="bg-primary/10 p-3 rounded-2xl text-primary">
+                 <User className="w-6 h-6" />
+              </div>
+              <div className="flex flex-col">
+                 <h4 className="font-black text-primary">هل لديك حساب؟</h4>
+                 <p className="text-xs font-bold text-gray-500">سجل دخولك لتعبئة بيانات التوصيل تلقائياً وكسب نقاط مكافآت.</p>
+              </div>
+           </div>
+           <Link to="/login" className="bg-primary text-white px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2">
+              <LogIn className="w-4 h-4" /> سجل دخولك الآن
+           </Link>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Contact Info */}
         <div className="flex flex-col gap-12">

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { CartProvider } from './context/CartContext';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LiveNotifications } from './components/LiveNotifications';
@@ -20,6 +21,9 @@ import { Confirmation } from './pages/Confirmation';
 import { Wishlist } from './pages/Wishlist';
 import { TrackOrder } from './pages/TrackOrder';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Account } from './pages/Account';
 import { NotFound } from './pages/NotFound';
 
 function ScrollToTop() {
@@ -55,6 +59,9 @@ function MainApp() {
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/wishlist" element={<Wishlist products={products} />} />
           <Route path="/track" element={<TrackOrder />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/account" element={<Account products={products} />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -80,11 +87,14 @@ function MainApp() {
 
 export default function App() {
   return (
-    <CartProvider>
-      <Router>
-        <ScrollToTop />
-        <MainApp />
-      </Router>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <ScrollToTop />
+          <MainApp />
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
+

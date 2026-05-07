@@ -124,9 +124,30 @@
         "revenue": { "type": "number" },
         "orders": { "type": "integer" }
       }
+    },
+    "User": {
+      "title": "User",
+      "description": "A customer profile.",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "password": { "type": "string" },
+        "totalSpent": { "type": "number" },
+        "ordersCount": { "type": "integer" },
+        "isBlocked": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["phone", "password"]
     }
   },
   "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Customer profiles."
+    },
     "config/settings": {
       "schema": "StoreConfig",
       "description": "Store-wide configuration."

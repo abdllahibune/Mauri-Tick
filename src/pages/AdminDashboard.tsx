@@ -5,12 +5,13 @@ import { Product, Order, StoreConfig, Coupon } from '../types';
 import { 
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
-  XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2
+  XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon
 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
+import { UserProfile } from '../types';
 
 export function AdminDashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,6 +24,7 @@ export function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [config, setConfig] = useState<StoreConfig | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -39,12 +41,16 @@ export function AdminDashboard() {
     const unsubConfig = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
+    const unsubUsers = onSnapshot(query(collection(db, 'users'), orderBy('createdAt', 'desc')), (snap) => {
+      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
+    });
 
     return () => {
       unsubProducts();
       unsubOrders();
       unsubCoupons();
       unsubConfig();
+      unsubUsers();
     };
   }, [isLoggedIn]);
 
@@ -104,6 +110,7 @@ export function AdminDashboard() {
                 { id: 'products', name: 'المنتجات', icon: Package },
                 { id: 'orders', name: 'الطلبات', icon: ShoppingCart },
                 { id: 'coupons', name: 'الكوبونات', icon: Tag },
+                { id: 'customers', name: 'العملاء', icon: Users },
                 { id: 'visitors', name: 'الزوار', icon: Users },
                 { id: 'settings', name: 'الإعدادات', icon: Settings },
               ].map((item) => (
@@ -141,6 +148,7 @@ export function AdminDashboard() {
                 {activeTab === 'orders' && <OrdersSection orders={orders} />}
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
                 {activeTab === 'settings' && <SettingsSection config={config} />}
+                {activeTab === 'customers' && <UsersSection users={users} orders={orders} />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
            </AnimatePresence>
@@ -563,4 +571,63 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 
 function VisitorsSection() {
   return <div className="text-gray-400 font-bold p-20 text-center">إحصائيات الزوار المفصلة قيد التطوير...</div>;
+}
+
+function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[] }) {
+  const toggleBlock = async (id: string, isBlocked: boolean) => {
+    try {
+      await updateDoc(doc(db, 'users', id), { isBlocked: !isBlocked });
+      toast.success(isBlocked ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">إدارة العملاء</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-right">
+          <thead>
+            <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+              <th className="pb-4 pr-4">العميل</th>
+              <th className="pb-4">رقم الهاتف</th>
+              <th className="pb-4">المدينة</th>
+              <th className="pb-4">الطلبات</th>
+              <th className="pb-4">إجمالي الإنفاق</th>
+              <th className="pb-4 pl-4 text-left">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {users.map((u) => (
+              <tr key={u.id} className="group hover:bg-gray-50/50 transition-colors">
+                <td className="py-6 pr-4">
+                   <div className="flex items-center gap-3">
+                      <div className="bg-gray-100 p-2 rounded-lg text-gray-400"><UserIcon className="w-4 h-4" /></div>
+                      <span className="font-black text-gray-900">{u.name || 'مستخدم جديد'}</span>
+                   </div>
+                </td>
+                <td className="py-6 font-bold text-gray-500" dir="ltr">{u.phone}</td>
+                <td className="py-6 font-bold text-gray-400">{u.city || '-'}</td>
+                <td className="py-6 font-black text-primary">{u.ordersCount || 0}</td>
+                <td className="py-6 font-black text-accent">{formatPrice(u.totalSpent || 0)}</td>
+                <td className="py-6 pl-4 text-left">
+                  <div className="flex items-center justify-end gap-2">
+                    <button 
+                      onClick={() => toggleBlock(u.id, !!u.isBlocked)} 
+                      className={cn("p-2 rounded-lg transition-colors", u.isBlocked ? "text-green-500 hover:bg-green-50" : "text-red-400 hover:bg-red-50")}
+                      title={u.isBlocked ? "إلغاء الحظر" : "حظر المستخدم"}
+                    >
+                      {u.isBlocked ? <ShieldCheckIcon className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
+                    </button>
+                    <a href={`https://wa.me/222${u.phone}`} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-[#25D366] transition-colors"><MessageSquare className="w-5 h-5" /></a>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
