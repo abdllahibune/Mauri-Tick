@@ -1,0 +1,106 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Heart, ShoppingBag, Eye, TrendingUp } from 'lucide-react';
+import { Product } from '../types';
+import { useCart } from '../context/CartContext';
+import { formatPrice, cn } from '../lib/utils';
+import { motion } from 'motion/react';
+
+export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+  const { addToCart, wishlist, toggleWishlist } = useCart();
+  const isWishlisted = wishlist.includes(product.id);
+
+  const discountedPrice = product.price * (1 - (product.discount || 0) / 100);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
+    >
+      {/* Badges */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        {product.discount > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+            خصم {product.discount}%
+          </span>
+        )}
+        {product.isBestSeller && (
+          <span className="bg-accent text-primary text-[10px] font-black px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" /> الأكثر مبيعاً
+          </span>
+        )}
+        {product.stock === 1 && (
+          <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">
+            ⚡ آخر قطعة
+          </span>
+        )}
+      </div>
+
+      <button 
+        onClick={() => toggleWishlist(product.id)}
+        className={cn(
+          "absolute top-3 left-3 z-10 p-2 rounded-full shadow-md transition-all",
+          isWishlisted ? "bg-red-50 text-red-500" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500"
+        )}
+      >
+        <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
+      </button>
+
+      {/* Image Overlay on Hover */}
+      <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <img 
+          src={product.images[0] || 'https://via.placeholder.com/400x400?text=Phone'} 
+          alt={product.name}
+          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 p-6"
+          loading="lazy"
+        />
+        {product.stock === 0 && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+            <span className="bg-white text-black px-4 py-2 rounded-lg font-black text-sm rotate-[-10deg]">نفذ المخزون</span>
+          </div>
+        )}
+        
+        {/* Quick Add Overlay */}
+        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform bg-gradient-to-t from-black/20 to-transparent">
+          <button 
+            disabled={product.stock === 0}
+            onClick={(e) => {
+              e.preventDefault();
+              addToCart(product);
+            }}
+            className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
+          >
+            <ShoppingBag className="w-5 h-5" /> إضافة للسلة
+          </button>
+        </div>
+      </div>
+
+      {/* Info */}
+      <Link to={`/product/${product.id}`} className="p-4 block">
+        <div className="mb-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand}</span>
+          <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">{product.name}</h3>
+        </div>
+
+        <div className="flex items-end justify-between">
+          <div className="flex flex-col">
+            {product.discount > 0 && (
+              <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(product.price)}</span>
+            )}
+            <span className="text-lg font-black text-primary leading-none">{formatPrice(discountedPrice)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md">
+            <Eye className="w-3 h-3" /> {product.viewCount || 0} يشاهدون
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400">
+          <span>✅ تم بيع {product.soldCount || 0} جهاز</span>
+          {product.isNewArrival && <span className="text-blue-500">وصل حديثاً ✨</span>}
+        </div>
+      </Link>
+    </motion.div>
+  );
+}

@@ -1,0 +1,151 @@
+{
+  "entities": {
+    "StoreConfig": {
+      "title": "Store Configuration",
+      "description": "Global settings for the store.",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "tagline": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "maintenanceMode": { "type": "boolean" },
+        "aboutUs": { "type": "string" },
+        "footerText": { "type": "string" },
+        "adminPassword": { "type": "string" },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "facebook": { "type": "string" },
+            "instagram": { "type": "string" },
+            "tiktok": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A mobile phone or accessory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "price": { "type": "number" },
+        "discount": { "type": "number" },
+        "stock": { "type": "integer" },
+        "description": { "type": "string" },
+        "images": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "specifications": {
+          "type": "object",
+          "properties": {
+            "screen": { "type": "string" },
+            "processor": { "type": "string" },
+            "ram": { "type": "string" },
+            "storage": { "type": "string" },
+            "battery": { "type": "string" },
+            "camera": { "type": "string" },
+            "os": { "type": "string" },
+            "colors": { "type": "string" }
+          }
+        },
+        "isFeatured": { "type": "boolean" },
+        "isBestSeller": { "type": "boolean" },
+        "isNewArrival": { "type": "boolean" },
+        "soldCount": { "type": "integer" },
+        "viewCount": { "type": "integer" },
+        "accessories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "stock"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order.",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" },
+              "image": { "type": "string" }
+            }
+          }
+        },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["بنكيلي", "سداد", "مصرفي"] },
+        "paymentProofUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["قيد الانتظار", "تم التأكيد", "تم الشحن", "تم التسليم"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "phone", "total", "paymentMethod", "status"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount codes.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["percent", "fixed"] },
+        "value": { "type": "number" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "usageLimit": { "type": "integer" },
+        "usageCount": { "type": "integer" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "DailyStats": {
+      "title": "Daily Stats",
+      "description": "Visitor and revenue stats per day.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "visitors": { "type": "integer" },
+        "revenue": { "type": "number" },
+        "orders": { "type": "integer" }
+      }
+    }
+  },
+  "firestore": {
+    "config/settings": {
+      "schema": "StoreConfig",
+      "description": "Store-wide configuration."
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Product catalog."
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders."
+    },
+    "coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Discount coupons."
+    },
+    "stats/{dayId}": {
+      "schema": "DailyStats",
+      "description": "Daily statistics."
+    }
+  }
+}
