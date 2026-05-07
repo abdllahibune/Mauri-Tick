@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import toast from 'react-hot-toast';
 
 export function Register() {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,18 +15,21 @@ export function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name) {
+      return toast.error('يرجى إدخال الاسم بالكامل');
+    }
     if (password !== confirmPassword) {
       return toast.error('كلمات المرور غير متطابقة');
     }
     if (password.length < 8) {
       return toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
     }
-    if (!phone.startsWith('2') || phone.length !== 8) {
-      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (2XXXXXXX)');
+    if ((!phone.startsWith('2') && !phone.startsWith('3')) || phone.length !== 8) {
+      return toast.error('يرجى إدخال رقم هاتف موريتاني صحيح (2XXXXXXX أو 3XXXXXXX)');
     }
 
     try {
-      await register(phone, password);
+      await register(phone, password, name);
       navigate('/account');
     } catch (error: any) {
       toast.error(error.message);
@@ -46,7 +50,22 @@ export function Register() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 mr-2">رقم الهاتف (2XXXXXXX)</label>
+            <label className="text-xs font-bold text-gray-500 mr-2">الاسم بالكامل</label>
+            <div className="relative">
+              <UserPlus className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+              <input 
+                type="text" 
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="الاسم الثلاثي"
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 pr-12 pl-4 text-lg font-bold outline-none focus:ring-2 ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">رقم الهاتف (2XXXXXXX أو 3XXXXXXX)</label>
             <div className="relative">
               <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
               <input 
@@ -54,7 +73,7 @@ export function Register() {
                 required
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                placeholder="2XXXXXXX"
+                placeholder="رقم الهاتف"
                 className="w-full bg-gray-50 border-none rounded-2xl py-4 pr-12 pl-4 text-lg font-bold outline-none focus:ring-2 ring-primary/20"
                 dir="ltr"
               />

@@ -1,14 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag, Eye, TrendingUp } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
+import { useCompare } from '../context/CompareContext';
 import { formatPrice, cn } from '../lib/utils';
 import { motion } from 'motion/react';
 
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addToCart, wishlist, toggleWishlist } = useCart();
+  const { isInCompare, addToCompare, removeFromCompare } = useCompare();
   const isWishlisted = wishlist.includes(product.id);
+  const isCompared = isInCompare(product.id);
 
   const discountedPrice = product.price * (1 - (product.discount || 0) / 100);
 
@@ -46,6 +49,20 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         )}
       >
         <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
+      </button>
+
+      <button 
+        onClick={(e) => {
+          e.preventDefault();
+          isCompared ? removeFromCompare(product.id) : addToCompare(product);
+        }}
+        className={cn(
+          "absolute top-3 left-14 z-10 p-2 rounded-full shadow-md transition-all",
+          isCompared ? "bg-blue-50 text-blue-500 ring-2 ring-blue-500/20" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-blue-500"
+        )}
+        title="أضف للمقارنة"
+      >
+        <LayoutGrid className={cn("w-5 h-5", isCompared && "fill-current")} />
       </button>
 
       {/* Image Overlay on Hover */}

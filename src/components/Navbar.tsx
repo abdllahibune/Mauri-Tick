@@ -1,19 +1,23 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Heart, Search, Menu, X, User, Shield } from 'lucide-react';
+import { ShoppingCart, Heart, Search, Menu, X, User, Shield, Languages, LayoutGrid } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useCompare } from '../context/CompareContext';
 import { cn } from '../lib/utils';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cart, wishlist } = useCart();
   const { user } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const { compareList } = useCompare();
   const location = useLocation();
 
   const navLinks = [
-    { name: 'الرئيسية', path: '/' },
-    { name: 'المنتجات', path: '/products' },
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.products'), path: '/products' },
     { name: 'تتبع الطلب', path: '/track' },
   ];
 
@@ -64,6 +68,23 @@ export function Navbar() {
                 </span>
               )}
             </Link>
+
+            <Link to="/compare" className="p-2 text-gray-500 hover:text-primary transition-colors relative">
+               <LayoutGrid className="w-6 h-6" />
+               {compareList.length > 0 && (
+                 <span className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                   {compareList.length}
+                 </span>
+               )}
+            </Link>
+
+            <button 
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              className="p-2 text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-bold text-xs"
+            >
+              <Languages className="w-5 h-5" />
+              {language === 'ar' ? 'EN' : 'العربية'}
+            </button>
             
             {user ? (
                <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-3 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all">
@@ -72,7 +93,7 @@ export function Navbar() {
                </Link>
             ) : (
                <Link to="/login" className="hidden sm:flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm">
-                 <User className="w-5 h-5" /> دخول
+                 <User className="w-5 h-5" /> {t('nav.login')}
                </Link>
             )}
 

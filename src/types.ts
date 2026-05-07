@@ -36,6 +36,7 @@ export interface UserProfile {
   totalSpent: number;
   ordersCount: number;
   isBlocked?: boolean;
+  wishlist?: string[];
   createdAt: any;
 }
 
@@ -73,6 +74,14 @@ export interface StoreConfig {
   heroTitle: string;
   heroSubtitle: string;
   heroImage: string;
+  heroBackgroundColor?: string;
+  themeColors?: {
+    primary: string;
+    accent: string;
+    background: string;
+    navbar: string;
+    button: string;
+  };
   maintenanceMode: boolean;
   aboutUs: string;
   footerText: string;

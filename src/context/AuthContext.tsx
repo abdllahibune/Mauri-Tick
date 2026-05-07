@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 interface AuthContextType {
   user: UserProfile | null;
   login: (phone: string, password: string) => Promise<void>;
-  register: (phone: string, password: string) => Promise<void>;
+  register: (phone: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   loading: boolean;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (phone: string, password: string) => {
+  const register = async (phone: string, password: string, name: string) => {
     setLoading(true);
     try {
       // Check if exists
@@ -62,13 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const docRef = await addDoc(collection(db, 'users'), {
         phone,
         password,
+        name,
         totalSpent: 0,
         ordersCount: 0,
         isBlocked: false,
         createdAt: serverTimestamp()
       });
 
-      const newUser = { id: docRef.id, phone, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
+      const newUser = { id: docRef.id, phone, name, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
       setUser(newUser);
       toast.success('تم إنشاء الحساب بنجاح! 🎉');
     } finally {

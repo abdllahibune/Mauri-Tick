@@ -12,6 +12,17 @@
         "heroTitle": { "type": "string" },
         "heroSubtitle": { "type": "string" },
         "heroImage": { "type": "string" },
+        "heroBackgroundColor": { "type": "string" },
+        "themeColors": {
+          "type": "object",
+          "properties": {
+            "primary": { "type": "string" },
+            "accent": { "type": "string" },
+            "background": { "type": "string" },
+            "navbar": { "type": "string" },
+            "button": { "type": "string" }
+          }
+        },
         "maintenanceMode": { "type": "boolean" },
         "aboutUs": { "type": "string" },
         "footerText": { "type": "string" },
@@ -137,6 +148,10 @@
         "password": { "type": "string" },
         "totalSpent": { "type": "number" },
         "ordersCount": { "type": "integer" },
+        "wishlist": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "isBlocked": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       },

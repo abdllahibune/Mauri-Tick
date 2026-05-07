@@ -7,9 +7,11 @@ import { Footer } from './components/Footer';
 import { LiveNotifications } from './components/LiveNotifications';
 import { AIAssistant } from './components/AIAssistant';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, limit } from 'firebase/firestore';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { CompareProvider } from './context/CompareContext';
+import { doc, getDoc, collection, onSnapshot, query, limit } from 'firebase/firestore';
 import { db } from './lib/firebase';
-import { Product } from './types';
+import { Product, StoreConfig } from './types';
 
 // Pages
 import { Home } from './pages/Home';
@@ -24,7 +26,9 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Account } from './pages/Account';
+import { ComparePage } from './pages/ComparePage';
 import { NotFound } from './pages/NotFound';
+import { ComparisonBar } from './components/ComparisonBar';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -38,16 +42,38 @@ import { useLocation } from 'react-router-dom';
 
 function MainApp() {
   const [products, setProducts] = useState<Product[]>([]);
+  const { language } = useLanguage();
 
   useEffect(() => {
+    // 1. Fetch Products
     const q = query(collection(db, 'products'), limit(100));
-    return onSnapshot(q, (snapshot) => {
+    const unsubscribeProducts = onSnapshot(q, (snapshot) => {
       setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
     });
+
+    // 2. Fetch Theme Colors
+    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'settings'), (snapshot) => {
+      if (snapshot.exists()) {
+        const config = snapshot.data() as StoreConfig;
+        if (config.themeColors) {
+          const root = document.documentElement;
+          root.style.setProperty('--primary', config.themeColors.primary);
+          root.style.setProperty('--accent', config.themeColors.accent);
+          root.style.setProperty('--bg-main', config.themeColors.background);
+          root.style.setProperty('--nav-bg', config.themeColors.navbar);
+          root.style.setProperty('--btn-bg', config.themeColors.button);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeConfig();
+    };
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={`flex flex-col min-h-screen ${language === 'ar' ? 'font-arabic' : 'font-sans'}`} style={{ backgroundColor: 'var(--bg-main)' }}>
       <Navbar />
       <main className="flex-grow">
         <Routes>
@@ -62,11 +88,14 @@ function MainApp() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/account" element={<Account products={products} />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       <Footer />
+      
+      <ComparisonBar />
       
       {/* Floating Elements */}
       <a 
@@ -88,12 +117,16 @@ function MainApp() {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <Router>
-          <ScrollToTop />
-          <MainApp />
-        </Router>
-      </CartProvider>
+      <LanguageProvider>
+        <CartProvider>
+          <CompareProvider>
+            <Router>
+              <ScrollToTop />
+              <MainApp />
+            </Router>
+          </CompareProvider>
+        </CartProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

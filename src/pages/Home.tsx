@@ -1,13 +1,24 @@
-import { Product } from '../types';
+import { Product, StoreConfig } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { motion } from 'motion/react';
 import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 import { DEMO_PRODUCTS } from '../constants';
 
 export function Home({ products }: { products: Product[] }) {
+  const [config, setConfig] = useState<StoreConfig | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+      if (snap.exists()) setConfig(snap.data() as StoreConfig);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 
   const featured = displayProducts.filter(p => p.isFeatured).slice(0, 4);
@@ -40,7 +51,17 @@ export function Home({ products }: { products: Product[] }) {
   return (
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Banner */}
-      <section className="relative h-[600px] flex items-center overflow-hidden bg-primary">
+      <section 
+        className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000"
+        style={{ backgroundColor: config?.heroBackgroundColor || 'var(--primary)' }}
+      >
+        {config?.heroImage && (
+          <img 
+            src={config.heroImage} 
+            alt="Hero Background" 
+            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
+          />
+        )}
         <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/40 via-transparent to-transparent animate-pulse" />
         </div>
@@ -52,10 +73,11 @@ export function Home({ products }: { products: Product[] }) {
           >
             <span className="bg-accent/20 text-accent text-xs font-bold px-4 py-2 rounded-full w-fit tracking-widest uppercase">موريتانيا - نواكشوط</span>
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter leading-none">
-              موري تيك <br />
-              <span className="text-accent underline decoration-8 decoration-accent/30 underline-offset-8">Mauri Tick</span>
+              {config?.heroTitle || (
+                <>موري تيك <br /><span className="text-accent underline decoration-8 decoration-accent/30 underline-offset-8">Mauri Tick</span></>
+              )}
             </h1>
-            <p className="text-xl text-gray-300 font-medium">أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.</p>
+            <p className="text-xl text-gray-300 font-medium">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>
             <div className="flex gap-4 mt-4">
               <Link to="/products" className="bg-accent text-primary px-10 py-5 rounded-2xl font-black text-xl hover:scale-105 transition-transform flex items-center gap-3">
                 تسوق الآن <ShoppingBag />

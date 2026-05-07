@@ -2,15 +2,23 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --color-primary: #1A237E;
-  --color-accent: #FFD700;
-  --color-bg: #F5F5F5;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Cairo", sans-serif;
+  
+  --color-primary: var(--primary, #1A237E);
+  --color-accent: var(--accent, #FFD700);
+}
+
+:root {
+  --primary: #1A237E;
+  --accent: #FFD700;
+  --bg-main: #F5F5F5;
+  --nav-bg: #FFFFFF;
+  --btn-bg: #1A237E;
 }
 
 @layer base {
   html {
-    direction: rtl;
-    background-color: var(--color-bg);
+    background-color: var(--bg-main);
   }
 }

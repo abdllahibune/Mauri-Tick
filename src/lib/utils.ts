@@ -6,10 +6,15 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number) {
-  return new Intl.NumberFormat('ar-MR', {
-    style: 'currency',
-    currency: 'MRU',
-  }).format(price).replace('MRU', 'أوقية');
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+  return `${formatted} أوقية`;
+}
+
+export function formatNumber(num: number) {
+  return new Intl.NumberFormat('en-US').format(num);
 }
 
 export function generateOrderNumber() {
