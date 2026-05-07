@@ -34,7 +34,17 @@
             "instagram": { "type": "string" },
             "tiktok": { "type": "string" }
           }
-        }
+        },
+        "investorPopup": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "minInvestment": { "type": "string" },
+            "isActive": { "type": "boolean" }
+          }
+        },
+        "verificationMode": { "type": "string", "enum": ["whatsapp", "email", "manual"] }
       }
     },
     "Product": {
@@ -70,13 +80,57 @@
         "isNewArrival": { "type": "boolean" },
         "soldCount": { "type": "integer" },
         "viewCount": { "type": "integer" },
-        "accessories": {
+        "suggestedAccessories": {
           "type": "array",
           "items": { "type": "string" }
         },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "price", "stock"]
+    },
+    "UsedProduct": {
+      "title": "Used Product",
+      "description": "Customer-listed used products for sale.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "price": { "type": "number" },
+        "sellerPhone": { "type": "string" },
+        "condition": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "TradeIn": {
+      "title": "Trade-In Request",
+      "description": "Requests to trade in old phones for new ones.",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "oldPhoneModel": { "type": "string" },
+        "condition": { "type": "string" },
+        "photos": { "type": "array", "items": { "type": "string" } },
+        "estimatedValue": { "type": "number" },
+        "targetPhoneId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "completed", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Investor": {
+      "title": "Investor Inquiry",
+      "description": "Potential partner/investor leads.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "amount": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Order": {
       "title": "Order",
@@ -148,6 +202,8 @@
         "password": { "type": "string" },
         "totalSpent": { "type": "number" },
         "ordersCount": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "verificationCode": { "type": "string" },
         "wishlist": {
           "type": "array",
           "items": { "type": "string" }
@@ -182,6 +238,18 @@
     "stats/{dayId}": {
       "schema": "DailyStats",
       "description": "Daily statistics."
+    },
+    "usedProducts/{productId}": {
+      "schema": "UsedProduct",
+      "description": "C2C listings."
+    },
+    "tradeIns/{requestId}": {
+      "schema": "TradeIn",
+      "description": "Trade-in requests."
+    },
+    "investors/{investorId}": {
+      "schema": "Investor",
+      "description": "Investor leads."
     }
   }
 }

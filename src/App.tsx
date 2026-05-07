@@ -29,6 +29,7 @@ import { Account } from './pages/Account';
 import { ComparePage } from './pages/ComparePage';
 import { NotFound } from './pages/NotFound';
 import { ComparisonBar } from './components/ComparisonBar';
+import { InvestorPopup } from './components/InvestorPopup';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -96,6 +97,7 @@ function MainApp() {
       <Footer />
       
       <ComparisonBar />
+      <InvestorPopup />
       
       {/* Floating Elements */}
       <a 

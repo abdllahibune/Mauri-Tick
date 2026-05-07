@@ -22,8 +22,43 @@ export interface Product {
   isNewArrival?: boolean;
   soldCount?: number;
   viewCount?: number;
-  accessories?: string[];
+  suggestedAccessories?: string[];
   createdAt?: any;
+}
+
+export interface UsedProduct {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  sellerPhone: string;
+  condition: string;
+  images: string[];
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+}
+
+export interface TradeIn {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  oldPhoneModel: string;
+  condition: string;
+  photos: string[];
+  estimatedValue: number;
+  targetPhoneId: string;
+  status: 'pending' | 'contacted' | 'completed' | 'rejected';
+  createdAt: any;
+}
+
+export interface Investor {
+  id: string;
+  name: string;
+  phone: string;
+  amount: string;
+  message: string;
+  createdAt: any;
 }
 
 export interface UserProfile {
@@ -35,6 +70,8 @@ export interface UserProfile {
   address?: string;
   totalSpent: number;
   ordersCount: number;
+  isVerified?: boolean;
+  verificationCode?: string;
   isBlocked?: boolean;
   wishlist?: string[];
   createdAt: any;
@@ -82,6 +119,13 @@ export interface StoreConfig {
     navbar: string;
     button: string;
   };
+  investorPopup?: {
+    title: string;
+    description: string;
+    minInvestment: string;
+    isActive: boolean;
+  };
+  verificationMode?: 'whatsapp' | 'email' | 'manual';
   maintenanceMode: boolean;
   aboutUs: string;
   footerText: string;

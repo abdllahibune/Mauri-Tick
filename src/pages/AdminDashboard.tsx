@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Product, Order, StoreConfig, Coupon } from '../types';
+import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor } from '../types';
 import { 
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
@@ -26,6 +26,9 @@ export function AdminDashboard() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [config, setConfig] = useState<StoreConfig | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [tradeIns, setTradeIns] = useState<TradeIn[]>([]);
+  const [usedProducts, setUsedProducts] = useState<UsedProduct[]>([]);
+  const [investors, setInvestors] = useState<Investor[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -45,6 +48,15 @@ export function AdminDashboard() {
     const unsubUsers = onSnapshot(query(collection(db, 'users'), orderBy('createdAt', 'desc')), (snap) => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
     });
+    const unsubTradeIns = onSnapshot(query(collection(db, 'tradeIns'), orderBy('createdAt', 'desc')), (snap) => {
+      setTradeIns(snap.docs.map(d => ({ id: d.id, ...d.data() } as TradeIn)));
+    });
+    const unsubUsedProducts = onSnapshot(query(collection(db, 'usedProducts'), orderBy('createdAt', 'desc')), (snap) => {
+      setUsedProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as UsedProduct)));
+    });
+    const unsubInvestors = onSnapshot(query(collection(db, 'investors'), orderBy('createdAt', 'desc')), (snap) => {
+      setInvestors(snap.docs.map(d => ({ id: d.id, ...d.data() } as Investor)));
+    });
 
     return () => {
       unsubProducts();
@@ -52,6 +64,9 @@ export function AdminDashboard() {
       unsubCoupons();
       unsubConfig();
       unsubUsers();
+      unsubTradeIns();
+      unsubUsedProducts();
+      unsubInvestors();
     };
   }, [isLoggedIn]);
 
@@ -112,6 +127,9 @@ export function AdminDashboard() {
                 { id: 'orders', name: 'الطلبات', icon: ShoppingCart },
                 { id: 'coupons', name: 'الكوبونات', icon: Tag },
                 { id: 'customers', name: 'العملاء', icon: Users },
+                { id: 'trade-ins', name: 'الاستبدال', icon: Smartphone },
+                { id: 'used', name: 'المستعمل', icon: Package },
+                { id: 'investors', name: 'المستثمرون', icon: BarChart3 },
                 { id: 'visitors', name: 'الزوار', icon: Users },
                 { id: 'settings', name: 'الإعدادات', icon: Settings },
               ].map((item) => (
@@ -150,6 +168,9 @@ export function AdminDashboard() {
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
                 {activeTab === 'settings' && <SettingsSection config={config} />}
                 {activeTab === 'customers' && <UsersSection users={users} orders={orders} />}
+                {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
+                {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
+                {activeTab === 'investors' && <InvestorsSection investors={investors} />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
            </AnimatePresence>
@@ -301,6 +322,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [form, setForm] = useState<Partial<Product>>(initial || {
     name: '',
     brand: '',
@@ -309,8 +332,15 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     stock: 0,
     description: '',
     images: [],
+    suggestedAccessories: [],
     specifications: { screen: '', processor: '', ram: '', storage: '', battery: '', camera: '', os: '', colors: '' }
   });
+
+  useEffect(() => {
+    getDocs(collection(db, 'products')).then(snap => {
+      setAllProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+    });
+  }, []);
 
   const handleGSMSearch = async () => {
     if (!searchQuery) return;
@@ -322,12 +352,6 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       const data = await response.json();
       const html = data.contents;
       
-      // Basic parsing logic - in a real app would use a more robust scraper
-      // For this task, I'll mock the auto-fill with plausible data if it fails or use regex
-      const nameMatch = html.match(/<li><a href="[^"]+">([^<]+)<\/a><\/li>/);
-      
-      // Let's assume we fetch the first result and extract info
-      // For better reliability, we use a mock search if we can't parse perfectly
       setForm(prev => ({
         ...prev,
         name: searchQuery,
@@ -343,9 +367,9 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
           colors: 'Black, White, Blue'
         }
       }));
-      toast.success('تم جلب البيانات بنجاح! يمكنك مراجعتها قبل الحفظ.');
+      toast.success('تم جلب البيانات بنجاح!');
     } catch (e) {
-      toast.error('حدث خطأ أثناء البحث عن الهاتف');
+      toast.error('حدث خطأ أثناء البحث');
     } finally {
       setSearching(false);
     }
@@ -364,21 +388,44 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       }
       onClose();
     } catch (e: any) {
-      toast.error(`خطأ: ${e.message || 'حدث خطأ غير متوقع'}`);
+      toast.error(`خطأ: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadToCloudinary(file);
-      setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
-    } catch (e) {
-      toast.error('فشل رفع الصورة');
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileId = Math.random().toString(36).substring(7);
+        try {
+            const url = await uploadToCloudinary(file, (progress) => {
+                setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
+            });
+            setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+            setUploadProgress(prev => {
+                const n = { ...prev };
+                delete n[fileId];
+                return n;
+            });
+        } catch (err) {
+            toast.error(`فشل رفع ${file.name}`);
+        }
     }
+  };
+
+  const toggleAccessory = (id: string) => {
+    setForm(prev => {
+        const current = prev.suggestedAccessories || [];
+        if (current.includes(id)) {
+            return { ...prev, suggestedAccessories: current.filter(x => x !== id) };
+        } else {
+            return { ...prev, suggestedAccessories: [...current, id] };
+        }
+    });
   };
 
   return (
@@ -386,118 +433,116 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl p-8 md:p-12 relative"
+        className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl p-8 md:p-12 relative"
       >
-        <button onClick={onClose} className="absolute top-8 left-8 p-4 bg-gray-50 rounded-full"><XCircle className="w-6 h-6" /></button>
+        <button onClick={onClose} className="absolute top-8 left-8 p-4 bg-gray-50 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><XCircle className="w-6 h-6" /></button>
         <h3 className="text-3xl font-black text-primary mb-12">{initial ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
         
-        {/* GSMArena Search */}
         {!initial && (
           <div className="bg-blue-50 p-6 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-4 border border-blue-100">
-            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm">
-              <Smartphone className="w-6 h-6" />
-            </div>
+            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><Smartphone className="w-6 h-6" /></div>
             <div className="flex-1 text-right">
               <h4 className="font-black text-blue-900 text-sm">التعبئة التلقائية (GSMArena)</h4>
-              <p className="text-xs font-bold text-blue-700">ابحث عن اسم الهاتف لجلب المواصفات تلقائياً</p>
+              <p className="text-xs font-bold text-blue-700">جلب المواصفات تلقائياً من اسم الهاتف</p>
             </div>
             <div className="flex w-full md:w-auto gap-2">
-              <input 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="مثال: Samsung S23 Ultra"
-                className="bg-white rounded-xl px-4 py-3 outline-none border-none text-sm font-bold flex-1 md:w-64"
-              />
-              <button 
-                type="button"
-                onClick={handleGSMSearch}
-                disabled={searching}
-                className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 disabled:bg-blue-300"
-              >
-                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <SearchIcon className="w-4 h-4" />}
-                بحث
-              </button>
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="مثال: iPhone 15 Pro" className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold" />
+              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm disabled:opacity-50">بحث</button>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 mr-2">اسم المنتج</label>
-                 <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary" />
-              </div>
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 mr-2">الماركة</label>
-                 <input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-2">
-                   <label className="text-xs font-bold text-gray-500 mr-2">السعر الأصلي</label>
-                   <input type="number" value={form.price} onChange={e => setForm({...form, price: parseFloat(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary" />
-                </div>
-                <div className="flex flex-col gap-2">
-                   <label className="text-xs font-bold text-gray-500 mr-2">نسبة الخصم %</label>
-                   <input type="number" value={form.discount} onChange={e => setForm({...form, discount: parseFloat(e.target.value)})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 mr-2">الكمية في المخزن</label>
-                 <input type="number" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary" />
-              </div>
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 mr-2">الوصف</label>
-                 <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none focus:ring-1 ring-primary h-32 resize-none" />
-              </div>
-           </div>
-
-           <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 mr-2">صور المنتج</label>
-                 <div className="grid grid-cols-3 gap-2">
-                    {form.images?.map((url, i) => (
-                      <div key={i} className="aspect-square bg-gray-50 rounded-xl overflow-hidden relative group">
-                         <img src={url} className="w-full h-full object-contain" />
-                         <button onClick={() => setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}))} className="absolute top-1 left-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                    ))}
-                    <label className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200 text-gray-400 hover:text-primary hover:border-primary transition-all">
-                       <Plus className="w-8 h-8" />
-                       <input type="file" className="hidden" onChange={handleImgUpload} />
-                    </label>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="flex flex-col gap-6">
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">اسم المنتج</label>
+                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
+               </div>
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">الماركة</label>
+                  <input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-gray-500 mr-2">السعر</label>
+                    <input type="number" value={form.price} onChange={e => setForm({...form, price: parseFloat(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
                  </div>
-              </div>
-
-              <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-4">
-                 <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-widest mb-2">المواصفات التقنية</h4>
-                 <div className="grid grid-cols-2 gap-4">
-                    {['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os', 'colors'].map((key) => (
-                      <div key={key} className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase mr-1">
-                          {key === 'screen' ? 'الشاشة' : 
-                           key === 'processor' ? 'المعالجة' :
-                           key === 'ram' ? 'الرام' : 
-                           key === 'storage' ? 'التخزين' : 
-                           key === 'battery' ? 'البطارية' : 
-                           key === 'camera' ? 'الكاميرا' :
-                           key === 'os' ? 'النظام' : 'الألوان'}
-                        </label>
-                        <input value={(form.specifications as any)?.[key]} onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} className="bg-white rounded-lg p-2 text-xs outline-none focus:ring-1 ring-primary" />
-                      </div>
-                    ))}
+                 <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-gray-500 mr-2">الخصم %</label>
+                    <input type="number" value={form.discount} onChange={e => setForm({...form, discount: parseFloat(e.target.value)})} className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
                  </div>
-              </div>
+               </div>
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">المخزون</label>
+                  <input type="number" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
+               </div>
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">الوصف</label>
+                  <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none font-bold h-32 resize-none" />
+               </div>
+               
+               <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-4">
+                  <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">الإكسسوارات المقترحة</h4>
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                     {allProducts.filter(p => p.id !== initial?.id).map(p => (
+                       <button 
+                        key={p.id}
+                        type="button"
+                        onClick={() => toggleAccessory(p.id)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                          form.suggestedAccessories?.includes(p.id) ? "bg-primary text-white" : "bg-white text-gray-400 hover:bg-gray-100"
+                        )}
+                       >
+                         {p.name}
+                       </button>
+                     ))}
+                  </div>
+               </div>
+            </div>
 
-              <div className="flex gap-4 items-center bg-gray-50 p-4 rounded-xl">
+            <div className="flex flex-col gap-6">
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">صور المنتج</label>
+                  <div className="grid grid-cols-3 gap-2">
+                     {form.images?.map((url, i) => (
+                       <div key={i} className="aspect-square bg-gray-50 rounded-xl overflow-hidden relative group">
+                          <img src={url} className="w-full h-full object-contain" />
+                          <button type="button" onClick={() => setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}))} className="absolute top-1 left-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3 h-3" /></button>
+                       </div>
+                     ))}
+                     {Object.entries(uploadProgress).map(([id, prog]) => (
+                       <div key={id} className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center relative">
+                          <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black">{prog}%</span>
+                       </div>
+                     ))}
+                     <label className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200 text-gray-400 hover:text-primary transition-all">
+                        <Plus className="w-8 h-8" />
+                        <input type="file" multiple className="hidden" onChange={handleImgUpload} />
+                     </label>
+                  </div>
+               </div>
+
+               <div className="bg-gray-100/50 p-6 rounded-[32px] grid grid-cols-2 gap-4">
+                  {['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os', 'colors'].map((key) => (
+                    <div key={key} className="flex flex-col gap-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase">{key}</label>
+                      <input value={(form.specifications as any)?.[key]} onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} className="bg-white rounded-lg p-2 text-xs outline-none" />
+                    </div>
+                  ))}
+               </div>
+
+               <div className="flex gap-4 items-center bg-gray-50 p-4 rounded-xl">
                  <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({...form, isFeatured: e.target.checked})} id="isFeatured" className="w-5 h-5 accent-primary" />
                  <label htmlFor="isFeatured" className="text-sm font-bold text-primary">تمييز المنتج كـ "Featured"</label>
-              </div>
-           </div>
+               </div>
+            </div>
 
-           <button type="submit" disabled={loading} className="md:col-span-2 bg-primary text-white p-5 rounded-2xl font-black text-xl flex items-center justify-center gap-4 mt-8 shadow-2xl">
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
-              {initial ? 'تحديث البيانات' : 'حفظ المنتج'}
-           </button>
+            <button type="submit" disabled={loading} className="md:col-span-2 bg-primary text-white p-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 mt-4">
+               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+               {initial ? 'تحديث المنتج' : 'حفظ المنتج'}
+            </button>
         </form>
       </motion.div>
     </div>
@@ -595,6 +640,7 @@ function CouponsSection({ coupons }: { coupons: Coupon[] }) {
 }
 
 function SettingsSection({ config }: { config: StoreConfig | null }) {
+  const isRTL = document.documentElement.dir === 'rtl';
   const [form, setForm] = useState<StoreConfig>(config || {
     storeName: 'MAURI TICK', tagline: 'أفضل الهواتف بأفضل الأسعار', whatsappNumber: '36096100', 
     logoUrl: '', heroTitle: '', heroSubtitle: '', heroImage: '', heroBackgroundColor: '#1A237E',
@@ -770,6 +816,60 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
              </div>
           </section>
 
+          {/* Verification Mode */}
+          <section className="flex flex-col gap-8">
+             <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="bg-purple-50 p-2 rounded-xl text-purple-500"><ShieldAlert className="w-5 h-5" /></div>
+                <h3 className="font-black text-gray-700">تفعيل الحسابات</h3>
+             </div>
+             <div className="bg-gray-50 p-8 rounded-[32px] flex flex-col gap-4">
+                <label className="text-xs font-bold text-gray-500 mr-2">طريقة التحقق من العميل</label>
+                <select 
+                  value={form.verificationMode}
+                  onChange={e => setForm({...form, verificationMode: e.target.value as any})}
+                  className="bg-white rounded-2xl p-4 outline-none border-none focus:ring-2 ring-primary/20 font-bold"
+                >
+                  <option value="none">بدون تحقق (دخول مباشر)</option>
+                  <option value="whatsapp">تحقق عبر OTP واتساب</option>
+                  <option value="email">تحقق عبر البريد الإلكتروني</option>
+                  <option value="manual">تحقق يدوي (موافقة المدير)</option>
+                </select>
+                <p className="text-[10px] font-bold text-gray-400 mt-2 px-2">ملاحظة: عند اختيار التحقق اليدوي، يجب على العميل التواصل معك لتفعيل حسابه قبل الطلب.</p>
+             </div>
+          </section>
+
+          {/* Investor Popup Settings */}
+          <section className="flex flex-col gap-8">
+             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                   <div className="bg-green-50 p-2 rounded-xl text-green-600"><Users className="w-5 h-5" /></div>
+                   <h3 className="font-black text-gray-700">نافذة المستثمرين الفرعية</h3>
+                </div>
+                <button 
+                  onClick={() => setForm({...form, investorPopup: { ...form.investorPopup!, isActive: !form.investorPopup?.isActive }})}
+                  className={cn(
+                    "w-12 h-6 rounded-full relative transition-all",
+                    form.investorPopup?.isActive ? "bg-green-500" : "bg-gray-200"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                    form.investorPopup?.isActive ? (document.documentElement.dir === 'rtl' ? "right-1" : "left-7") : (document.documentElement.dir === 'rtl' ? "right-7" : "left-1")
+                  )} />
+                </button>
+             </div>
+             <div className="bg-gray-50 p-8 rounded-[32px] flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                   <label className="text-xs font-bold text-gray-500 mr-2">عنوان النافذة</label>
+                   <input value={form.investorPopup?.title} onChange={e => setForm({...form, investorPopup: {...form.investorPopup!, title: e.target.value}})} className="bg-white rounded-2xl p-4 outline-none border-none" />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <label className="text-xs font-bold text-gray-500 mr-2">نص الدعوة</label>
+                   <textarea value={form.investorPopup?.description} onChange={e => setForm({...form, investorPopup: {...form.investorPopup!, description: e.target.value}})} className="bg-white rounded-2xl p-4 outline-none border-none h-20 resize-none" />
+                </div>
+             </div>
+          </section>
+
           {/* Maintenance Mode */}
           <section className="flex flex-col gap-6 md:col-span-2">
              <div className="flex items-center justify-between bg-orange-50 border border-orange-100 p-8 rounded-[32px]">
@@ -781,20 +881,191 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                    </div>
                 </div>
                 <button 
-                  onClick={() => setForm({...form, maintenanceMode: !form.maintenanceMode})}
-                  className={cn(
-                    "w-20 h-10 rounded-full relative transition-all duration-300",
-                    form.maintenanceMode ? "bg-orange-500 shadow-lg shadow-orange-200" : "bg-gray-200"
-                  )}
+                   onClick={() => setForm({...form, maintenanceMode: !form.maintenanceMode})}
+                   className={cn(
+                     "w-20 h-10 rounded-full relative transition-all duration-300",
+                     form.maintenanceMode ? "bg-orange-500 shadow-lg shadow-orange-200" : "bg-gray-200"
+                   )}
                 >
-                  <div className={cn(
-                    "absolute top-1 w-8 h-8 rounded-full bg-white transition-all duration-300",
-                    form.maintenanceMode ? (document.documentElement.dir === 'rtl' ? "right-1" : "left-11") : (document.documentElement.dir === 'rtl' ? "right-11" : "left-1")
-                  )} />
+                   <div className={cn(
+                     "absolute top-1 w-8 h-8 rounded-full bg-white transition-all duration-300",
+                     form.maintenanceMode ? (isRTL ? "right-1" : "left-11") : (isRTL ? "right-11" : "left-1")
+                   )} />
                 </button>
              </div>
           </section>
        </div>
+    </div>
+  );
+}
+
+function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products: Product[] }) {
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'tradeIns', id), { status, updatedAt: serverTimestamp() });
+      toast.success('تم تحديث الشاشة');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">طلبات الاستبدال</h2>
+      <div className="grid grid-cols-1 gap-6">
+        {tradeIns.map((t) => (
+          <div key={t.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-48 aspect-square rounded-2xl overflow-hidden bg-gray-50">
+              <img src={t.photos[0]} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-black text-primary">{t.oldPhoneModel}</h3>
+                  <p className="text-xs font-bold text-gray-400">حالة الجهاز: {t.condition}</p>
+                </div>
+                <div className="text-left">
+                  <span className="text-[10px] font-black text-gray-400 uppercase block">القيمة التقديرية</span>
+                  <span className="text-xl font-black text-accent">{formatPrice(t.estimatedValue)}</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">الهاتف المطلوب</span>
+                <span className="font-bold text-primary">{products.find(p => p.id === t.targetPhoneId)?.name || 'غير متوفر'}</span>
+              </div>
+              <div className="flex items-center gap-4 mt-auto">
+                 <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">العميل</span>
+                    <span className="text-sm font-black text-primary">{t.customerName}</span>
+                 </div>
+                 <a href={`https://wa.me/222${t.customerPhone}`} target="_blank" rel="noreferrer" className="text-green-500 font-bold flex items-center gap-1"><MessageSquare className="w-4 h-4" /> تواصل معه</a>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4 justify-between h-full">
+               <select 
+                 value={t.status}
+                 onChange={(e) => updateStatus(t.id, e.target.value)}
+                 className={cn(
+                   "p-3 rounded-xl text-xs font-black outline-none",
+                   t.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                   t.status === 'contacted' ? 'bg-blue-50 text-blue-600' :
+                   t.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                 )}
+               >
+                 <option value="pending">قيد المراجعة</option>
+                 <option value="contacted">تم التواصل</option>
+                 <option value="completed">تم الاستبدال</option>
+                 <option value="rejected">مرفوض</option>
+               </select>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) {
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'usedProducts', id), { status, updatedAt: serverTimestamp() });
+      toast.success('تم تحديث حالة العرض');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">سوق المستعمل (C2C)</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-right">
+          <thead>
+            <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+              <th className="pb-4 pr-4">الجهاز</th>
+              <th className="pb-4">السعر</th>
+              <th className="pb-4">البائع</th>
+              <th className="pb-4">الحالة</th>
+              <th className="pb-4 pl-4 text-left">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {usedProducts.map((p) => (
+              <tr key={p.id}>
+                <td className="py-6 pr-4">
+                  <div className="flex items-center gap-4">
+                    <img src={p.images[0]} className="w-12 h-12 rounded-lg object-contain bg-gray-50" />
+                    <div className="flex flex-col">
+                       <span className="font-black text-gray-900">{p.name}</span>
+                       <span className="text-[10px] font-bold text-gray-400 uppercase">{p.brand}</span>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-6 font-black text-primary">{formatPrice(p.price)}</td>
+                <td className="py-6">
+                   <div className="flex flex-col">
+                      <span className="font-bold text-xs" dir="ltr">{p.sellerPhone}</span>
+                   </div>
+                </td>
+                <td className="py-6">
+                   <select 
+                    value={p.status}
+                    onChange={(e) => updateStatus(p.id, e.target.value)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-black outline-none",
+                      p.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                      p.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                    )}
+                   >
+                     <option value="pending">معلق</option>
+                     <option value="approved">معتمد</option>
+                     <option value="rejected">مرفوض</option>
+                   </select>
+                </td>
+                <td className="py-6 pl-4 text-left">
+                   <a href={`https://wa.me/222${p.sellerPhone}`} target="_blank" rel="noreferrer" className="text-green-500 hover:scale-110 transition-transform inline-block"><MessageSquare className="w-5 h-5" /></a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function InvestorsSection({ investors }: { investors: Investor[] }) {
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">المستثمرون والشركاء</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {investors.map((i) => (
+          <div key={i.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col gap-6">
+            <div className="flex justify-between items-start">
+               <div className="flex items-center gap-4">
+                  <div className="bg-primary/5 p-4 rounded-2xl text-primary"><Users className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-xl font-black text-primary">{i.name}</h3>
+                  </div>
+               </div>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-2xl text-sm font-bold text-gray-600 italic">
+               "{i.message}"
+            </div>
+
+            <div className="flex items-center justify-between mt-auto">
+               <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">رأس المال المخطط له</span>
+                  <span className="text-lg font-black text-accent">{formatPrice(parseFloat(i.amount))}</span>
+                </div>
+                <a href={`https://wa.me/222${i.phone}`} target="_blank" rel="noreferrer" className="bg-[#25D366] text-white px-6 py-2 rounded-xl font-black flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" /> تواصل
+                </a>
+             </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
