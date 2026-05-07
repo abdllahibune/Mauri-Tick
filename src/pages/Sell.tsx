@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { Smartphone, DollarSign, Upload, Trash2, CheckCircle2, Loader2, Phone, User, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
+import { StoreConfig } from '../types';
 
 export function Sell() {
+  const [config, setConfig] = useState<StoreConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+      if (snap.exists()) setConfig(snap.data() as StoreConfig);
+    });
+  }, []);
 
   const [form, setForm] = useState({
     name: '',
@@ -50,7 +58,10 @@ export function Sell() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.images.length === 0) return toast.error('يرجى إضافة صورة واحدة على الأقل');
+    const minImages = config?.sellMinImages || 1;
+    if (form.images.length < minImages) {
+      return toast.error(`يرجى إضافة ${minImages} صور على الأقل`);
+    }
     
     setLoading(true);
     try {
@@ -96,8 +107,8 @@ export function Sell() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-black text-primary mb-4">هل لديك هاتف للبيع؟</h1>
-        <p className="text-gray-500 font-bold">أعرض هاتفك لآلاف المشترين في موريتانيا مجاناً عبر منصتنا</p>
+        <h1 className="text-4xl font-black text-primary mb-4">{config?.sellPageTitle || 'هل لديك هاتف للبيع؟'}</h1>
+        <p className="text-gray-500 font-bold">{config?.sellPageDescription || 'أعرض هاتفك لآلاف المشترين في موريتانيا مجاناً عبر منصتنا'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-[40px] shadow-2xl p-8 md:p-12 grid grid-cols-1 md:grid-cols-2 gap-8">

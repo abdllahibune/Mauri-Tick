@@ -116,6 +116,13 @@ export interface Review {
   createdAt: any;
 }
 
+export interface SupportRequest {
+  id: string;
+  phone: string;
+  status: 'pending' | 'completed';
+  createdAt: any;
+}
+
 export interface StoreConfig {
   storeName: string;
   tagline: string;
@@ -145,6 +152,9 @@ export interface StoreConfig {
   returnPolicy: string;
   copyrightText: string;
   workingHours: string;
+  sellPageTitle?: string;
+  sellPageDescription?: string;
+  sellMinImages?: number;
   adminPassword?: string;
   socialLinks: {
     facebook: string;

@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Then go to Firestore > Rules > Publish rules above
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review } from '../types';
+import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
@@ -34,6 +34,7 @@ export function AdminDashboard() {
   const [usedProducts, setUsedProducts] = useState<UsedProduct[]>([]);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -65,6 +66,9 @@ export function AdminDashboard() {
     const unsubReviews = onSnapshot(query(collection(db, 'reviews'), orderBy('createdAt', 'desc')), (snap) => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
     });
+    const unsubSupport = onSnapshot(query(collection(db, 'support_requests'), orderBy('createdAt', 'desc')), (snap) => {
+      setSupportRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as SupportRequest)));
+    });
 
     return () => {
       unsubProducts();
@@ -76,6 +80,7 @@ export function AdminDashboard() {
       unsubUsedProducts();
       unsubInvestors();
       unsubReviews();
+      unsubSupport();
     };
   }, [isLoggedIn]);
 
@@ -139,6 +144,7 @@ export function AdminDashboard() {
                 { id: 'trade-ins', name: 'الاستبدال', icon: Smartphone },
                 { id: 'used', name: 'المستعمل', icon: Package },
                 { id: 'reviews', name: 'التقييمات', icon: MessageSquare },
+                { id: 'support', name: 'طلبات الدعم', icon: MessageSquare },
                 { id: 'investors', name: 'المستثمرون', icon: BarChart3 },
                 { id: 'visitors', name: 'الزوار', icon: Users },
                 { id: 'settings', name: 'الإعدادات', icon: Settings },
@@ -181,6 +187,7 @@ export function AdminDashboard() {
                 {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
                 {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
                 {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
+                {activeTab === 'support' && <SupportSection requests={supportRequests} />}
                 {activeTab === 'investors' && <InvestorsSection investors={investors} />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
@@ -663,7 +670,9 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
       button: '#1A237E'
     },
     maintenanceMode: false,
-    aboutUs: '', returnPolicy: '', copyrightText: '', workingHours: '', footerText: '', socialLinks: { facebook: '', instagram: '', tiktok: '' }
+    aboutUs: '', returnPolicy: '', copyrightText: '', workingHours: '', footerText: '', 
+    sellPageTitle: '', sellPageDescription: '', sellMinImages: 1,
+    socialLinks: { facebook: '', instagram: '', tiktok: '' }
   });
 
   const handleSave = async () => {
@@ -936,6 +945,26 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                    </div>
                 </div>
              </div>
+
+             <div className="mt-8 pt-8 border-t border-gray-100">
+                <h4 className="text-sm font-black text-primary mb-6 flex items-center gap-2">
+                   <Smartphone className="w-4 h-4" /> تخصيص صفحة "بيع هاتفك"
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">عنوان الصفحة</label>
+                      <input value={form.sellPageTitle} onChange={e => setForm({...form, sellPageTitle: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none font-bold" placeholder="بيع هاتفك بأفضل سعر" />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">وصف الصفحة</label>
+                      <input value={form.sellPageDescription} onChange={e => setForm({...form, sellPageDescription: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none font-bold" placeholder="نشتري منك الأجهزة المستعملة" />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">أقل عدد صور مقبول</label>
+                      <input type="number" value={form.sellMinImages} onChange={e => setForm({...form, sellMinImages: parseInt(e.target.value) || 0})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none font-bold" />
+                   </div>
+                </div>
+             </div>
           </section>
        </div>
     </div>
@@ -1171,6 +1200,76 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function SupportSection({ requests }: { requests: SupportRequest[] }) {
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'support_requests', id), { status });
+      toast.success('تم تحديث الحالة');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  const deleteRequest = async (id: string) => {
+    if (!window.confirm('حذف الطلب؟')) return;
+    try {
+      await deleteDoc(doc(db, 'support_requests', id));
+      toast.success('تم الحذف');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">طلبات الدعم الفني</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {requests.map((r) => (
+          <div key={r.id} className="bg-white border-2 border-gray-100 p-6 rounded-[40px] flex flex-col gap-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">رقم الهاتف</span>
+                <span className="text-xl font-black text-primary" dir="ltr">{r.phone}</span>
+              </div>
+              <div className={cn(
+                "px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase",
+                r.status === 'completed' ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"
+              )}>
+                {r.status === 'completed' ? 'تم التواصل' : 'قيد الانتظار'}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase">تاريخ الطلب</span>
+              <span className="text-xs font-bold text-gray-500">{r.createdAt?.toDate().toLocaleString('ar-MA')}</span>
+            </div>
+
+            <div className="flex gap-2">
+              <button 
+                onClick={() => updateStatus(r.id, r.status === 'completed' ? 'pending' : 'completed')}
+                className="flex-1 bg-gray-50 p-4 rounded-2xl font-black text-xs hover:bg-gray-100 transition-colors"
+              >
+                {r.status === 'completed' ? 'إعادة انتظار' : 'تعيين كمكتمل'}
+              </button>
+              <a 
+                href={`https://wa.me/222${r.phone}?text=مرحباً، تم استلام طلبك للدعم الفني من Mauri Tick`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center bg-green-500 text-white p-4 rounded-2xl flex-1 hover:brightness-110 transition-all shadow-lg shadow-green-100"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </a>
+              <button onClick={() => deleteRequest(r.id)} className="p-4 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
