@@ -5,6 +5,7 @@ import { Product, Order } from '../types';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { formatPrice, cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 type Message = {
   text: string;
@@ -14,6 +15,7 @@ type Message = {
 };
 
 export function AIAssistant({ products }: { products: Product[] }) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -28,7 +30,7 @@ export function AIAssistant({ products }: { products: Product[] }) {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, user]);
 
   const addBotMessage = (text: string, options?: Message['options'], suggestedProducts?: Product[]) => {
     setMessages(prev => [...prev, { text, isBot: true, options, products: suggestedProducts }]);
@@ -39,7 +41,9 @@ export function AIAssistant({ products }: { products: Product[] }) {
   };
 
   const showInitialOptions = () => {
-    addBotMessage("أهلاً بك في Mauri Tick! 👋\nكيف أساعدك اليوم؟", [
+    const userName = user?.name;
+    const greeting = userName ? `أهلاً بك يا ${userName} في Mauri Tick! 👋` : "أهلاً بك في Mauri Tick! 👋";
+    addBotMessage(`${greeting}\nكيف أساعدك اليوم؟`, [
       { label: '🔍 أبحث عن هاتف', icon: Search, action: () => handleFlow('search') },
       { label: '💰 عندي ميزانية محددة', icon: DollarSign, action: () => handleFlow('budget') },
       { label: '📦 تتبع طلبي', icon: Package, action: () => handleFlow('track') },
