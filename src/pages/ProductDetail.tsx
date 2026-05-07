@@ -220,14 +220,49 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
       <section className="bg-white rounded-[40px] p-8 md:p-12 shadow-sm border border-gray-100">
          <h3 className="text-3xl font-black text-primary mb-8 underline decoration-accent/30 underline-offset-8">المواصفات التقنية</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-            {Object.entries(product.specifications || {}).map(([key, value]) => (
-              value && (
+            {Object.entries(product.specifications || {}).map(([key, value]) => {
+              const specLabels: {[key: string]: string} = {
+                // Smartphones / Tablets
+                'screen': 'الشاشة',
+                'processor': 'المعالج',
+                'ram': 'الرام',
+                'storage': 'التخزين',
+                'battery': 'البطارية',
+                'camera': 'الكاميرا',
+                'os': 'النظام',
+                'colors': 'الألوان',
+                // Laptops
+                'screen size': 'حجم الشاشة',
+                'gpu': 'كرت الشاشة',
+                // Headphones
+                'type': 'النوع',
+                'connectivity': 'الاتصال',
+                'frequency': 'التردد',
+                // Screens/TVs
+                'size': 'المقاس',
+                'resolution': 'الدقة',
+                'panel type': 'نوع اللوحة',
+                'refresh rate': 'معدل التحديث',
+                'ports': 'المنافذ',
+                // Accessories / Spare Parts
+                'compatibility': 'التوافق',
+                'material': 'المادة',
+                'dimensions': 'الأبعاد',
+                // Cameras
+                'sensor': 'المستشعر',
+                'lens': 'العدسة',
+                'weight': 'الوزن',
+                // Other
+                'notes': 'ملاحظات إضافية'
+              };
+              
+              return value && (
                 <div key={key} className="flex justify-between items-center border-b border-gray-50 py-3">
-                  <span className="text-gray-500 font-bold text-sm uppercase">{key === 'screen' ? 'الشاشة' : key === 'processor' ? 'المعالج' : key === 'ram' ? 'الرام' : key === 'storage' ? 'التخزين' : key === 'battery' ? 'البطارية' : key === 'camera' ? 'الكاميرا' : key === 'os' ? 'النظام' : 'الألوان'}</span>
+                  <span className="text-gray-500 font-bold text-sm uppercase">{specLabels[key] || key}</span>
                   <span className="text-primary font-black">{value}</span>
                 </div>
-              )
-            ))}
+              );
+            })}
          </div>
       </section>
 

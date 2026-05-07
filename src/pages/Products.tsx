@@ -9,8 +9,9 @@ import { DEMO_PRODUCTS } from '../constants';
 
 export function Products({ products }: { products: Product[] }) {
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [selectedBrand, setSelectedBrand] = useState('الكل');
-  const [maxPrice, setMaxPrice] = useState(500000);
+  const [maxPrice, setMaxPrice] = useState(100000);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -20,16 +21,18 @@ export function Products({ products }: { products: Product[] }) {
 
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 
-  const brands = useMemo(() => ['الكل', ...new Set(displayProducts.map(p => p.brand))], [displayProducts]);
+  const categories = useMemo(() => ['الكل', ...new Set(displayProducts.map(p => p.category).filter(Boolean))], [displayProducts]);
+  const brands = useMemo(() => ['الكل', ...new Set(displayProducts.filter(p => selectedCategory === 'الكل' || p.category === selectedCategory).map(p => p.brand))], [displayProducts, selectedCategory]);
 
   const filteredProducts = useMemo(() => {
     return displayProducts
       .filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                               p.brand.toLowerCase().includes(search.toLowerCase());
+        const matchesCategory = selectedCategory === 'الكل' || p.category === selectedCategory;
         const matchesBrand = selectedBrand === 'الكل' || p.brand === selectedBrand;
         const matchesPrice = p.price * (1 - (p.discount || 0) / 100) <= maxPrice;
-        return matchesSearch && matchesBrand && matchesPrice;
+        return matchesSearch && matchesCategory && matchesBrand && matchesPrice;
       })
       .sort((a, b) => {
         const priceA = a.price * (1 - (a.discount || 0) / 100);
@@ -39,14 +42,14 @@ export function Products({ products }: { products: Product[] }) {
         if (sortBy === 'best-selling') return (b.soldCount || 0) - (a.soldCount || 0);
         return (new Date(b.createdAt?.toDate?.() || 0)).getTime() - (new Date(a.createdAt?.toDate?.() || 0)).getTime();
       });
-  }, [displayProducts, search, selectedBrand, maxPrice, sortBy]);
+  }, [displayProducts, search, selectedCategory, selectedBrand, maxPrice, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col gap-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-black text-primary">تصفح الهواتف</h1>
+          <h1 className="text-4xl font-black text-primary">تصفح المنتجات</h1>
           <p className="text-gray-500 font-medium">وجدنا لك {filteredProducts.length} منتج يناسب بحثك</p>
         </div>
         
@@ -74,6 +77,21 @@ export function Products({ products }: { products: Product[] }) {
         {/* Sidebar Filters Desktop */}
         <aside className="hidden lg:flex flex-col gap-8 sticky top-32 h-fit">
           <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col gap-8">
+            <div className="flex flex-col gap-4">
+              <h4 className="font-black text-primary">الفئة</h4>
+              <div className="flex flex-wrap gap-2">
+                {categories.map(cat => (
+                  <button 
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat ? 'bg-primary text-white shadow-lg' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-4">
               <h4 className="font-black text-primary">الماركة</h4>
               <div className="flex flex-wrap gap-2">

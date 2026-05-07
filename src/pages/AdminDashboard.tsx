@@ -338,8 +338,22 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  
+  const categories = [
+    { id: 'هواتف ذكية', name: 'هواتف ذكية (Smartphones)', specs: ['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os', 'colors'] },
+    { id: 'لابتوب وحاسوب', name: 'لابتوب وحاسوب (Laptops & Computers)', specs: ['screen size', 'processor', 'ram', 'storage', 'battery', 'os', 'gpu'] },
+    { id: 'سماعات وصوتيات', name: 'سماعات وصوتيات (Audio & Headphones)', specs: ['type', 'connectivity', 'battery', 'frequency'] },
+    { id: 'شاشات وتلفزيونات', name: 'شاشات وتلفزيونات (Screens & TVs)', specs: ['size', 'resolution', 'panel type', 'refresh rate', 'ports'] },
+    { id: 'إكسسوارات', name: 'إكسسوارات (Accessories)', specs: ['compatibility', 'material', 'dimensions'] },
+    { id: 'قطع غيار', name: 'قطع غيار (Spare Parts)', specs: ['compatibility', 'material', 'dimensions'] },
+    { id: 'أجهزة لوحية', name: 'أجهزة لوحية (Tablets)', specs: ['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os'] },
+    { id: 'كاميرات', name: 'كاميرات (Cameras)', specs: ['sensor', 'resolution', 'lens', 'battery', 'weight'] },
+    { id: 'أخرى', name: 'أخرى (Other)', specs: ['notes'] },
+  ];
+
   const [form, setForm] = useState<Partial<Product>>(initial || {
     name: '',
+    category: 'هواتف ذكية',
     brand: '',
     price: 0,
     discount: 0,
@@ -347,8 +361,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     description: '',
     images: [],
     suggestedAccessories: [],
-    specifications: { screen: '', processor: '', ram: '', storage: '', battery: '', camera: '', os: '', colors: '' }
+    specifications: {}
   });
+
+  const currentCategory = categories.find(c => c.id === form.category) || categories[0];
 
   useEffect(() => {
     getDocs(collection(db, 'mt_products')).then(snap => {
@@ -364,11 +380,11 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         `https://www.gsmarena.com/results.php3?sQuickSearch=${searchQuery}`
       )}`);
       const data = await response.json();
-      const html = data.contents;
       
       setForm(prev => ({
         ...prev,
         name: searchQuery,
+        category: 'هواتف ذكية',
         specifications: {
           ...prev.specifications,
           screen: '6.7 inch AMOLED',
@@ -405,18 +421,44 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     setLoading(false);
   };
 
-  const handleImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleImgUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
+    let files: FileList | null = null;
+    if ('files' in e.target && e.target.files) {
+        files = e.target.files;
+    } else if ('dataTransfer' in e && e.dataTransfer.files) {
+        files = e.dataTransfer.files;
+    }
+    
     if (!files) return;
 
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+    const remainingSpots = 5 - (form.images?.length || 0);
+    const filesToUpload = Array.from(files).slice(0, remainingSpots);
+
+    if (filesToUpload.length === 0 && files.length > 0) {
+        toast.error('الحد الأقصى هو 5 صور للمنتج الواحد');
+        return;
+    }
+
+    for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        
+        // Accept only jpg, jpeg, png, webp
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error(`نوع الملف غير مدعوم: ${file.name}`);
+            continue;
+        }
+
         const fileId = Math.random().toString(36).substring(7);
         try {
             const url = await uploadToCloudinary(file, (progress) => {
                 setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
             });
-            setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+
+            if (url) {
+                setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+            }
+
             setUploadProgress(prev => {
                 const n = { ...prev };
                 delete n[fileId];
@@ -444,12 +486,12 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl p-8 md:p-12 relative"
+        className="bg-white w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-[40px] shadow-2xl p-8 md:p-12 relative"
       >
         <button onClick={onClose} className="absolute top-8 left-8 p-4 bg-gray-50 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><XCircle className="w-6 h-6" /></button>
         <h3 className="text-3xl font-black text-primary mb-12">{initial ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
         
-        {!initial && (
+        {(form.category === 'هواتف ذكية' && !initial ) && (
           <div className="bg-blue-50 p-6 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-4 border border-blue-100">
             <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><Smartphone className="w-6 h-6" /></div>
             <div className="flex-1 text-right">
@@ -463,8 +505,20 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-12 text-right" dir="rtl">
             <div className="flex flex-col gap-6">
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">فئة المنتج</label>
+                  <select 
+                    value={form.category} 
+                    onChange={e => setForm({...form, category: e.target.value, specifications: {}})} 
+                    className="bg-gray-50 rounded-2xl p-4 outline-none font-bold"
+                  >
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+               </div>
                <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-gray-500 mr-2">اسم المنتج</label>
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold" />
@@ -514,32 +568,84 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
 
             <div className="flex flex-col gap-6">
                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-gray-500 mr-2">صور المنتج</label>
-                  <div className="grid grid-cols-3 gap-2">
-                     {form.images?.map((url, i) => (
-                       <div key={i} className="aspect-square bg-gray-50 rounded-xl overflow-hidden relative group">
-                          <img src={url} className="w-full h-full object-contain" />
-                          <button type="button" onClick={() => setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}))} className="absolute top-1 left-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3 h-3" /></button>
-                       </div>
-                     ))}
-                     {Object.entries(uploadProgress).map(([id, prog]) => (
-                       <div key={id} className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center relative">
-                          <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black">{prog}%</span>
-                       </div>
-                     ))}
-                     <label className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200 text-gray-400 hover:text-primary transition-all">
-                        <Plus className="w-8 h-8" />
-                        <input type="file" multiple className="hidden" onChange={handleImgUpload} />
-                     </label>
+                  <label className="text-xs font-bold text-gray-500 mr-2">صور المنتج (الحد الأقصى 5)</label>
+                  <div className="flex flex-col gap-4">
+                    {/* Upload Area */}
+                    {(form.images?.length || 0) < 5 && (
+                      <label 
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          handleImgUpload(e as any);
+                        }}
+                        className="w-full h-48 border-4 border-dashed border-gray-200 rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group"
+                      >
+                        <div className="bg-white p-4 rounded-2xl shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                          <ImageIcon className="w-8 h-8" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-black text-gray-600">اضغط للرفع أو اسحب الصور هنا</p>
+                          <p className="text-xs font-bold text-gray-400">JPG, PNG, WEBP (Max 5MB)</p>
+                        </div>
+                        <input type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleImgUpload} />
+                      </label>
+                    )}
+
+                    {/* Progress Bars */}
+                    {Object.entries(uploadProgress).map(([id, prog]) => (
+                      <div key={id} className="bg-gray-50 p-4 rounded-2xl flex flex-col gap-2">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="text-primary text-[10px]">جاري الرفع... {prog}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary transition-all" 
+                            style={{ width: `${prog}%` }} 
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Previews */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {form.images?.map((url, i) => (
+                        <div key={i} className="aspect-square bg-gray-50 rounded-2xl overflow-hidden relative group border-2 border-transparent hover:border-primary/20 transition-all shadow-sm">
+                           <img src={url} className="w-full h-full object-cover" />
+                           {i === 0 && (
+                             <div className="absolute top-2 right-2 bg-primary text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">صورة رئيسية</div>
+                           )}
+                           <button 
+                            type="button" 
+                            onClick={() => setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}))} 
+                            className="absolute top-2 left-2 p-2 bg-red-500 text-white rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                           >
+                            <Trash2 className="w-4 h-4" />
+                           </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                </div>
 
                <div className="bg-gray-100/50 p-6 rounded-[32px] grid grid-cols-2 gap-4">
-                  {['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os', 'colors'].map((key) => (
-                    <div key={key} className="flex flex-col gap-1">
+                  <h4 className="col-span-2 font-black text-gray-400 text-[10px] uppercase tracking-widest mb-2">المواصفات التقنية</h4>
+                  {currentCategory.specs.map((key) => (
+                    <div key={key} className={cn("flex flex-col gap-1", key === 'notes' ? "col-span-2" : "col-span-1")}>
                       <label className="text-[10px] font-black text-gray-400 uppercase">{key}</label>
-                      <input value={(form.specifications as any)?.[key]} onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} className="bg-white rounded-lg p-2 text-xs outline-none" />
+                      {key === 'notes' ? (
+                        <textarea 
+                          value={(form.specifications as any)?.[key] || ''} 
+                          onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
+                          className="bg-white rounded-lg p-3 text-xs outline-none min-h-[100px] font-bold"
+                          placeholder="اكتب مواصفات المنتج هنا..."
+                        />
+                      ) : (
+                        <input 
+                          value={(form.specifications as any)?.[key] || ''} 
+                          onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
+                          className="bg-white rounded-lg p-2 text-xs outline-none font-bold" 
+                        />
+                      )}
                     </div>
                   ))}
                </div>
@@ -550,7 +656,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                </div>
             </div>
 
-            <button type="submit" disabled={loading} className="md:col-span-2 bg-primary text-white p-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 mt-4">
+            <button type="submit" disabled={loading} className="md:col-span-2 bg-primary text-white p-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 mt-4 shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-50">
                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
                {initial ? 'تحديث المنتج' : 'حفظ المنتج'}
             </button>

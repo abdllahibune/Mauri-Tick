@@ -1,6 +1,7 @@
 export interface Product {
   id: string;
   name: string;
+  category: string;
   brand: string;
   price: number;
   discount: number;
@@ -8,14 +9,7 @@ export interface Product {
   description: string;
   images: string[];
   specifications: {
-    screen?: string;
-    processor?: string;
-    ram?: string;
-    storage?: string;
-    battery?: string;
-    camera?: string;
-    os?: string;
-    colors?: string;
+    [key: string]: string | undefined;
   };
   isFeatured?: boolean;
   isBestSeller?: boolean;
