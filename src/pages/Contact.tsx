@@ -13,7 +13,7 @@ export default function Contact() {
 
   useEffect(() => {
     ensureAuth();
-    return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    return onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
   }, []);
@@ -24,8 +24,9 @@ export default function Contact() {
     
     setLoading(true);
     await safeWrite(async () => {
-      await addDoc(collection(db, 'inquiries'), {
+      await addDoc(collection(db, 'mt_support_requests'), {
         ...form,
+        type: 'contact_form',
         createdAt: serverTimestamp(),
         status: 'pending'
       });

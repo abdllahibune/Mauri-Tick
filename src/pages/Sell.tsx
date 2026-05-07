@@ -16,7 +16,7 @@ export function Sell() {
 
   useEffect(() => {
     ensureAuth();
-    return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    return onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
   }, []);
@@ -66,7 +66,7 @@ export function Sell() {
     
     setLoading(true);
     await safeWrite(async () => {
-      await addDoc(collection(db, 'usedProducts'), {
+      await addDoc(collection(db, 'mt_sell_listings'), {
         ...form,
         price: Number(form.price),
         status: 'pending',

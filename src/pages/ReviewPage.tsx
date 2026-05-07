@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Star, Send, Loader2, CheckCircle2, MessageSquare } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Order } from '../types';
 import toast from 'react-hot-toast';
@@ -20,6 +20,7 @@ export default function ReviewPage() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
+    ensureAuth();
     if (!orderId) {
       setLoading(false);
       return;
@@ -27,7 +28,7 @@ export default function ReviewPage() {
 
     const fetchOrder = async () => {
       try {
-        const snap = await getDoc(doc(db, 'orders', orderId));
+        const snap = await getDoc(doc(db, 'mt_orders', orderId));
         if (snap.exists()) {
           const data = snap.data() as Order;
           if (data.status !== 'تم التسليم') {
@@ -56,10 +57,10 @@ export default function ReviewPage() {
     if (!comment) return toast.error('يرجى كتابة تعليق');
 
     setSubmitting(true);
-    try {
+    await safeWrite(async () => {
       // Add a review for each product in the order
       const promises = order.items.map(item => 
-        addDoc(collection(db, 'reviews'), {
+        addDoc(collection(db, 'mt_reviews'), {
           orderId,
           productId: item.id,
           customerName: order.customerName,
@@ -74,11 +75,8 @@ export default function ReviewPage() {
       await Promise.all(promises);
       setSubmitted(true);
       toast.success('شكرًا لتقييمك الرائع!');
-    } catch (err) {
-      toast.error('حدث خطأ أثناء إرسال التقييم');
-    } finally {
-      setSubmitting(false);
-    }
+    });
+    setSubmitting(false);
   };
 
   if (loading) {

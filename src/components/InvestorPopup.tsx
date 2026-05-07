@@ -18,7 +18,7 @@ export function InvestorPopup() {
   });
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    const unsubscribe = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) {
         const data = snap.data() as StoreConfig;
         setConfig(data.investorPopup || null);
@@ -33,7 +33,7 @@ export function InvestorPopup() {
     e.preventDefault();
     setLoading(true);
     try {
-      await addDoc(collection(db, 'investors'), {
+      await addDoc(collection(db, 'mt_investors'), {
         ...formData,
         createdAt: serverTimestamp()
       });

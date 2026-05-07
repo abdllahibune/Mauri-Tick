@@ -29,7 +29,7 @@ export function Account({ products }: { products: Product[] }) {
   const loadOrders = async () => {
     setLoadingOrders(true);
     try {
-      const q = query(collection(db, 'orders'), where('phone', '==', user.phone), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'mt_orders'), where('phone', '==', user.phone), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
     } catch (e) {

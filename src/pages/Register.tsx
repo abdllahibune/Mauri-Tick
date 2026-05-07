@@ -22,7 +22,7 @@ export function Register() {
 
   useEffect(() => {
     ensureAuth();
-    const unsubscribe = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    const unsubscribe = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
     return () => unsubscribe();

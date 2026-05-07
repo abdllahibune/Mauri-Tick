@@ -86,11 +86,11 @@ export function Checkout() {
         createdAt: serverTimestamp()
       };
 
-      const docRef = await safeWrite(() => addDoc(collection(db, 'orders'), orderData)) as any;
+      const docRef = await safeWrite(() => addDoc(collection(db, 'mt_orders'), orderData)) as any;
       
       // Update user stats
       if (user) {
-        await safeWrite(() => updateDoc(doc(db, 'users', user.id), {
+        await safeWrite(() => updateDoc(doc(db, 'mt_users', user.id), {
           totalSpent: increment(subtotal),
           ordersCount: increment(1)
         }));

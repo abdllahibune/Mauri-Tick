@@ -36,7 +36,7 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
       }
 
       try {
-        const docRef = doc(db, 'products', id);
+        const docRef = doc(db, 'mt_products', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = { id: docSnap.id, ...docSnap.data() } as Product;

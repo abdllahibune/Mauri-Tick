@@ -119,7 +119,7 @@ export function AIAssistant({ products }: { products: Product[] }) {
 
     if (flow === 'support') {
       // Save support request (instantly)
-      safeWrite(() => addDoc(collection(db, 'support_requests'), {
+      safeWrite(() => addDoc(collection(db, 'mt_support_requests'), {
         phone: val,
         createdAt: serverTimestamp(),
         status: 'pending'
@@ -132,7 +132,7 @@ export function AIAssistant({ products }: { products: Product[] }) {
     } else if (flow === 'track') {
       // Fetch orders instantly
       const fetchOrders = async () => {
-        const q = query(collection(db, 'orders'), where('phone', '==', val), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'mt_orders'), where('phone', '==', val), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         if (snap.empty) {
           addBotMessage(`لم نجد أي طلبات مسجلة برقم الهاتف: ${val}`);

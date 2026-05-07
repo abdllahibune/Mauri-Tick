@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Info, Target, TrendingUp, Users } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { db, ensureAuth } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { StoreConfig } from '../types';
 
@@ -9,7 +9,8 @@ export default function About() {
   const [config, setConfig] = useState<StoreConfig | null>(null);
 
   useEffect(() => {
-    return onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    ensureAuth();
+    return onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
   }, []);

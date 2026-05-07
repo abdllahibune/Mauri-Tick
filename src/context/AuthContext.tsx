@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (phone: string, password: string) => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'users'), where('phone', '==', phone), where('password', '==', password));
+      const q = query(collection(db, 'mt_users'), where('phone', '==', phone), where('password', '==', password));
       const snap = await getDocs(q);
       if (snap.empty) {
         throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة');
@@ -53,13 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       // Check if exists
-      const q = query(collection(db, 'users'), where('phone', '==', phone));
+      const q = query(collection(db, 'mt_users'), where('phone', '==', phone));
       const snap = await getDocs(q);
       if (!snap.empty) {
         throw new Error('هذا الرقم مسجل مسبقاً');
       }
 
-      const docRef = await safeWrite(() => addDoc(collection(db, 'users'), {
+      const docRef = await safeWrite(() => addDoc(collection(db, 'mt_users'), {
         phone,
         password,
         name,
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
-      await safeWrite(() => updateDoc(doc(db, 'users', user.id), data));
+      await safeWrite(() => updateDoc(doc(db, 'mt_users', user.id), data));
       setUser(prev => prev ? { ...prev, ...data } : null);
       toast.success('تم تحديث البيانات');
   };

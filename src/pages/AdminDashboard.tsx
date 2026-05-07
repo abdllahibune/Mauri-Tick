@@ -40,34 +40,34 @@ export function AdminDashboard() {
     ensureAuth();
     if (!isLoggedIn) return;
 
-    const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubProducts = onSnapshot(query(collection(db, 'mt_products'), orderBy('createdAt', 'desc')), (snap) => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
     });
-    const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubOrders = onSnapshot(query(collection(db, 'mt_orders'), orderBy('createdAt', 'desc')), (snap) => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
     });
-    const unsubCoupons = onSnapshot(collection(db, 'coupons'), (snap) => {
+    const unsubCoupons = onSnapshot(collection(db, 'mt_coupons'), (snap) => {
       setCoupons(snap.docs.map(d => ({ id: d.id, ...d.data() } as Coupon)));
     });
-    const unsubConfig = onSnapshot(doc(db, 'config', 'settings'), (snap) => {
+    const unsubConfig = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
-    const unsubUsers = onSnapshot(query(collection(db, 'users'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubUsers = onSnapshot(query(collection(db, 'mt_users'), orderBy('createdAt', 'desc')), (snap) => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
     });
-    const unsubTradeIns = onSnapshot(query(collection(db, 'tradeIns'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubTradeIns = onSnapshot(query(collection(db, 'mt_tradein'), orderBy('createdAt', 'desc')), (snap) => {
       setTradeIns(snap.docs.map(d => ({ id: d.id, ...d.data() } as TradeIn)));
     });
-    const unsubUsedProducts = onSnapshot(query(collection(db, 'usedProducts'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubUsedProducts = onSnapshot(query(collection(db, 'mt_sell_listings'), orderBy('createdAt', 'desc')), (snap) => {
       setUsedProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as UsedProduct)));
     });
-    const unsubInvestors = onSnapshot(query(collection(db, 'investors'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubInvestors = onSnapshot(query(collection(db, 'mt_investors'), orderBy('createdAt', 'desc')), (snap) => {
       setInvestors(snap.docs.map(d => ({ id: d.id, ...d.data() } as Investor)));
     });
-    const unsubReviews = onSnapshot(query(collection(db, 'reviews'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubReviews = onSnapshot(query(collection(db, 'mt_reviews'), orderBy('createdAt', 'desc')), (snap) => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
     });
-    const unsubSupport = onSnapshot(query(collection(db, 'support_requests'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubSupport = onSnapshot(query(collection(db, 'mt_support_requests'), orderBy('createdAt', 'desc')), (snap) => {
       setSupportRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as SupportRequest)));
     });
 
@@ -266,7 +266,7 @@ function ProductsSection({ products }: { products: Product[] }) {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
-    await safeWrite(() => deleteDoc(doc(db, 'products', id)));
+    await safeWrite(() => deleteDoc(doc(db, 'mt_products', id)));
   };
 
   return (
@@ -351,7 +351,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   });
 
   useEffect(() => {
-    getDocs(collection(db, 'products')).then(snap => {
+    getDocs(collection(db, 'mt_products')).then(snap => {
       setAllProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
     });
   }, []);
@@ -394,10 +394,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     setLoading(true);
     await safeWrite(async () => {
       if (initial) {
-        await updateDoc(doc(db, 'products', initial.id), { ...form, updatedAt: serverTimestamp() });
+        await updateDoc(doc(db, 'mt_products', initial.id), { ...form, updatedAt: serverTimestamp() });
         toast.success('تم التحديث بنجاح');
       } else {
-        await addDoc(collection(db, 'products'), { ...form, soldCount: 0, viewCount: 0, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'mt_products'), { ...form, soldCount: 0, viewCount: 0, createdAt: serverTimestamp() });
         toast.success('تمت الإضافة بنجاح');
       }
       onClose();
@@ -567,7 +567,7 @@ function OrdersSection({ orders }: { orders: Order[] }) {
 
   const updateStatus = async (id: string, status: string) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'orders', id), { status });
+      await updateDoc(doc(db, 'mt_orders', id), { status });
       toast.success('تم تحديث حالة الطلب');
     });
   };
@@ -668,7 +668,7 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 
   const handleSave = async () => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'config', 'settings'), { ...form });
+      await updateDoc(doc(db, 'mt_config', 'settings'), { ...form });
       toast.success('تم حفظ الإعدادات وتطبيق الألوان بنجاح');
     });
   };
@@ -963,7 +963,7 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products: Product[] }) {
   const updateStatus = async (id: string, status: string) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'tradeIns', id), { status, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, 'mt_tradein', id), { status, updatedAt: serverTimestamp() });
       toast.success('تم تحديث الشاشة');
     });
   };
@@ -1027,7 +1027,7 @@ function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products
 function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) {
   const updateStatus = async (id: string, status: string) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'usedProducts', id), { status, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, 'mt_sell_listings', id), { status, updatedAt: serverTimestamp() });
       toast.success('تم تحديث حالة العرض');
     });
   };
@@ -1134,7 +1134,7 @@ function VisitorsSection() {
 function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[] }) {
   const toggleBlock = async (id: string, isBlocked: boolean) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'users', id), { isBlocked: !isBlocked });
+      await updateDoc(doc(db, 'mt_users', id), { isBlocked: !isBlocked });
       toast.success(isBlocked ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم');
     });
   };
@@ -1191,7 +1191,7 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
 function SupportSection({ requests }: { requests: SupportRequest[] }) {
   const updateStatus = async (id: string, status: string) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'support_requests', id), { status });
+      await updateDoc(doc(db, 'mt_support_requests', id), { status });
       toast.success('تم تحديث الحالة');
     });
   };
@@ -1199,7 +1199,7 @@ function SupportSection({ requests }: { requests: SupportRequest[] }) {
   const deleteRequest = async (id: string) => {
     if (!window.confirm('حذف الطلب؟')) return;
     await safeWrite(async () => {
-      await deleteDoc(doc(db, 'support_requests', id));
+      await deleteDoc(doc(db, 'mt_support_requests', id));
       toast.success('تم الحذف');
     });
   };
@@ -1257,7 +1257,7 @@ function SupportSection({ requests }: { requests: SupportRequest[] }) {
 function ReviewsSection({ reviews, products }: { reviews: Review[], products: Product[] }) {
   const toggleHide = async (id: string, isHidden: boolean) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'reviews', id), { isHidden: !isHidden });
+      await updateDoc(doc(db, 'mt_reviews', id), { isHidden: !isHidden });
       toast.success(isHidden ? 'تم إظهار التقييم' : 'تم إخفاء التقييم');
     });
   };
@@ -1265,7 +1265,7 @@ function ReviewsSection({ reviews, products }: { reviews: Review[], products: Pr
   const deleteReview = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
     await safeWrite(async () => {
-      await deleteDoc(doc(db, 'reviews', id));
+      await deleteDoc(doc(db, 'mt_reviews', id));
       toast.success('تم حذف التقييم');
     });
   };

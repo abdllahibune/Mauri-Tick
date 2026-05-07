@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Phone, Lock, LogIn, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ensureAuth } from '../lib/firebase';
 
 export function Login() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    ensureAuth();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

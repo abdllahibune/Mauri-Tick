@@ -23,7 +23,7 @@ export function TrackOrder() {
     setLoading(true);
     try {
       const q = query(
-        collection(db, 'orders'), 
+        collection(db, 'mt_orders'), 
         where('phone', '==', phoneNumber),
         orderBy('createdAt', 'desc')
       );

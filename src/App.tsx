@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CompareProvider } from './context/CompareContext';
 import { doc, getDoc, collection, onSnapshot, query, limit } from 'firebase/firestore';
-import { db } from './lib/firebase';
+import { db, ensureAuth } from './lib/firebase';
 import { Product, StoreConfig } from './types';
 
 // Pages
@@ -53,30 +53,39 @@ function MainApp() {
   const { language } = useLanguage();
 
   useEffect(() => {
-    // 1. Fetch Products
-    const q = query(collection(db, 'products'), limit(100));
-    const unsubscribeProducts = onSnapshot(q, (snapshot) => {
-      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-    });
+    let unsubProducts: (() => void) | undefined;
+    let unsubConfig: (() => void) | undefined;
 
-    // 2. Fetch Theme Colors
-    const unsubscribeConfig = onSnapshot(doc(db, 'config', 'settings'), (snapshot) => {
-      if (snapshot.exists()) {
-        const config = snapshot.data() as StoreConfig;
-        if (config.themeColors) {
-          const root = document.documentElement;
-          root.style.setProperty('--primary', config.themeColors.primary);
-          root.style.setProperty('--accent', config.themeColors.accent);
-          root.style.setProperty('--bg-main', config.themeColors.background);
-          root.style.setProperty('--nav-bg', config.themeColors.navbar);
-          root.style.setProperty('--btn-bg', config.themeColors.button);
+    const init = async () => {
+      await ensureAuth();
+      
+      // 1. Fetch Products
+      const q = query(collection(db, 'mt_products'), limit(100));
+      unsubProducts = onSnapshot(q, (snapshot) => {
+        setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+      });
+
+      // 2. Fetch Theme Colors
+      unsubConfig = onSnapshot(doc(db, 'mt_config', 'settings'), (snapshot) => {
+        if (snapshot.exists()) {
+          const config = snapshot.data() as StoreConfig;
+          if (config.themeColors) {
+            const root = document.documentElement;
+            root.style.setProperty('--primary', config.themeColors.primary);
+            root.style.setProperty('--accent', config.themeColors.accent);
+            root.style.setProperty('--bg-main', config.themeColors.background);
+            root.style.setProperty('--nav-bg', config.themeColors.navbar);
+            root.style.setProperty('--btn-bg', config.themeColors.button);
+          }
         }
-      }
-    });
+      });
+    };
+
+    init();
 
     return () => {
-      unsubscribeProducts();
-      unsubscribeConfig();
+      if (unsubProducts) unsubProducts();
+      if (unsubConfig) unsubConfig();
     };
   }, []);
 

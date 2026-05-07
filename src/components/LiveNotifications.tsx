@@ -14,7 +14,7 @@ export function LiveNotifications() {
   } | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), limit(10));
+    const q = query(collection(db, 'mt_products'), limit(10));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       setProducts(prods);

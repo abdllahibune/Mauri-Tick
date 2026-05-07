@@ -38,7 +38,7 @@ export function TradeInPage() {
 
   useEffect(() => {
     ensureAuth();
-    const unsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
+    const unsubscribe = onSnapshot(collection(db, 'mt_products'), (snap) => {
       setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
     });
     return () => unsubscribe();
@@ -80,7 +80,7 @@ export function TradeInPage() {
     
     setLoading(true);
     await safeWrite(async () => {
-        await addDoc(collection(db, 'tradeIns'), {
+        await addDoc(collection(db, 'mt_tradein'), {
             ...formData,
             estimatedValue,
             status: 'pending',

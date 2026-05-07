@@ -212,44 +212,80 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["phone", "password"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A product review.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "productId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "isHidden": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SupportRequest": {
+      "title": "Support Request",
+      "description": "A support or contact inquiry.",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["chat", "contact_form"] },
+        "status": { "type": "string", "enum": ["pending", "contacted", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
-    "users/{userId}": {
+    "mt_users/{userId}": {
       "schema": "User",
       "description": "Customer profiles."
     },
-    "config/settings": {
+    "mt_config/settings": {
       "schema": "StoreConfig",
       "description": "Store-wide configuration."
     },
-    "products/{productId}": {
+    "mt_products/{productId}": {
       "schema": "Product",
       "description": "Product catalog."
     },
-    "orders/{orderId}": {
+    "mt_orders/{orderId}": {
       "schema": "Order",
       "description": "Customer orders."
     },
-    "coupons/{couponId}": {
+    "mt_coupons/{couponId}": {
       "schema": "Coupon",
       "description": "Discount coupons."
     },
-    "stats/{dayId}": {
+    "mt_stats/{dayId}": {
       "schema": "DailyStats",
       "description": "Daily statistics."
     },
-    "usedProducts/{productId}": {
+    "mt_sell_listings/{listingId}": {
       "schema": "UsedProduct",
-      "description": "C2C listings."
+      "description": "Used products for sale."
     },
-    "tradeIns/{requestId}": {
+    "mt_tradein/{requestId}": {
       "schema": "TradeIn",
       "description": "Trade-in requests."
     },
-    "investors/{investorId}": {
+    "mt_investors/{investorId}": {
       "schema": "Investor",
       "description": "Investor leads."
+    },
+    "mt_reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Product reviews."
+    },
+    "mt_support_requests/{requestId}": {
+      "schema": "SupportRequest",
+      "description": "Support and contact requests."
     }
   }
 }
