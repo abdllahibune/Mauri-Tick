@@ -27,6 +27,13 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Account } from './pages/Account';
 import { ComparePage } from './pages/ComparePage';
+import { TradeInPage } from './pages/TradeIn';
+import { Sell } from './pages/Sell';
+import About from './pages/About';
+import Contact from './pages/Contact';
+import ReturnPolicy from './pages/ReturnPolicy';
+import Copyright from './pages/Copyright';
+import ReviewPage from './pages/ReviewPage';
 import { NotFound } from './pages/NotFound';
 import { ComparisonBar } from './components/ComparisonBar';
 import { InvestorPopup } from './components/InvestorPopup';
@@ -90,6 +97,13 @@ function MainApp() {
           <Route path="/register" element={<Register />} />
           <Route path="/account" element={<Account products={products} />} />
           <Route path="/compare" element={<ComparePage />} />
+          <Route path="/tradein" element={<TradeInPage />} />
+          <Route path="/sell" element={<Sell />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/policy" element={<ReturnPolicy />} />
+          <Route path="/copyright" element={<Copyright />} />
+          <Route path="/review" element={<ReviewPage />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

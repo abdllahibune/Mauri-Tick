@@ -5,12 +5,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Then go to Firestore > Rules > Publish rules above
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor } from '../types';
+import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review } from '../types';
 import { 
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
   XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon,
-  Search as SearchIcon, Palette, Smartphone
+  Search as SearchIcon, Palette, Smartphone, FileText, Star
 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +33,7 @@ export function AdminDashboard() {
   const [tradeIns, setTradeIns] = useState<TradeIn[]>([]);
   const [usedProducts, setUsedProducts] = useState<UsedProduct[]>([]);
   const [investors, setInvestors] = useState<Investor[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -61,6 +62,9 @@ export function AdminDashboard() {
     const unsubInvestors = onSnapshot(query(collection(db, 'investors'), orderBy('createdAt', 'desc')), (snap) => {
       setInvestors(snap.docs.map(d => ({ id: d.id, ...d.data() } as Investor)));
     });
+    const unsubReviews = onSnapshot(query(collection(db, 'reviews'), orderBy('createdAt', 'desc')), (snap) => {
+      setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
+    });
 
     return () => {
       unsubProducts();
@@ -71,6 +75,7 @@ export function AdminDashboard() {
       unsubTradeIns();
       unsubUsedProducts();
       unsubInvestors();
+      unsubReviews();
     };
   }, [isLoggedIn]);
 
@@ -133,6 +138,7 @@ export function AdminDashboard() {
                 { id: 'customers', name: 'العملاء', icon: Users },
                 { id: 'trade-ins', name: 'الاستبدال', icon: Smartphone },
                 { id: 'used', name: 'المستعمل', icon: Package },
+                { id: 'reviews', name: 'التقييمات', icon: MessageSquare },
                 { id: 'investors', name: 'المستثمرون', icon: BarChart3 },
                 { id: 'visitors', name: 'الزوار', icon: Users },
                 { id: 'settings', name: 'الإعدادات', icon: Settings },
@@ -174,6 +180,7 @@ export function AdminDashboard() {
                 {activeTab === 'customers' && <UsersSection users={users} orders={orders} />}
                 {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
                 {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
+                {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
                 {activeTab === 'investors' && <InvestorsSection investors={investors} />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
@@ -656,7 +663,7 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
       button: '#1A237E'
     },
     maintenanceMode: false,
-    aboutUs: '', footerText: '', socialLinks: { facebook: '', instagram: '', tiktok: '' }
+    aboutUs: '', returnPolicy: '', copyrightText: '', workingHours: '', footerText: '', socialLinks: { facebook: '', instagram: '', tiktok: '' }
   });
 
   const handleSave = async () => {
@@ -898,6 +905,38 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                 </button>
              </div>
           </section>
+          {/* Additional Content Settings */}
+          <section className="flex flex-col gap-8 md:col-span-2 shadow-2xl shadow-gray-200/50 bg-white p-8 md:p-12 rounded-[48px]">
+             <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="bg-primary/5 p-2 rounded-xl text-primary"><FileText className="w-5 h-5" /></div>
+                <h3 className="font-black text-gray-700">محتوى الصفحات الإضافية</h3>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex flex-col gap-2">
+                   <label className="text-xs font-bold text-gray-500 mr-2">عن المتجر (About Us)</label>
+                   <textarea value={form.aboutUs} onChange={e => setForm({...form, aboutUs: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none h-40 resize-none font-bold" />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <label className="text-xs font-bold text-gray-500 mr-2">سياسة الإرجاع</label>
+                   <textarea value={form.returnPolicy} onChange={e => setForm({...form, returnPolicy: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none h-40 resize-none font-bold" />
+                </div>
+                <div className="flex flex-col gap-2">
+                   <label className="text-xs font-bold text-gray-500 mr-2">نص الحقوق (Copyright Page)</label>
+                   <textarea value={form.copyrightText} onChange={e => setForm({...form, copyrightText: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none h-32 resize-none font-bold" />
+                </div>
+                <div className="flex flex-col gap-6">
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">ساعات العمل</label>
+                      <input value={form.workingHours} onChange={e => setForm({...form, workingHours: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none font-bold" placeholder="مثال: من 9 صباحاً إلى 10 مساءً" />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">نص الفوتر الرئيسي</label>
+                      <textarea value={form.footerText} onChange={e => setForm({...form, footerText: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none border-none h-20 resize-none font-bold" />
+                   </div>
+                </div>
+             </div>
+          </section>
        </div>
     </div>
   );
@@ -1132,6 +1171,63 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsSection({ reviews, products }: { reviews: Review[], products: Product[] }) {
+  const toggleHide = async (id: string, isHidden: boolean) => {
+    try {
+      await updateDoc(doc(db, 'reviews', id), { isHidden: !isHidden });
+      toast.success(isHidden ? 'تم إظهار التقييم' : 'تم إخفاء التقييم');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
+    try {
+      await deleteDoc(doc(db, 'reviews', id));
+      toast.success('تم حذف التقييم');
+    } catch (e) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <h2 className="text-3xl font-black text-primary">تقييمات العملاء</h2>
+      <div className="flex flex-col gap-4">
+        {reviews.map((r) => (
+          <div key={r.id} className={cn("bg-white border rounded-[32px] p-6 shadow-sm flex flex-col md:flex-row justify-between gap-6", r.isHidden && "opacity-50 grayscale")}>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <span className="font-black text-primary">{r.customerName}</span>
+                {r.isVerified && <span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-lg text-[10px] font-black">عميل موثق ✅</span>}
+              </div>
+              <div className="flex items-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className={cn("w-3 h-3 fill-current", i < r.rating ? "text-yellow-400" : "text-gray-200")} />
+                ))}
+              </div>
+              <p className="font-bold text-gray-600 text-sm italic">"{r.comment}"</p>
+              <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-bold text-gray-400 uppercase">المنتج:</span>
+                 <span className="text-[10px] font-black text-primary">{products.find(p => p.id === r.productId)?.name || 'منتج مجهول'}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end md:self-center">
+              <button onClick={() => toggleHide(r.id, !!r.isHidden)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-primary transition-all">
+                {r.isHidden ? <Eye className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+              </button>
+              <button onClick={() => deleteReview(r.id)} className="p-2 bg-red-50 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

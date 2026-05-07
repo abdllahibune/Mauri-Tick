@@ -24,7 +24,20 @@ export function Footer() {
             <h4 className="text-accent font-bold mb-6">روابط سريعة</h4>
             <ul className="flex flex-col gap-3 text-sm text-gray-300">
               <li><Link to="/products" className="hover:text-white transition-colors">جميع المنتجات</Link></li>
+              <li><Link to="/about" className="hover:text-white transition-colors">من نحن</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">تواصل معنا</Link></li>
+              <li><Link to="/policy" className="hover:text-white transition-colors">سياسة الإرجاع</Link></li>
+              <li><Link to="/copyright" className="hover:text-white transition-colors">حقوق الملكية</Link></li>
+            </ul>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <h4 className="text-accent font-bold mb-6">خدماتنا</h4>
+            <ul className="flex flex-col gap-3 text-sm text-gray-300">
               <li><Link to="/track" className="hover:text-white transition-colors">تتبع طلبك</Link></li>
+              <li><Link to="/tradein" className="hover:text-white transition-colors">استبدال جهازك</Link></li>
+              <li><Link to="/sell" className="hover:text-white transition-colors">بيع جهازك المستعمل</Link></li>
               <li><Link to="/wishlist" className="hover:text-white transition-colors">قائمة الأمنيات</Link></li>
               <li><Link to="/cart" className="hover:text-white transition-colors">سلة التسوق</Link></li>
             </ul>
@@ -39,24 +52,15 @@ export function Footer() {
               <li className="flex items-center gap-3"><MapPin className="w-5 h-5 text-accent" /> نواكشوط، موريتانيا</li>
             </ul>
           </div>
-
-          {/* Newsletter */}
-          <div>
-            <h4 className="text-accent font-bold mb-6">النشرة الإخبارية</h4>
-            <p className="text-sm text-gray-300 mb-4">اشترك للحصول على آخر العروض والخصومات.</p>
-            <div className="flex gap-2">
-              <input type="email" placeholder="بريدك الإلكتروني" className="bg-white/10 border-none rounded-lg px-4 py-2 text-sm w-full outline-none focus:ring-1 ring-accent" />
-              <button className="bg-accent text-primary font-bold px-4 py-2 rounded-lg hover:brightness-110">اشترك</button>
-            </div>
-          </div>
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-          <p>تم التطوير بواسطة موري تيك | واتساب: 36096100</p>
+          <p>© 2025 Mauri Tick — جميع الحقوق محفوظة</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-white">سياسة الخصوصية</a>
-            <a href="#" className="hover:text-white">الشروط والأحكام</a>
+            <Link to="/policy" className="hover:text-white text-[10px]">سياسة الإرجاع</Link>
+            <Link to="/copyright" className="hover:text-white text-[10px]">الملكية الفكرية</Link>
           </div>
+          <p>تم التطوير بواسطة Mauri Tick</p>
         </div>
       </div>
     </footer>

@@ -101,6 +101,19 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  isBuyNow?: boolean; // To identify temporary buy now items
+}
+
+export interface Review {
+  id: string;
+  orderId?: string;
+  productId: string;
+  customerName: string;
+  rating: number; // 1-5
+  comment: string;
+  isVerified: boolean;
+  isHidden: boolean;
+  createdAt: any;
 }
 
 export interface StoreConfig {
@@ -129,6 +142,9 @@ export interface StoreConfig {
   maintenanceMode: boolean;
   aboutUs: string;
   footerText: string;
+  returnPolicy: string;
+  copyrightText: string;
+  workingHours: string;
   adminPassword?: string;
   socialLinks: {
     facebook: string;

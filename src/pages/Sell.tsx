@@ -6,7 +6,7 @@ import { Smartphone, DollarSign, Upload, Trash2, CheckCircle2, Loader2, Phone, U
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
-export function SellPage() {
+export function Sell() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
