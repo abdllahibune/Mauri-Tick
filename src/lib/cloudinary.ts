@@ -9,8 +9,8 @@
 // 4. Copy preset name to CLOUDINARY_UPLOAD_PRESET
 // 5. Copy cloud name to CLOUDINARY_CLOUD_NAME
 
-const CLOUDINARY_UPLOAD_PRESET = "mauri_tick"; 
-const CLOUDINARY_CLOUD_NAME = "dnq359vms";
+const CLOUDINARY_UPLOAD_PRESET = "mauri_uploads"; 
+const CLOUDINARY_CLOUD_NAME = "dy5qfryut";
 
 export async function uploadToCloudinary(file: File, onProgress?: (progress: number) => void): Promise<string> {
   // If progress is needed, note that fetch doesn't support upload progress natively in all browsers
