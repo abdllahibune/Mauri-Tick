@@ -13,40 +13,28 @@ const CLOUDINARY_UPLOAD_PRESET = "mauri_tick";
 const CLOUDINARY_CLOUD_NAME = "dnq359vms";
 
 export async function uploadToCloudinary(file: File, onProgress?: (progress: number) => void): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
+  // If progress is needed, note that fetch doesn't support upload progress natively in all browsers
+  // but we can simulate it or just use the requested fetch pattern.
+  if (onProgress) onProgress(50); // Fake start
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        onProgress(progress);
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const response = JSON.parse(xhr.responseText);
-        if (response.secure_url) {
-          resolve(response.secure_url);
-        } else {
-          reject(new Error('فشل رفع الصورة: رابط غير موجود'));
-        }
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          reject(new Error(error.error?.message || 'فشل رفع الصورة'));
-        } catch (e) {
-          reject(new Error('فشل رفع الصورة (خطأ غير معروف)'));
-        }
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('خطأ في الاتصال بخدمة رفع الصور'));
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    xhr.send(formData);
-  });
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  
+  try {
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData }
+    );
+    const data = await response.json();
+    
+    if (data.secure_url) {
+      if (onProgress) onProgress(100);
+      return data.secure_url;
+    } else {
+      throw new Error(data.error?.message || 'فشل رفع الصورة');
+    }
+  } catch (error: any) {
+    throw new Error(error.message || 'خطأ في الاتصال بخدمة رفع الصور');
+  }
 }

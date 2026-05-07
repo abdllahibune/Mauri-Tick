@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// IF IMAGES NOT UPLOADING:
+// Go to Firebase Console > Authentication > 
+// Sign-in method > Anonymous > Enable
+// Then go to Firestore > Rules > Publish rules above
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor } from '../types';
