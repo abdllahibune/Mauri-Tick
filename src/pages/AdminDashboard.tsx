@@ -7,6 +7,7 @@ import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serve
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
+  Facebook, Instagram, Twitter, Youtube, MessageCircle, Music, Globe,
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
   XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon,
@@ -376,30 +377,59 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     if (!searchQuery) return;
     setSearching(true);
     try {
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(
-        `https://www.gsmarena.com/results.php3?sQuickSearch=${searchQuery}`
-      )}`);
-      const data = await response.json();
+      // Primary API: Phone specs
+      const res = await fetch(`https://phone-specs-api.azurewebsites.net/search?query=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
       
-      setForm(prev => ({
-        ...prev,
-        name: searchQuery,
-        category: 'هواتف ذكية',
-        specifications: {
-          ...prev.specifications,
-          screen: '6.7 inch AMOLED',
-          processor: 'Snapdragon 8 Gen 2',
-          ram: '8GB/12GB',
-          storage: '128GB/256GB',
-          battery: '5000 mAh',
-          camera: '50MP Main + 12MP Ultra + 10MP Tele',
-          os: 'Android 13',
-          colors: 'Black, White, Blue'
+      if (data.status && data.data?.phones?.length > 0) {
+        const slug = data.data.phones[0].slug;
+        const detailRes = await fetch(`https://phone-specs-api.azurewebsites.net/${slug}`);
+        const detailData = await detailRes.json();
+        
+        if (detailData.status && detailData.data) {
+          const specs = detailData.data;
+          const sMap: any = {};
+          specs.specifications?.forEach((g: any) => g.specs?.forEach((s: any) => sMap[s.key.toLowerCase()] = s.val[0]));
+
+          setForm(prev => ({
+            ...prev,
+            name: specs.phone_name,
+            brand: specs.brand,
+            category: 'هواتف ذكية',
+            images: specs.phone_images?.[0] ? [specs.phone_images[0], ...(prev.images || [])].slice(0, 5) : prev.images,
+            specifications: {
+              ...prev.specifications,
+              screen: sMap['size'] || sMap['type'],
+              processor: sMap['chipset'],
+              ram: sMap['internal']?.split(' ')[0] || sMap['ram'],
+              storage: sMap['internal']?.split(',')[0] || sMap['storage'],
+              battery: sMap['type'] || sMap['battery'],
+              camera: sMap['triple'] || sMap['single'] || sMap['dual'] || sMap['main camera'],
+              os: sMap['os'],
+              colors: sMap['colors']
+            }
+          }));
+          toast.success('تم جلب مواصفات الهاتف بنجاح ✅');
+          setSearching(false);
+          return;
         }
-      }));
-      toast.success('تم جلب البيانات بنجاح!');
+      }
+
+      // Try backup or non-phone suggestion (DuckDuckGo Image)
+      const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&iax=images&ia=images`);
+      const ddgData = await ddgRes.json();
+      
+      if (ddgData.Image) {
+          setForm(prev => ({
+            ...prev,
+            images: [ddgData.Image, ...(prev.images || [])].slice(0, 5)
+          }));
+          toast.success('تم العثور على صورة مقترحة للمنتج 🖼️');
+      } else {
+          toast.error('لم نجد بيانات دقيقة، يرجى الإدخال يدوياً');
+      }
     } catch (e) {
-      toast.error('حدث خطأ أثناء البحث');
+      toast.error('فشل جلب البيانات التلقائية');
     } finally {
       setSearching(false);
     }
@@ -407,14 +437,33 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name || !form.price || (form.images?.length || 0) === 0) {
+      toast.error('يرجى ملء جميع الحقول ورفع صورة واحدة على الأقل');
+      return;
+    }
+
     setLoading(true);
     await safeWrite(async () => {
+      const productData = {
+        ...form,
+        price: Number(form.price),
+        discount: Number(form.discount) || 0,
+        stock: Number(form.stock) || 0,
+        updatedAt: serverTimestamp()
+      };
+
       if (initial) {
-        await updateDoc(doc(db, 'mt_products', initial.id), { ...form, updatedAt: serverTimestamp() });
-        toast.success('تم التحديث بنجاح');
+        await updateDoc(doc(db, 'mt_products', initial.id), productData);
+        toast.success('تم تحديث المنتج بنجاح ✅');
       } else {
-        await addDoc(collection(db, 'mt_products'), { ...form, soldCount: 0, viewCount: 0, createdAt: serverTimestamp() });
-        toast.success('تمت الإضافة بنجاح');
+        await addDoc(collection(db, 'mt_products'), { 
+          ...productData, 
+          soldCount: 0, 
+          viewCount: 0, 
+          createdAt: serverTimestamp(),
+          featured: form.isFeatured || false
+        });
+        toast.success('تم حفظ المنتج بنجاح ✅');
       }
       onClose();
     });
@@ -491,16 +540,19 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         <button onClick={onClose} className="absolute top-8 left-8 p-4 bg-gray-50 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><XCircle className="w-6 h-6" /></button>
         <h3 className="text-3xl font-black text-primary mb-12">{initial ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
         
-        {(form.category === 'هواتف ذكية' && !initial ) && (
+        {!initial && (
           <div className="bg-blue-50 p-6 rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-4 border border-blue-100">
-            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><Smartphone className="w-6 h-6" /></div>
+            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><SearchIcon className="w-6 h-6" /></div>
             <div className="flex-1 text-right">
-              <h4 className="font-black text-blue-900 text-sm">التعبئة التلقائية (GSMArena)</h4>
-              <p className="text-xs font-bold text-blue-700">جلب المواصفات تلقائياً من اسم الهاتف</p>
+              <h4 className="font-black text-blue-900 text-sm italic">البحث التلقائي الذكي</h4>
+              <p className="text-xs font-bold text-blue-700">أدخل اسم المنتج لجلب المواصفات والصورة تلقائياً</p>
             </div>
             <div className="flex w-full md:w-auto gap-2">
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="مثال: iPhone 15 Pro" className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold" />
-              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm disabled:opacity-50">بحث</button>
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="مثال: iPhone 15 Pro أو MacBook Air" className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold" />
+              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2">
+                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                بحث
+              </button>
             </div>
           </div>
         )}
@@ -769,7 +821,15 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
     maintenanceMode: false,
     aboutUs: '', returnPolicy: '', copyrightText: '', workingHours: '', footerText: '', 
     sellPageTitle: '', sellPageDescription: '', sellMinImages: 1,
-    socialLinks: { facebook: '', instagram: '', tiktok: '' }
+    socialLinks: { 
+      facebook: '', 
+      instagram: '', 
+      tiktok: '',
+      whatsapp: '',
+      twitter: '',
+      youtube: '',
+      other: ''
+    }
   });
 
   const handleSave = async () => {
@@ -981,6 +1041,46 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                 <div className="flex flex-col gap-2">
                    <label className="text-xs font-bold text-gray-500 mr-2">نص الدعوة</label>
                    <textarea value={form.investorPopup?.description} onChange={e => setForm({...form, investorPopup: {...form.investorPopup!, description: e.target.value}})} className="bg-white rounded-2xl p-4 outline-none border-none h-20 resize-none" />
+                </div>
+             </div>
+          </section>
+
+          {/* Social Media Links */}
+          <section className="flex flex-col gap-8 md:col-span-2">
+             <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><Globe className="w-5 h-5" /></div>
+                <h3 className="font-black text-gray-700">روابط التواصل الاجتماعي</h3>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-gray-50 p-8 rounded-[40px]">
+                {[
+                  { label: 'فيسبوك', key: 'facebook', icon: Facebook, placeholder: 'رابط صفحة فيسبوك', color: 'text-[#1877F2]' },
+                  { label: 'إنستغرام', key: 'instagram', icon: Instagram, placeholder: 'رابط حساب إنستغرام', color: 'text-[#E1306C]' },
+                  { label: 'تيك توك', key: 'tiktok', icon: Music, placeholder: 'رابط حساب تيك توك', color: 'text-black' },
+                  { label: 'واتساب', key: 'whatsapp', icon: MessageCircle, placeholder: 'رقم واتساب بدون +', color: 'text-[#25D366]' },
+                  { label: 'تويتر / X', key: 'twitter', icon: Twitter, placeholder: 'رابط حساب تويتر', color: 'text-black' },
+                  { label: 'يوتيوب', key: 'youtube', icon: Youtube, placeholder: 'رابط قناة يوتيوب', color: 'text-[#FF0000]' },
+                  { label: 'موقع آخر', key: 'other', icon: Globe, placeholder: 'رابط موقع خارجي', color: 'text-primary' },
+                ].map((social) => (
+                  <div key={social.key} className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-gray-500 mr-2 flex items-center gap-2">
+                      <social.icon className={cn("w-4 h-4", social.color)} />
+                      {social.label}
+                    </label>
+                    <input 
+                      value={(form.socialLinks as any)?.[social.key] || ''} 
+                      onChange={e => setForm({
+                        ...form, 
+                        socialLinks: { ...form.socialLinks, [social.key]: e.target.value } 
+                      })} 
+                      placeholder={social.placeholder}
+                      className="bg-white rounded-2xl p-4 outline-none border-none focus:ring-2 ring-primary/20 font-bold text-sm"
+                      dir={social.key === 'whatsapp' ? 'ltr' : 'auto'}
+                    />
+                  </div>
+                ))}
+                <div className="md:col-span-2 lg:col-span-3 flex justify-end mt-4">
+                  <button onClick={handleSave} className="bg-primary text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all">حفظ روابط التواصل</button>
                 </div>
              </div>
           </section>

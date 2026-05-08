@@ -154,6 +154,10 @@ export interface StoreConfig {
     facebook: string;
     instagram: string;
     tiktok: string;
+    whatsapp: string;
+    twitter: string;
+    youtube: string;
+    other: string;
   };
 }
 
