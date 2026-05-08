@@ -339,10 +339,9 @@ function ProductsSection({ products }: { products: Product[] }) {
 
 function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Product | null }) {
   const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   
   const categories = [
     { id: 'هواتف ذكية', name: 'هواتف ذكية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'] },
@@ -378,91 +377,15 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     });
   }, []);
 
-  const handleGSMSearch = async () => {
-    if (!searchQuery) return;
-    setSearching(true);
-    let foundRawData = null;
-
-    try {
-      // Step 1: Try primary phone specs API
-      const res = await fetch(`https://phone-specs-api.azurewebsites.net/search?query=${encodeURIComponent(searchQuery)}`);
-      const data = await res.json();
-      
-      if (data.status && data.data?.phones?.length > 0) {
-        const slug = data.data.phones[0].slug;
-        const detailRes = await fetch(`https://phone-specs-api.azurewebsites.net/${slug}`);
-        const detailData = await detailRes.json();
-        if (detailData.status && detailData.data) {
-          foundRawData = { source: 'primary', data: detailData.data };
-        }
-      }
-
-      // Step 2: Try backup API if Step 1 failed
-      if (!foundRawData) {
-        try {
-          const res2 = await fetch(`https://api.freeapi.app/api/v1/public/mobiles?query=${encodeURIComponent(searchQuery)}`);
-          const data2 = await res2.json();
-          if (data2.success && data2.data?.data?.length > 0) {
-            foundRawData = { source: 'backup', data: data2.data.data[0] };
-          }
-        } catch (e) {
-          console.error("Backup API failed", e);
-        }
-      }
-
-      if (foundRawData) {
-        if (foundRawData.source === 'primary') {
-          const specs = foundRawData.data;
-          const sMap: any = {};
-          specs.specifications?.forEach((g: any) => g.specs?.forEach((s: any) => sMap[s.key.toLowerCase()] = s.val[0]));
-
-          setForm(prev => ({
-            ...prev,
-            name: specs.phone_name,
-            brand: specs.brand,
-            category: 'هواتف ذكية',
-            images: specs.phone_images?.[0] ? [specs.phone_images[0], ...(prev.images || [])].slice(0, 5) : prev.images,
-            specifications: {
-              ...prev.specifications,
-              screen: sMap['size'] || sMap['type'] || '',
-              processor: sMap['chipset'] || '',
-              RAM: sMap['internal']?.split(' ')[1] || sMap['ram'] || '',
-              storage: sMap['internal']?.split(' ')[0] || sMap['storage'] || '',
-              battery: sMap['type'] || sMap['battery'] || '',
-              camera: sMap['triple'] || sMap['single'] || sMap['dual'] || sMap['main camera'] || '',
-              OS: sMap['os'] || '',
-              colors: sMap['colors'] || ''
-            }
-          }));
-        } else {
-          // Backup API mapping
-          const item = foundRawData.data;
-          setForm(prev => ({
-            ...prev,
-            name: item.model || item.name,
-            brand: item.brand,
-            category: 'هواتف ذكية',
-            specifications: {
-              ...prev.specifications,
-              screen: item.display || '',
-              processor: item.processor || '',
-              RAM: item.ram || '',
-              storage: item.storage || '',
-              battery: item.battery || '',
-              camera: item.camera || '',
-              OS: item.os || ''
-            }
-          }));
-        }
-        toast.success(`تم العثور على مواصفات ${searchQuery} بنجاح ✅`);
-      } else {
-        toast.error('لم يتم العثور على المواصفات تلقائياً، يرجى إدخالها يدوياً');
-      }
-    } catch (e) {
-      toast.error('فشل جلب البيانات التلقائية');
-    } finally {
-      setSearching(false);
+  const handleAddImageUrl = () => {
+    if (!imageUrlInput) return;
+    if ((form.images?.length || 0) >= 5) {
+      toast.error('الحد الأقصى هو 5 صور');
+      return;
     }
+    setForm(prev => ({ ...prev, images: [...(prev.images || []), imageUrlInput] }));
+    setImageUrlInput('');
+    toast.success('تمت إضافة رابط الصورة بنجاح');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -564,29 +487,6 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         <button onClick={onClose} className="absolute top-6 left-6 p-4 bg-gray-50 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors z-10"><XCircle className="w-6 h-6" /></button>
         <h3 className="text-2xl md:text-3xl font-black text-primary mb-8 md:mb-12 mt-4 md:mt-0">{initial ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
         
-        {!initial && (
-          <div className="bg-blue-50 p-6 rounded-2xl md:rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-4 border border-blue-100">
-            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><SearchIcon className="w-6 h-6" /></div>
-            <div className="flex-1 text-right">
-              <h4 className="font-black text-blue-900 text-sm italic">البحث التلقائي الذكي</h4>
-              <p className="text-[10px] md:text-xs font-bold text-blue-700">أدخل اسم المنتج لجلب المواصفات والصورة تلقائياً</p>
-            </div>
-            <div className="flex w-full md:w-auto gap-2">
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="مثال: iPhone 15" className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold text-sm" />
-              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-4 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2 justify-center">
-                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <SearchIcon className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {searching && (
-          <div className="mb-8 p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-pulse">
-            <Loader2 className="w-5 h-5 text-primary animate-spin" />
-            <p className="font-bold text-primary text-xs md:text-sm">🔍 جاري البحث عن مواصفات {searchQuery}...</p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 text-right" dir="rtl">
             <div className="flex flex-col gap-6">
                <div className="flex flex-col gap-2">
@@ -691,6 +591,25 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                         </div>
                         <input type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
                       </label>
+                    )}
+
+                    {/* Add by URL */}
+                    {(form.images?.length || 0) < 5 && (
+                      <div className="flex gap-2">
+                        <input 
+                          value={imageUrlInput}
+                          onChange={e => setImageUrlInput(e.target.value)}
+                          placeholder="أو أضف رابط الصورة مباشرة..."
+                          className="flex-1 bg-gray-50 rounded-xl px-4 py-2 text-xs font-bold outline-none border border-transparent focus:border-primary/30"
+                        />
+                        <button 
+                          type="button"
+                          onClick={handleAddImageUrl}
+                          className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-black shadow-sm"
+                        >
+                          إضافة رابط
+                        </button>
+                      </div>
                     )}
 
                     {/* Progress Bars */}

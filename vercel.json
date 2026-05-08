@@ -1,10 +1,18 @@
 {
-  "rewrites": [
-    {"source": "/mt-2025-admin", "destination": "/index.html"},
-    {"source": "/mt-2025-admin/(.*)", "destination": "/index.html"},
-    {"source": "/track", "destination": "/index.html"},
-    {"source": "/wishlist", "destination": "/index.html"},
-    {"source": "/product/(.*)", "destination": "/index.html"},
-    {"source": "/(.*)", "destination": "/index.html"}
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/service-worker.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    }
   ]
 }
