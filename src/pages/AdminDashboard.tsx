@@ -11,7 +11,7 @@ import {
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
   XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon,
-  Search as SearchIcon, Palette, Smartphone, FileText, Star
+  Search as SearchIcon, Palette, Smartphone, FileText, Star, Send
 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,7 +50,7 @@ export function AdminDashboard() {
     const unsubCoupons = onSnapshot(collection(db, 'mt_coupons'), (snap) => {
       setCoupons(snap.docs.map(d => ({ id: d.id, ...d.data() } as Coupon)));
     });
-    const unsubConfig = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
+    const unsubConfig = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
     const unsubUsers = onSnapshot(query(collection(db, 'mt_users'), orderBy('createdAt', 'desc')), (snap) => {
@@ -143,6 +143,7 @@ export function AdminDashboard() {
                 { id: 'orders', name: 'الطلبات', icon: ShoppingCart },
                 { id: 'coupons', name: 'الكوبونات', icon: Tag },
                 { id: 'customers', name: 'العملاء', icon: Users },
+                { id: 'notifications', name: 'الإشعارات', icon: MessageSquare },
                 { id: 'trade-ins', name: 'الاستبدال', icon: Smartphone },
                 { id: 'used', name: 'المستعمل', icon: Package },
                 { id: 'reviews', name: 'التقييمات', icon: MessageSquare },
@@ -186,6 +187,7 @@ export function AdminDashboard() {
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
                 {activeTab === 'settings' && <SettingsSection config={config} />}
                 {activeTab === 'customers' && <UsersSection users={users} orders={orders} />}
+                {activeTab === 'notifications' && <NotificationsSection users={users} />}
                 {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
                 {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
                 {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
@@ -1332,16 +1334,28 @@ function VisitorsSection() {
 }
 
 function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[] }) {
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+
   const toggleBlock = async (id: string, isBlocked: boolean) => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'mt_users', id), { isBlocked: !isBlocked });
+      await setDoc(doc(db, 'mt_users', id), { isBlocked: !isBlocked }, { merge: true });
       toast.success(isBlocked ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم');
     });
   };
 
   return (
     <div className="flex flex-col gap-8">
-      <h2 className="text-3xl font-black text-primary">إدارة العملاء</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-black text-primary">إدارة العملاء</h2>
+        <button 
+          onClick={() => setShowNotificationModal(true)}
+          className="bg-primary text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:scale-105 transition-transform"
+        >
+          <MessageSquare className="w-5 h-5" /> إرسال إشعار للكل
+        </button>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-right">
           <thead>
@@ -1370,13 +1384,20 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
                 <td className="py-6 pl-4 text-left">
                   <div className="flex items-center justify-end gap-2">
                     <button 
+                      onClick={() => { setSelectedUser(u); setShowNotificationModal(true); }}
+                      className="p-2 text-primary hover:bg-primary/5 rounded-lg"
+                      title="إرسال إشعار"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                    </button>
+                    <button 
                       onClick={() => toggleBlock(u.id, !!u.isBlocked)} 
                       className={cn("p-2 rounded-lg transition-colors", u.isBlocked ? "text-green-500 hover:bg-green-50" : "text-red-400 hover:bg-red-50")}
                       title={u.isBlocked ? "إلغاء الحظر" : "حظر المستخدم"}
                     >
                       {u.isBlocked ? <ShieldCheckIcon className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
                     </button>
-                    <a href={`https://wa.me/222${u.phone}`} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-[#25D366] transition-colors"><MessageSquare className="w-5 h-5" /></a>
+                    <a href={`https://wa.me/222${u.phone}`} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-[#25D366] transition-colors"><MessageCircle className="w-5 h-5" /></a>
                   </div>
                 </td>
               </tr>
@@ -1384,6 +1405,121 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
           </tbody>
         </table>
       </div>
+
+      {showNotificationModal && (
+        <NotificationModal 
+          targetUser={selectedUser} 
+          onClose={() => { setShowNotificationModal(false); setSelectedUser(null); }} 
+        />
+      )}
+    </div>
+  );
+}
+
+function NotificationModal({ targetUser, onClose }: { targetUser: UserProfile | null, onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    title: '',
+    message: '',
+    link: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.message) return toast.error('يرجى إدخال العنوان والرسالة');
+
+    setLoading(true);
+    await safeWrite(async () => {
+      await addDoc(collection(db, 'mt_notifications'), {
+        title: form.title,
+        message: form.message,
+        link: form.link || '',
+        targetUserIds: targetUser ? [targetUser.id] : 'all',
+        readBy: [],
+        createdAt: serverTimestamp()
+      });
+      toast.success(targetUser ? `تم إرسال الإشعار لـ ${targetUser.name}` : 'تم إرسال الإشعار للجميع');
+      onClose();
+    });
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl p-10 flex flex-col gap-8 relative">
+        <button onClick={onClose} className="absolute top-8 left-8 text-gray-400 hover:text-red-500"><XCircle className="w-8 h-8" /></button>
+        <div className="text-center">
+          <h3 className="text-2xl font-black text-primary mb-2">إرسال إشعار</h3>
+          <p className="text-sm font-bold text-gray-400">
+             المستهدف: {targetUser ? <span className="text-primary">{targetUser.name}</span> : <span className="text-accent underline">جميع العملاء</span>}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 text-right">
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-black text-gray-500 mr-2 text-right">عنوان الإشعار</label>
+              <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="مثلاً: خصم جديد!" className="bg-gray-50 rounded-2xl p-4 font-bold outline-none" required />
+           </div>
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-black text-gray-500 mr-2 text-right">محتوى الرسالة</label>
+              <textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="اكتب تفاصيل الإشعار هنا..." className="bg-gray-50 rounded-2xl p-4 font-bold outline-none h-32 resize-none" required />
+           </div>
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-black text-gray-500 mr-2 text-right">الرابط (اختياري)</label>
+              <input value={form.link} onChange={e => setForm({...form, link: e.target.value})} placeholder="https://example.com" className="bg-gray-50 rounded-2xl p-4 font-bold outline-none placeholder:font-normal" dir="ltr" />
+           </div>
+           
+           <button 
+             disabled={loading}
+             className="bg-primary text-white p-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 hover:scale-105 transition-all disabled:bg-gray-200 shadow-xl shadow-primary/20"
+           >
+             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-5 h-5" />}
+             إرسال الآن
+           </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function NotificationsSection({ users }: { users: UserProfile[] }) {
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'mt_notifications'), orderBy('createdAt', 'desc')), (snap) => {
+      setNotifications(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('حذف هذا الإشعار؟')) return;
+    await safeWrite(() => deleteDoc(doc(db, 'mt_notifications', id)));
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+       <h2 className="text-3xl font-black text-primary">تاريخ الإشعارات</h2>
+       <div className="flex flex-col gap-4">
+          {notifications.map((n) => (
+            <div key={n.id} className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-sm flex flex-col md:flex-row justify-between gap-6">
+               <div className="flex flex-col gap-2">
+                  <h4 className="font-black text-primary">{n.title}</h4>
+                  <p className="text-sm font-bold text-gray-500">{n.message}</p>
+                  <div className="flex items-center gap-4 mt-2">
+                     <span className="text-[10px] font-black bg-primary/5 text-primary px-2 py-1 rounded">
+                        المقروء بواسطة: {n.readBy?.length || 0} شخص
+                     </span>
+                     <span className="text-[10px] font-bold text-gray-400">
+                        المؤلف من: {n.targetUserIds === 'all' ? 'الكل' : `${n.targetUserIds.length} مستخدم`}
+                     </span>
+                  </div>
+               </div>
+               <button onClick={() => handleDelete(n.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-xl self-end md:self-center transition-colors"><Trash2 className="w-5 h-5" /></button>
+            </div>
+          ))}
+          {notifications.length === 0 && <div className="text-center py-20 text-gray-400 font-bold">لا توجد إشعارات مرسلة بعد</div>}
+       </div>
     </div>
   );
 }

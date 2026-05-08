@@ -37,7 +37,10 @@ export interface TradeIn {
   id: string;
   customerName: string;
   customerPhone: string;
+  category: string;
+  brand: string;
   oldPhoneModel: string;
+  storage: string;
   condition: string;
   photos: string[];
   estimatedValue: number;
@@ -170,4 +173,23 @@ export interface Coupon {
   usageLimit: number;
   usageCount: number;
   isActive: boolean;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  totalSpent: number;
+  ordersCount: number;
+  createdAt: any;
+}
+
+export interface Notification {
+  id: string;
+  targetUserIds: string[] | 'all';
+  message: string;
+  title: string;
+  readBy: string[];
+  createdAt: any;
+  link?: string;
 }

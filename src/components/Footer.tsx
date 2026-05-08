@@ -9,7 +9,7 @@ export function Footer() {
   const [config, setConfig] = useState<StoreConfig | null>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
+    const unsub = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
     return () => unsub();

@@ -69,6 +69,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: serverTimestamp()
       }));
 
+      // Duplicate to mt_customers for general listing/notifications
+      await safeWrite(() => addDoc(collection(db, 'mt_customers'), {
+        userId: docRef?.id,
+        phone,
+        name,
+        totalSpent: 0,
+        ordersCount: 0,
+        createdAt: serverTimestamp()
+      }));
+
       if (docRef) {
         const newUser = { id: docRef.id, phone, name, totalSpent: 0, ordersCount: 0, createdAt: new Date() } as UserProfile;
         setUser(newUser);

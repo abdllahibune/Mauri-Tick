@@ -13,7 +13,7 @@ export default function Contact() {
 
   useEffect(() => {
     ensureAuth();
-    return onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
+    return onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
   }, []);
