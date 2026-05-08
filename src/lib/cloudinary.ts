@@ -11,35 +11,25 @@
 const CLOUDINARY_CLOUD_NAME = "dy5qfryut";
 const CLOUDINARY_UPLOAD_PRESET = "mauri_uploads";
 
-export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void) => {
-  // Validate file - Increased to 10MB as requested
-  if (file.size > 10 * 1024 * 1024) {
-    alert("الصورة كبيرة جداً — الحد الأقصى 10MB");
-    return null;
-  }
-  
+console.log('Cloud:', CLOUDINARY_CLOUD_NAME);
+console.log('Preset:', CLOUDINARY_UPLOAD_PRESET);
+
+export async function uploadToCloudinary(file: File) {
   const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   
-  try {
-    // Note: Fetch API doesn't support progress events for uploads natively.
-    // For progress tracking, we'd normally use XMLHttpRequest, but we'll stick to the requested fetch pattern.
-    // We can simulate progress if needed or just skip it as per the new requested function.
-    
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      { method: "POST", body: formData }
-    );
-    const data = await response.json();
-    if (data.secure_url) {
-      return data.secure_url as string;
-    } else {
-      alert("فشل رفع الصورة: " + JSON.stringify(data.error));
-      return null;
-    }
-  } catch (error: any) {
-    alert("خطأ في رفع الصورة: " + error.message);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: 'POST', body: formData }
+  );
+  
+  const data = await res.json();
+  
+  if (data.secure_url) {
+    return data.secure_url;
+  } else {
+    alert('خطأ: ' + JSON.stringify(data.error));
     return null;
   }
-};
+}

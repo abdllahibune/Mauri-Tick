@@ -523,9 +523,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         
         const fileId = Math.random().toString(36).substring(7);
         try {
-            const url = await uploadToCloudinary(file, (progress) => {
-                setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
-            });
+            const url = await uploadToCloudinary(file);
 
             if (url) {
                 setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));

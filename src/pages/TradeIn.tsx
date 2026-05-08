@@ -79,7 +79,7 @@ export function TradeInPage() {
 
     for (let i = 0; i < files.length; i++) {
         try {
-            const url = await uploadToCloudinary(files[i], (p) => setProgress(p));
+            const url = await uploadToCloudinary(files[i]);
             if (url) newPhotos.push(url);
         } catch (err) {
             toast.error('فشل رفع إحدى الصور');
