@@ -43,3 +43,95 @@
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Mobile Layout Fixes */
+@media (max-width: 768px) {
+  .products-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+  
+  .product-card {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .product-card img {
+    height: 150px !important;
+    object-fit: cover !important;
+    width: 100% !important;
+  }
+  
+  .product-card .price {
+    font-size: 14px !important;
+    font-weight: bold !important;
+  }
+  
+  .product-card .name {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .navbar {
+    padding: 8px 12px !important;
+    height: 56px !important;
+  }
+  
+  .navbar-icons {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: center !important;
+  }
+  
+  .navbar-icon {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  
+  .logo {
+    font-size: 18px !important;
+  }
+
+  /* No horizontal scroll */
+  body { overflow-x: hidden !important; }
+  
+  /* Hero section */
+  .hero { 
+    min-height: 200px !important;
+    padding: 20px 16px !important;
+  }
+  
+  .hero h1 { font-size: 22px !important; }
+  .hero p { font-size: 14px !important; }
+  
+  /* Buttons */
+  .btn, button {
+    min-height: 44px !important;
+    font-size: 14px !important;
+  }
+  
+  /* Footer */
+  .footer {
+    padding: 20px 16px !important;
+    font-size: 13px !important;
+  }
+  
+  /* Section titles */
+  .section-title {
+    font-size: 18px !important;
+    margin: 16px 0 12px !important;
+  }
+  
+  /* Cart and checkout */
+  .cart-item {
+    flex-direction: row !important;
+    gap: 10px !important;
+  }
+  
+  .cart-item img {
+    width: 70px !important;
+    height: 70px !important;
+  }
+}

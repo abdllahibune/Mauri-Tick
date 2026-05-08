@@ -33,7 +33,7 @@ export function Cart() {
               layout
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6"
+              className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6 cart-item"
             >
               <img src={item.image} alt={item.name} className="w-24 h-24 object-contain" />
               <div className="flex-1 text-center sm:text-right">
@@ -72,7 +72,7 @@ export function Cart() {
                  <span>الإجمالي</span>
                  <span className="text-accent">{formatPrice(subtotal)}</span>
               </div>
-              <Link to="/checkout" className="bg-accent text-primary p-5 rounded-2xl font-black text-xl text-center hover:scale-105 transition-transform mt-4">إتمام الطلب</Link>
+              <Link to="/checkout" className="bg-accent text-primary p-5 rounded-2xl font-black text-xl text-center hover:scale-105 transition-transform mt-4 btn">إتمام الطلب</Link>
            </div>
            
            <div className="mt-12 flex flex-col gap-4 text-xs font-bold text-gray-400 border-t border-white/5 pt-8">

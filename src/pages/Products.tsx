@@ -194,7 +194,7 @@ export function Products({ products }: { products: Product[] }) {
                 <button onClick={() => { setSearch(''); setSelectedBrand('الكل'); setMaxPrice(500000); }} className="text-primary font-bold underline">إعادة ضبط البحث</button>
              </div>
            ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 products-grid">
                {filteredProducts.map(product => (
                  <ProductCard key={product.id} product={product} />
                ))}

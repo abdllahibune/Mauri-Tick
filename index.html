@@ -21,6 +21,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <script>
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        setTimeout(showInstallBanner, 5000);
+      });
+
+      function showInstallBanner() {
+        if (!localStorage.getItem('mt_installed')) {
+          const div = document.createElement('div');
+          div.id = 'pwaBanner';
+          div.style.cssText = `
+            position:fixed; bottom:20px; left:50%;
+            transform:translateX(-50%);
+            background:#1A237E; color:white;
+            padding:14px 20px; border-radius:14px;
+            display:flex; align-items:center; gap:12px;
+            z-index:9999; box-shadow:0 4px 20px rgba(0,0,0,0.4);
+            font-family:Cairo; direction:rtl;
+            white-space:nowrap;
+          `;
+          div.innerHTML = `
+            <span style="font-size:14px">
+              📲 أضف التطبيق لشاشتك
+            </span>
+            <button onclick="installPWA()" style="
+              background:#FFD700; color:#1A237E;
+              border:none; padding:8px 16px;
+              border-radius:8px; font-weight:bold;
+              cursor:pointer; font-size:14px;
+            ">إضافة</button>
+            <button onclick="
+              document.getElementById('pwaBanner').remove();
+              localStorage.setItem('mt_installed','1')
+            " style="
+              background:none; border:none;
+              color:white; cursor:pointer; font-size:18px;
+            ">×</button>
+          `;
+          document.body.appendChild(div);
+        }
+      }
+
+      function installPWA() {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(() => {
+            localStorage.setItem('mt_installed', '1');
+            document.getElementById('pwaBanner')?.remove();
+            deferredPrompt = null;
+          });
+        }
+      }
+    </script>
     <style>
       body {
         font-family: 'Cairo', sans-serif;

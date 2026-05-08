@@ -64,7 +64,7 @@ export function Home({ products }: { products: Product[] }) {
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Banner */}
       <section 
-        className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000"
+        className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000 hero"
         style={{ backgroundColor: config?.heroBackgroundColor || 'var(--primary)', backgroundImage: config?.heroImage ? `url(${config.heroImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <div className="absolute inset-0 bg-primary/60" />
@@ -85,7 +85,7 @@ export function Home({ products }: { products: Product[] }) {
             </h1>
             <p className="text-xl text-gray-300 font-medium">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>
             <div className="flex gap-4 mt-4">
-              <Link to="/products" className="bg-accent text-primary px-10 py-5 rounded-2xl font-black text-xl hover:scale-105 transition-transform flex items-center gap-3">
+              <Link to="/products" className="bg-accent text-primary px-10 py-5 rounded-2xl font-black text-xl hover:scale-105 transition-transform flex items-center gap-3 btn">
                 تسوق الآن <ShoppingBag />
               </Link>
             </div>
@@ -138,7 +138,7 @@ export function Home({ products }: { products: Product[] }) {
                 ))}
               </div>
             </div>
-            <Link to="/products?filter=sale" className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:gap-4 transition-all">
+            <Link to="/products?filter=sale" className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:gap-4 transition-all btn">
               شاهد العروض <ArrowLeft className="w-5 h-5" />
             </Link>
           </div>
@@ -151,7 +151,7 @@ export function Home({ products }: { products: Product[] }) {
           <div className="flex justify-between items-end mb-8">
             <div className="flex flex-col gap-1">
               <span className="text-accent font-black text-xs uppercase tracking-widest">تصفح الفئات</span>
-              <h2 className="text-4xl font-black text-primary">{section.title}</h2>
+              <h2 className="text-4xl font-black text-primary section-title">{section.title}</h2>
             </div>
             <Link to="/products" className="text-sm font-bold text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
               عرض الكل <ArrowLeft className="w-4 h-4" />
