@@ -119,9 +119,30 @@ export function Checkout() {
   };
 
   const paymentOptions = [
-    { name: 'بنكيلي', color: '#00A651', desc: 'تطبيق بنك موريتانيا الإسلامي' },
-    { name: 'سداد', color: '#003087', desc: 'تطبيق البريد الموريتاني' },
-    { name: 'مصرفي', color: '#FF6B00', desc: 'تطبيق بنك التجارة والصناعة' },
+    { 
+      id: 'bankily',
+      name: 'بنكيلي', 
+      englishName: 'Bankily',
+      color: '#00A651', 
+      desc: 'تطبيق بنك موريتانيا الإسلامي',
+      icon: 'https://play-lh.googleusercontent.com/YWGzCdGhZEGMfYLh9tYZZELsXK7BN_0EYwg3JF8JvQBiYY0EB8TXHetEf4nNKhUFKg=w240-h480-rw'
+    },
+    { 
+      id: 'masrafi',
+      name: 'مصرفي', 
+      englishName: 'Masrafi',
+      color: '#FF6B00', 
+      desc: 'تطبيق بنك التجارة والصناعة',
+      icon: 'https://play-lh.googleusercontent.com/7Y-x8AX3HvfZBGMiRqCTkKYnBXmBNHJwKHjGAzfqAD2cJmHWvBhB-kGPg_IZiHYFLg=w240-h480-rw'
+    },
+    { 
+      id: 'sedad',
+      name: 'سداد', 
+      englishName: 'Sedad',
+      color: '#003087', 
+      desc: 'تطبيق البريد الموريتاني',
+      icon: 'https://play-lh.googleusercontent.com/Lk1ESYSMZv_jZSSt1aXRWH1a7FJmPSHxgHJiDqmIY9H_kxfgPRi5XfnkxBGi15YAXA=w240-h480-rw'
+    },
   ];
 
   return (
@@ -197,19 +218,32 @@ export function Checkout() {
                   key={opt.name}
                   type="button"
                   onClick={() => setPaymentMethod(opt.name)}
-                  className={`p-6 rounded-[32px] border-2 transition-all flex items-center justify-between group ${paymentMethod === opt.name ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50 hover:bg-gray-100'}`}
+                  className={`p-4 rounded-[32px] border-2 transition-all flex items-center justify-between group ${paymentMethod === opt.name ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50 hover:bg-gray-100'}`}
                 >
-                  <div className="flex items-center gap-6">
-                    <div 
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xs font-black shadow-lg group-hover:scale-110 transition-transform"
-                      style={{ backgroundColor: opt.color }}
-                    >
-                      {opt.name}
-                    </div>
-                    <div className="text-right">
-                       <h4 className="font-black text-lg text-primary">{opt.name}</h4>
-                       <p className="text-gray-400 text-xs font-bold">{opt.desc}</p>
-                    </div>
+                  <div className="flex items-center gap-4">
+                     <div className="relative w-14 h-14 flex-shrink-0">
+                        <img 
+                          src={opt.icon} 
+                          alt={opt.name}
+                          className="w-full h-full rounded-2xl object-cover shadow-lg group-hover:scale-110 transition-transform"
+                          onError={(e) => {
+                             const target = e.target as HTMLImageElement;
+                             target.style.display = 'none';
+                             const parent = target.parentElement;
+                             if (parent && !parent.querySelector('.fallback')) {
+                               const fallback = document.createElement('div');
+                               fallback.className = 'fallback w-full h-full rounded-2xl flex items-center justify-center text-white text-2xl font-black';
+                               fallback.style.backgroundColor = opt.color;
+                               fallback.textContent = opt.name[0];
+                               parent.appendChild(fallback);
+                             }
+                          }}
+                        />
+                     </div>
+                     <div className="text-right">
+                        <h4 className="font-black text-lg text-primary">{opt.name}</h4>
+                        <p className="text-gray-400 text-xs font-bold">{opt.englishName} ({opt.desc})</p>
+                     </div>
                   </div>
                   {paymentMethod === opt.name && <CheckCircle2 className="text-primary w-8 h-8" />}
                 </button>

@@ -79,11 +79,21 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-20 navbar-inner">
+          {/* Mobile Left: Menu Toggle */}
+          <div className="md:hidden navbar-left">
+            <button 
+              className="p-2 text-gray-500"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
           {/* Logo */}
-          <div onClick={handleLogoClick} className="flex flex-col cursor-pointer select-none logo">
+          <div onClick={handleLogoClick} className="flex flex-col cursor-pointer select-none navbar-logo">
             <span className="text-2xl font-black text-primary tracking-tighter">MAURI TICK</span>
-            <span className="text-[10px] text-accent font-bold mt--1 leading-none uppercase tracking-widest">أفضل الهواتف بأفضل الأسعار</span>
+            <span className="text-[10px] text-accent font-bold mt--1 leading-none uppercase tracking-widest hidden md:block">أفضل الهواتف بأفضل الأسعار</span>
           </div>
 
           {/* Desktop Nav */}
@@ -102,15 +112,15 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Icons */}
-          <div className="flex items-center gap-4 navbar-icons">
-            <Link to="/products" className="p-2 text-gray-500 hover:text-primary transition-colors navbar-icon">
+          {/* Icons / Right Side */}
+          <div className="flex items-center gap-4 navbar-right">
+            <Link to="/products" className="p-2 text-gray-500 hover:text-primary transition-colors search-btn">
               <Search className="w-6 h-6" />
             </Link>
 
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 text-gray-500 hover:text-primary transition-colors relative navbar-icon"
+              className="p-2 text-gray-500 hover:text-primary transition-colors relative notifications-btn"
             >
               <Bell className="w-6 h-6" />
               {unreadCount > 0 && (
@@ -118,7 +128,7 @@ export function Navbar() {
               )}
             </button>
 
-            <Link to="/wishlist" className="p-2 text-gray-500 hover:text-primary transition-colors relative navbar-icon">
+            <Link to="/wishlist" className="p-2 text-gray-500 hover:text-primary transition-colors relative wishlist-btn">
               <Heart className="w-6 h-6" />
               {wishlist.length > 0 && (
                 <span className="absolute top-0 right-0 bg-accent text-primary text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -126,16 +136,17 @@ export function Navbar() {
                 </span>
               )}
             </Link>
-            <Link to="/cart" className="p-2 text-gray-500 hover:text-primary transition-colors relative navbar-icon">
+
+            <Link to="/cart" className="p-2 text-gray-500 hover:text-primary transition-colors relative cart-btn">
               <ShoppingCart className="w-6 h-6" />
               {cart.length > 0 && (
-                <span className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="cart-badge">
                   {cart.length}
                 </span>
               )}
             </Link>
 
-            <Link to="/compare" className="p-2 text-gray-500 hover:text-primary transition-colors relative navbar-icon">
+            <Link to="/compare" className="p-2 text-gray-500 hover:text-primary transition-colors relative compare-btn">
                <LayoutGrid className="w-6 h-6" />
                {compareList.length > 0 && (
                  <span className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -146,37 +157,29 @@ export function Navbar() {
 
             <button 
               onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              className="p-2 text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-bold text-xs navbar-icon"
+              className="p-2 text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-bold text-xs lang-switcher"
             >
               <Languages className="w-5 h-5" />
               {language === 'ar' ? 'EN' : 'العربية'}
             </button>
             
             {user ? (
-               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-3 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all">
+               <Link to="/account" className="hidden sm:flex items-center gap-2 bg-primary/5 px-3 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all user-btn">
                   <User className="w-5 h-5" />
                   <span className="text-xs font-black hidden lg:block">{user.name || user.phone}</span>
                </Link>
             ) : (
-               <Link to="/login" className="hidden sm:flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm">
+               <Link to="/login" className="hidden sm:flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm user-btn">
                  <User className="w-5 h-5" /> {t('nav.login')}
                </Link>
             )}
-
-            {/* Mobile Menu Toggle */}
-            <button 
-              className="md:hidden p-2 text-gray-500"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 p-4 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4">
+        <div className="md:hidden bg-white border-t border-gray-100 p-4 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 mobile-menu">
           {navLinks.map((link) => (
             <Link 
               key={link.path} 
@@ -190,10 +193,42 @@ export function Navbar() {
               {link.name}
             </Link>
           ))}
+          
+          <div className="grid grid-cols-2 gap-2 border-t pt-4">
+            <Link 
+              to="/wishlist" 
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl text-sm font-bold text-gray-700"
+            >
+              <Heart className="w-5 h-5 text-red-500" /> المفضلة ({wishlist.length})
+            </Link>
+            <Link 
+              to="/compare" 
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl text-sm font-bold text-gray-700"
+            >
+              <LayoutGrid className="w-5 h-5 text-blue-500" /> المقارنة ({compareList.length})
+            </Link>
+          </div>
+
+          <button 
+            onClick={() => { setLanguage(language === 'ar' ? 'en' : 'ar'); setIsMenuOpen(false); }}
+            className="flex items-center justify-between p-3 bg-primary/5 rounded-xl text-sm font-bold text-primary"
+          >
+            <div className="flex items-center gap-2">
+              <Languages className="w-5 h-5" /> اللغة
+            </div>
+            <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+          </button>
+
           {user ? (
-            <Link to="/account" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4">حسابي</Link>
+            <Link to="/account" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4 flex items-center gap-2">
+              <User className="w-5 h-5" /> حسابي
+            </Link>
           ) : (
-            <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4">تسجيل الدخول</Link>
+            <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold p-2 text-primary border-t pt-4 flex items-center gap-2">
+              <LogIn className="w-5 h-5" /> تسجيل الدخول
+            </Link>
           )}
         </div>
       )}

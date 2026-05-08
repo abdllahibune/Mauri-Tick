@@ -19,9 +19,10 @@ export function Login() {
     e.preventDefault();
     try {
       await login(phone, password);
-      navigate('/account');
+      const redirect = new URLSearchParams(window.location.search).get('redirect') || '/account';
+      navigate(redirect);
     } catch (error: any) {
-      // Handled in context
+      toast.error(error.message);
     }
   };
 
@@ -75,11 +76,12 @@ export function Login() {
 
           <button 
             type="submit" 
+            id="loginBtn"
             disabled={loading}
             className="bg-primary text-white p-4 rounded-2xl font-black text-xl flex items-center justify-center gap-3 hover:scale-105 transition-transform disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <LogIn className="w-6 h-6" />}
-            دخول
+            {loading ? 'جاري الدخول...' : 'دخول'}
           </button>
         </form>
 
