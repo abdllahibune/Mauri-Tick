@@ -476,6 +476,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     await safeWrite(async () => {
       const productData = {
         ...form,
+        brand: form.brand?.trim().toUpperCase(),
         price: Number(form.price),
         discount: Number(form.discount) || 0,
         stock: Number(form.stock) || 0,
@@ -920,7 +921,7 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
   const isRTL = document.documentElement.dir === 'rtl';
   const [form, setForm] = useState<StoreConfig>(config || {
     storeName: 'MAURI TICK', tagline: 'أفضل الهواتف بأفضل الأسعار', whatsappNumber: '36096100', 
-    logoUrl: '', heroTitle: '', heroSubtitle: '', heroImage: '', heroBackgroundColor: '#1A237E',
+    logoUrl: '', heroTitle: '', heroSubtitle: '', heroImage: '', mt_heroImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200', heroBackgroundColor: '#1A237E',
     themeColors: {
       primary: '#1A237E',
       accent: '#FFD700',
@@ -942,11 +943,22 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
     }
   });
 
+  const [hasNewHero, setHasNewHero] = useState(false);
+
   const handleSave = async () => {
     await safeWrite(async () => {
       // Use mt_settings/general as requested
       await setDoc(doc(db, 'mt_settings', 'general'), { ...form }, { merge: true });
       toast.success('تم حفظ الإعدادات وتطبيق الألوان بنجاح ✅');
+      setHasNewHero(false);
+    });
+  };
+
+  const handleSaveHeroOnly = async () => {
+    await safeWrite(async () => {
+      await setDoc(doc(db, 'mt_settings', 'general'), { mt_heroImage: form.mt_heroImage }, { merge: true });
+      toast.success('✅ تم حفظ صورة الواجهة فقط');
+      setHasNewHero(false);
     });
   };
 
@@ -969,8 +981,9 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
     if (!file) return;
     try {
       const url = await uploadToCloudinary(file);
-      setForm(prev => ({ ...prev, heroImage: url }));
-      toast.success('تم رفع خلفية الهيرو');
+      setForm(prev => ({ ...prev, mt_heroImage: url }));
+      setHasNewHero(true);
+      toast.success('تم رفع خلفية الهيرو (mt_heroImage) ✅');
     } catch (e) {
       toast.error('فشل رفع الصورة');
     }
@@ -1071,23 +1084,33 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                       </div>
                       <div className="flex flex-col gap-2">
                          <label className="text-xs font-bold text-gray-500 mr-2">صورة الخلفية</label>
-                         <label className="bg-white p-3 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-primary transition-all">
-                            <span className="text-xs font-black text-gray-400">تغيير الصورة</span>
-                            <input type="file" className="hidden" onChange={handleHeroUpload} />
-                         </label>
+                         <div className="flex gap-2">
+                            <label className="flex-1 bg-white p-3 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-primary transition-all">
+                               <span className="text-xs font-black text-gray-400">📷 رفع صورة جديدة</span>
+                               <input type="file" className="hidden" onChange={handleHeroUpload} />
+                            </label>
+                            {hasNewHero && (
+                              <button 
+                               onClick={handleSaveHeroOnly}
+                               className="bg-green-500 text-white px-6 py-3 rounded-2xl font-black text-xs hover:scale-105 transition-transform flex items-center gap-2"
+                              >
+                                <Save className="w-4 h-4" /> حفظ الصورة
+                              </button>
+                            )}
+                         </div>
                       </div>
                    </div>
                 </div>
 
                 {/* Preview Box */}
                 <div className="flex flex-col gap-4">
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">معاينة مباشرة</span>
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">معاينة مباشرة (الواجهة الرئيسية)</span>
                    <div 
                     className="relative w-full h-80 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center text-center p-8 border border-white/20"
                     style={{ backgroundColor: form.heroBackgroundColor }}
                    >
-                     {form.heroImage && (
-                       <img src={form.heroImage} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                     {(form.mt_heroImage || form.heroImage) && (
+                       <img src={form.mt_heroImage || form.heroImage} className="absolute inset-0 w-full h-full object-cover opacity-60" />
                      )}
                      <div className="relative z-10">
                         <h4 className="text-3xl font-black text-white mb-2 leading-tight">{form.heroTitle || 'العنوان يظهر هنا'}</h4>

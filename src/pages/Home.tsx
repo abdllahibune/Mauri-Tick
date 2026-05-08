@@ -14,7 +14,7 @@ export function Home({ products }: { products: Product[] }) {
 
   useEffect(() => {
     ensureAuth();
-    const unsubscribe = onSnapshot(doc(db, 'mt_config', 'settings'), (snap) => {
+    const unsubscribe = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
     return () => unsubscribe();
@@ -65,7 +65,12 @@ export function Home({ products }: { products: Product[] }) {
       {/* Hero Banner */}
       <section 
         className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000 hero"
-        style={{ backgroundColor: config?.heroBackgroundColor || 'var(--primary)', backgroundImage: config?.heroImage ? `url(${config.heroImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
+        style={{ 
+          backgroundColor: config?.heroBackgroundColor || 'var(--primary)', 
+          backgroundImage: `url(${config?.mt_heroImage || config?.heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'})`, 
+          backgroundSize: 'cover', 
+          backgroundPosition: 'center' 
+        }}
       >
         <div className="absolute inset-0 bg-primary/60" />
         <div className="absolute inset-0 opacity-20">

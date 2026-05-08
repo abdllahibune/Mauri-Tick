@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, limit, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
@@ -53,6 +53,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState('');
+  const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
     if (!id) {
@@ -73,6 +74,9 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
         const data = { id: snap.id, ...snap.data() } as Product;
         setProduct(data);
         setMainImage(data.images?.[0] || '');
+        
+        // Fetch related products after main product is loaded
+        loadRelated(data);
       } else {
         setProduct(null);
       }
@@ -80,6 +84,41 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       console.error('Product fetch error:', e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadRelated(currentProduct: Product) {
+    try {
+      // 1. Try Same Brand
+      const brandQ = query(
+        collection(db, 'mt_products'),
+        where('brand', '==', currentProduct.brand),
+        limit(7) // Fetch 7 to filter out current
+      );
+      const brandSnap = await getDocs(brandQ);
+      let relatedItems = brandSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Product))
+        .filter(p => p.id !== currentProduct.id)
+        .slice(0, 6);
+
+      // 2. Fallback to Same Category if not enough found
+      if (relatedItems.length < 4) {
+        const catQ = query(
+          collection(db, 'mt_products'),
+          where('category', '==', currentProduct.category),
+          limit(10)
+        );
+        const catSnap = await getDocs(catQ);
+        const catItems = catSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Product))
+          .filter(p => p.id !== currentProduct.id && !relatedItems.find(r => r.id === p.id));
+        
+        relatedItems = [...relatedItems, ...catItems].slice(0, 6);
+      }
+
+      setRelated(relatedItems);
+    } catch (e) {
+      console.error('Related products fetch error:', e);
     }
   }
 
@@ -112,10 +151,6 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const discountedPrice = product.discount > 0
     ? Math.round(product.price * (1 - product.discount/100))
     : product.price;
-
-  const related = allProducts
-    ? allProducts.filter(p => p.id !== product.id && p.brand === product.brand).slice(0, 4)
-    : [];
 
   return (
     <div style={{
@@ -320,7 +355,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       {related.length > 0 && (
          <div style={{marginTop:'60px'}}>
             <div style={{borderBottom: '3px solid #FFD700', width: 'fit-content', paddingBottom: '5px', marginBottom: '24px'}}>
-                 <h2 style={{fontSize:'24px', fontWeight: '900', color: '#1A237E'}}>قد يعجبك أيضاً</h2>
+                 <h2 style={{fontSize:'24px', fontWeight: '900', color: '#1A237E'}}>منتجات مشابهة من {product.brand}</h2>
             </div>
             <div style={{
                 display: 'grid',

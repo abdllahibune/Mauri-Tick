@@ -3,15 +3,18 @@ import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { Search, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ensureAuth } from '../lib/firebase';
+import { ensureAuth, db } from '../lib/firebase';
+import { collection, query, where, limit, getDocs, orderBy } from 'firebase/firestore';
 
 import { DEMO_PRODUCTS } from '../constants';
 
-export function Products({ products }: { products: Product[] }) {
+export function Products({ products: initialProducts }: { products: Product[] }) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [selectedBrand, setSelectedBrand] = useState('الكل');
-  const [maxPrice, setMaxPrice] = useState(100000);
+  const [maxPrice, setMaxPrice] = useState(500000);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -19,20 +22,57 @@ export function Products({ products }: { products: Product[] }) {
     ensureAuth();
   }, []);
 
-  const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
+  useEffect(() => {
+    loadProducts();
+  }, [selectedCategory, selectedBrand]);
 
-  const categories = useMemo(() => ['الكل', ...new Set(displayProducts.map(p => p.category).filter(Boolean))], [displayProducts]);
-  const brands = useMemo(() => ['الكل', ...new Set(displayProducts.filter(p => selectedCategory === 'الكل' || p.category === selectedCategory).map(p => p.brand))], [displayProducts, selectedCategory]);
+  async function loadProducts() {
+    setLoading(true);
+    try {
+      let q = collection(db, 'mt_products');
+      const conditions: any[] = [];
+
+      if (selectedCategory !== 'الكل') {
+        conditions.push(where('category', '==', selectedCategory));
+      }
+      if (selectedBrand !== 'الكل') {
+        // Normalize brand to matching case in DB
+        conditions.push(where('brand', '==', selectedBrand.toUpperCase()));
+      }
+
+      const queryConstraints = [...conditions];
+      
+      // Only limit when no specific filter is active
+      if (conditions.length === 0) {
+        queryConstraints.push(limit(20));
+      }
+
+      const productsQuery = query(q, ...queryConstraints);
+      const snap = await getDocs(productsQuery);
+      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+      
+      // Fallback to initialProducts if DB is empty or demo data
+      setProducts(fetched.length > 0 ? fetched : initialProducts);
+    } catch (e) {
+      console.error('Filtering error:', e);
+      setProducts(initialProducts);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Categories and Brands lists should ideally be fetched from a dedicated collection or pre-defined
+  // For now, let's use a hardcoded list of common brands and categories for Mauritania market
+  const categories = ['الكل', 'هواتف ذكية', 'لابتوب وحاسوب', 'سماعات وصوتيات', 'أجهزة لوحية', 'إكسسوارات'];
+  const brands = ['الكل', 'APPLE', 'SAMSUNG', 'XIAOMI', 'HUAWEI', 'INFINIX', 'TECNO', 'OTHER'];
 
   const filteredProducts = useMemo(() => {
-    return displayProducts
+    return products
       .filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                               p.brand.toLowerCase().includes(search.toLowerCase());
-        const matchesCategory = selectedCategory === 'الكل' || p.category === selectedCategory;
-        const matchesBrand = selectedBrand === 'الكل' || p.brand === selectedBrand;
         const matchesPrice = p.price * (1 - (p.discount || 0) / 100) <= maxPrice;
-        return matchesSearch && matchesCategory && matchesBrand && matchesPrice;
+        return matchesSearch && matchesPrice;
       })
       .sort((a, b) => {
         const priceA = a.price * (1 - (a.discount || 0) / 100);
@@ -42,7 +82,7 @@ export function Products({ products }: { products: Product[] }) {
         if (sortBy === 'best-selling') return (b.soldCount || 0) - (a.soldCount || 0);
         return (new Date(b.createdAt?.toDate?.() || 0)).getTime() - (new Date(a.createdAt?.toDate?.() || 0)).getTime();
       });
-  }, [displayProducts, search, selectedCategory, selectedBrand, maxPrice, sortBy]);
+  }, [products, search, maxPrice, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col gap-8">
@@ -187,7 +227,11 @@ export function Products({ products }: { products: Product[] }) {
 
         {/* Product Grid */}
         <div className="flex flex-col gap-8">
-           {filteredProducts.length === 0 ? (
+           {loading ? (
+             <div className="flex justify-center items-center py-40">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+             </div>
+           ) : filteredProducts.length === 0 ? (
              <div className="bg-white p-20 rounded-[40px] text-center flex flex-col items-center gap-6 border border-dashed border-gray-300">
                 <Search className="w-16 h-16 text-gray-200" />
                 <h3 className="text-2xl font-black text-gray-400">عذراً، لم نجد ما تبحث عنه</h3>
