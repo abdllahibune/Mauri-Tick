@@ -67,20 +67,16 @@ export function Home({ products }: { products: Product[] }) {
         className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000 hero"
         style={{ 
           backgroundColor: config?.heroBackgroundColor || 'var(--primary)', 
-          backgroundImage: `url(${config?.mt_heroImage || config?.heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'})`, 
+          backgroundImage: `url(${config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'})`, 
           backgroundSize: 'cover', 
           backgroundPosition: 'center' 
         }}
       >
-        <div className="absolute inset-0 bg-primary/60" />
-        <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/40 via-transparent to-transparent animate-pulse" />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col items-start gap-12">
           <motion.div 
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col gap-6 text-white"
+            className="flex flex-col gap-6 text-white max-w-2xl"
           >
             <span className="bg-accent/20 text-accent text-xs font-bold px-4 py-2 rounded-full w-fit tracking-widest uppercase">موريتانيا - نواكشوط</span>
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter leading-none">
@@ -94,19 +90,6 @@ export function Home({ products }: { products: Product[] }) {
                 تسوق الآن <ShoppingBag />
               </Link>
             </div>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="hidden lg:block relative"
-          >
-             <div className="absolute -inset-20 bg-accent/20 blur-[100px] rounded-full" />
-             <img 
-               src="https://images.unsplash.com/photo-1616348436168-de43ad0db179?auto=format&fit=crop&w=800&q=80" 
-               alt="Latest Phone" 
-               className="relative z-10 w-full max-w-lg mx-auto drop-shadow-[0_35px_35px_rgba(0,0,0,0.5)] transform -rotate-12"
-             />
           </motion.div>
         </div>
       </section>

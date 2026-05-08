@@ -1061,11 +1061,41 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
           <section className="flex flex-col gap-8 md:col-span-2">
              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
                 <div className="bg-blue-50 p-2 rounded-xl text-blue-500"><ImageIcon className="w-5 h-5" /></div>
-                <h3 className="font-black text-gray-700">قسم الترحيب (Hero Section)</h3>
+                <h3 className="font-black text-gray-700">صورة الواجهة الرئيسية</h3>
              </div>
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 bg-gray-50 p-8 md:p-12 rounded-[40px]">
                 <div className="flex flex-col gap-6">
+                   <div className="bg-white p-6 rounded-3xl shadow-sm flex flex-col gap-4">
+                      <h4 className="font-black text-gray-700 text-sm">تغيير صورة الواجهة</h4>
+                      
+                      {/* Image Preview */}
+                      <img 
+                        src={form.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'} 
+                        alt="Hero Preview"
+                        className="w-full h-40 object-cover rounded-2xl border border-gray-100 shadow-sm"
+                      />
+
+                      <div className="flex gap-4">
+                         <label className="flex-1">
+                            <div className="bg-primary text-white p-4 rounded-2xl font-black text-center cursor-pointer hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                               <ImageIcon className="w-5 h-5" /> 📷 رفع صورة جديدة
+                            </div>
+                            <input type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
+                         </label>
+
+                         {hasNewHero && (
+                           <button 
+                             onClick={handleSaveHeroOnly}
+                             className="bg-green-500 text-white px-8 py-4 rounded-2xl font-black shadow-lg hover:scale-110 transition-transform flex items-center gap-2"
+                           >
+                              <Save className="w-5 h-5" /> 💾 حفظ الصورة
+                           </button>
+                         )}
+                      </div>
+                      <p className="text-[10px] font-bold text-gray-400 text-center">سيتم استخدام هذه الصورة كخلفية لقسم الترحيب في الصفحة الرئيسية.</p>
+                   </div>
+
                    <div className="flex flex-col gap-2">
                       <label className="text-xs font-bold text-gray-500 mr-2">عنوان الهيرو الرئيسي</label>
                       <input value={form.heroTitle} onChange={e => setForm({...form, heroTitle: e.target.value})} className="bg-white rounded-2xl p-4 outline-none border-none focus:ring-2 ring-primary/20 font-black text-xl" />
@@ -1074,30 +1104,11 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                       <label className="text-xs font-bold text-gray-500 mr-2">العنوان الفرعي</label>
                       <textarea value={form.heroSubtitle} onChange={e => setForm({...form, heroSubtitle: e.target.value})} className="bg-white rounded-2xl p-4 outline-none border-none focus:ring-2 ring-primary/20 h-24 resize-none" />
                    </div>
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-2">
-                         <label className="text-xs font-bold text-gray-500 mr-2">لون الخلفية (بديل للصورة)</label>
-                         <div className="flex items-center gap-3 bg-white p-3 rounded-2xl">
-                           <input type="color" value={form.heroBackgroundColor} onChange={e => setForm({...form, heroBackgroundColor: e.target.value})} className="w-8 h-8 rounded-lg cursor-pointer" />
-                           <span className="text-xs font-mono font-bold text-gray-500" dir="ltr">{form.heroBackgroundColor}</span>
-                         </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                         <label className="text-xs font-bold text-gray-500 mr-2">صورة الخلفية</label>
-                         <div className="flex gap-2">
-                            <label className="flex-1 bg-white p-3 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-primary transition-all">
-                               <span className="text-xs font-black text-gray-400">📷 رفع صورة جديدة</span>
-                               <input type="file" className="hidden" onChange={handleHeroUpload} />
-                            </label>
-                            {hasNewHero && (
-                              <button 
-                               onClick={handleSaveHeroOnly}
-                               className="bg-green-500 text-white px-6 py-3 rounded-2xl font-black text-xs hover:scale-105 transition-transform flex items-center gap-2"
-                              >
-                                <Save className="w-4 h-4" /> حفظ الصورة
-                              </button>
-                            )}
-                         </div>
+                   <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-gray-500 mr-2">لون الخلفية (بديل للصورة)</label>
+                      <div className="flex items-center gap-3 bg-white p-3 rounded-2xl w-fit">
+                        <input type="color" value={form.heroBackgroundColor} onChange={e => setForm({...form, heroBackgroundColor: e.target.value})} className="w-8 h-8 rounded-lg cursor-pointer" />
+                        <span className="text-xs font-mono font-bold text-gray-500" dir="ltr">{form.heroBackgroundColor}</span>
                       </div>
                    </div>
                 </div>
@@ -1106,18 +1117,18 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                 <div className="flex flex-col gap-4">
                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">معاينة مباشرة (الواجهة الرئيسية)</span>
                    <div 
-                    className="relative w-full h-80 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center text-center p-8 border border-white/20"
+                    className="relative w-full h-[450px] rounded-[40px] overflow-hidden shadow-2xl flex flex-col items-start justify-center text-right p-12 border border-white/20"
                     style={{ backgroundColor: form.heroBackgroundColor }}
                    >
-                     {(form.mt_heroImage || form.heroImage) && (
-                       <img src={form.mt_heroImage || form.heroImage} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                     {form.mt_heroImage && (
+                       <img src={form.mt_heroImage} className="absolute inset-0 w-full h-full object-cover" />
                      )}
-                     <div className="relative z-10">
-                        <h4 className="text-3xl font-black text-white mb-2 leading-tight">{form.heroTitle || 'العنوان يظهر هنا'}</h4>
-                        <p className="text-white/80 text-sm font-bold max-w-xs">{form.heroSubtitle || 'العنوان الفرعي يظهر هنا بوضوح'}</p>
-                        <div className="mt-6 flex gap-3 justify-center">
-                           <div className="bg-white text-black px-6 py-2 rounded-xl font-black text-xs">زر تجريبي</div>
-                           <div className="bg-white/20 backdrop-blur-md text-white border border-white/30 px-6 py-2 rounded-xl font-black text-xs">زر آخر</div>
+                     <div className="relative z-10 max-w-sm">
+                        <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full mb-4 inline-block tracking-widest">موريتانيا - نواكشوط</span>
+                        <h4 className="text-4xl font-black text-white mb-4 leading-tight">{form.heroTitle || 'موري تيك Mauri Tick'}</h4>
+                        <p className="text-white/80 text-sm font-bold mb-8">{form.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار.'}</p>
+                        <div className="flex">
+                           <div className="bg-accent text-primary px-8 py-3 rounded-xl font-black text-xs shadow-lg">تسوق الآن</div>
                         </div>
                      </div>
                    </div>
