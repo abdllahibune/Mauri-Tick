@@ -9,11 +9,8 @@ window.onerror = function(msg, src, line) {
   return false;
 };
 
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean}> {
-  constructor(props: {children: ReactNode}) {
-    super(props);
-    this.state = {hasError: false};
-  }
+class ErrorBoundary extends (Component as any) {
+  state = {hasError: false};
   static getDerivedStateFromError() { return {hasError: true}; }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("React Error Boundary:", error, errorInfo);

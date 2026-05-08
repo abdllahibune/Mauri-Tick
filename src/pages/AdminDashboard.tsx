@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Go to Firebase Console > Authentication > 
 // Sign-in method > Anonymous > Enable
 // Then go to Firestore > Rules > Publish rules above
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
@@ -343,15 +343,15 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   
   const categories = [
-    { id: 'هواتف ذكية', name: 'هواتف ذكية (Smartphones)', specs: ['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os', 'colors'] },
-    { id: 'لابتوب وحاسوب', name: 'لابتوب وحاسوب (Laptops & Computers)', specs: ['screen size', 'processor', 'ram', 'storage', 'battery', 'os', 'gpu'] },
-    { id: 'سماعات وصوتيات', name: 'سماعات وصوتيات (Audio & Headphones)', specs: ['type', 'connectivity', 'battery', 'frequency'] },
-    { id: 'شاشات وتلفزيونات', name: 'شاشات وتلفزيونات (Screens & TVs)', specs: ['size', 'resolution', 'panel type', 'refresh rate', 'ports'] },
-    { id: 'إكسسوارات', name: 'إكسسوارات (Accessories)', specs: ['compatibility', 'material', 'dimensions'] },
-    { id: 'قطع غيار', name: 'قطع غيار (Spare Parts)', specs: ['compatibility', 'material', 'dimensions'] },
-    { id: 'أجهزة لوحية', name: 'أجهزة لوحية (Tablets)', specs: ['screen', 'processor', 'ram', 'storage', 'battery', 'camera', 'os'] },
-    { id: 'كاميرات', name: 'كاميرات (Cameras)', specs: ['sensor', 'resolution', 'lens', 'battery', 'weight'] },
-    { id: 'أخرى', name: 'أخرى (Other)', specs: ['notes'] },
+    { id: 'هواتف ذكية', name: 'هواتف ذكية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'] },
+    { id: 'لابتوب وحاسوب', name: 'لابتوب وحاسوب', specs: ['screen size', 'processor', 'RAM', 'storage', 'battery', 'OS', 'GPU', 'ports'] },
+    { id: 'سماعات وصوتيات', name: 'سماعات وصوتيات', specs: ['type', 'connectivity', 'battery life', 'frequency response'] },
+    { id: 'شاشات وتلفزيونات', name: 'شاشات وتلفزيونات', specs: ['size', 'resolution', 'panel type', 'refresh rate', 'ports', 'smart/not'] },
+    { id: 'إكسسوارات', name: 'إكسسوارات', specs: ['compatibility', 'material', 'dimensions'] },
+    { id: 'قطع غيار', name: 'قطع غيار', specs: ['compatibility', 'material', 'dimensions'] },
+    { id: 'أجهزة لوحية', name: 'أجهزة لوحية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS'] },
+    { id: 'كاميرات', name: 'كاميرات', specs: ['sensor', 'resolution', 'lens', 'battery', 'weight'] },
+    { id: 'أخرى', name: 'أخرى', specs: ['details'] },
   ];
 
   const [form, setForm] = useState<Partial<Product>>(initial || {
@@ -378,8 +378,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const handleGSMSearch = async () => {
     if (!searchQuery) return;
     setSearching(true);
+    let foundRawData = null;
+
     try {
-      // Primary API: Phone specs
+      // Step 1: Try primary phone specs API
       const res = await fetch(`https://phone-specs-api.azurewebsites.net/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
       
@@ -387,9 +389,27 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         const slug = data.data.phones[0].slug;
         const detailRes = await fetch(`https://phone-specs-api.azurewebsites.net/${slug}`);
         const detailData = await detailRes.json();
-        
         if (detailData.status && detailData.data) {
-          const specs = detailData.data;
+          foundRawData = { source: 'primary', data: detailData.data };
+        }
+      }
+
+      // Step 2: Try backup API if Step 1 failed
+      if (!foundRawData) {
+        try {
+          const res2 = await fetch(`https://api.freeapi.app/api/v1/public/mobiles?query=${encodeURIComponent(searchQuery)}`);
+          const data2 = await res2.json();
+          if (data2.success && data2.data?.data?.length > 0) {
+            foundRawData = { source: 'backup', data: data2.data.data[0] };
+          }
+        } catch (e) {
+          console.error("Backup API failed", e);
+        }
+      }
+
+      if (foundRawData) {
+        if (foundRawData.source === 'primary') {
+          const specs = foundRawData.data;
           const sMap: any = {};
           specs.specifications?.forEach((g: any) => g.specs?.forEach((s: any) => sMap[s.key.toLowerCase()] = s.val[0]));
 
@@ -401,34 +421,39 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
             images: specs.phone_images?.[0] ? [specs.phone_images[0], ...(prev.images || [])].slice(0, 5) : prev.images,
             specifications: {
               ...prev.specifications,
-              screen: sMap['size'] || sMap['type'],
-              processor: sMap['chipset'],
-              ram: sMap['internal']?.split(' ')[0] || sMap['ram'],
-              storage: sMap['internal']?.split(',')[0] || sMap['storage'],
-              battery: sMap['type'] || sMap['battery'],
-              camera: sMap['triple'] || sMap['single'] || sMap['dual'] || sMap['main camera'],
-              os: sMap['os'],
-              colors: sMap['colors']
+              screen: sMap['size'] || sMap['type'] || '',
+              processor: sMap['chipset'] || '',
+              RAM: sMap['internal']?.split(' ')[1] || sMap['ram'] || '',
+              storage: sMap['internal']?.split(' ')[0] || sMap['storage'] || '',
+              battery: sMap['type'] || sMap['battery'] || '',
+              camera: sMap['triple'] || sMap['single'] || sMap['dual'] || sMap['main camera'] || '',
+              OS: sMap['os'] || '',
+              colors: sMap['colors'] || ''
             }
           }));
-          toast.success('تم جلب مواصفات الهاتف بنجاح ✅');
-          setSearching(false);
-          return;
-        }
-      }
-
-      // Try backup or non-phone suggestion (DuckDuckGo Image)
-      const ddgRes = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&iax=images&ia=images`);
-      const ddgData = await ddgRes.json();
-      
-      if (ddgData.Image) {
+        } else {
+          // Backup API mapping
+          const item = foundRawData.data;
           setForm(prev => ({
             ...prev,
-            images: [ddgData.Image, ...(prev.images || [])].slice(0, 5)
+            name: item.model || item.name,
+            brand: item.brand,
+            category: 'هواتف ذكية',
+            specifications: {
+              ...prev.specifications,
+              screen: item.display || '',
+              processor: item.processor || '',
+              RAM: item.ram || '',
+              storage: item.storage || '',
+              battery: item.battery || '',
+              camera: item.camera || '',
+              OS: item.os || ''
+            }
           }));
-          toast.success('تم العثور على صورة مقترحة للمنتج 🖼️');
+        }
+        toast.success(`تم العثور على مواصفات ${searchQuery} بنجاح ✅`);
       } else {
-          toast.error('لم نجد بيانات دقيقة، يرجى الإدخال يدوياً');
+        toast.error('لم يتم العثور على المواصفات تلقائياً، يرجى إدخالها يدوياً');
       }
     } catch (e) {
       toast.error('فشل جلب البيانات التلقائية');
@@ -544,11 +569,18 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
             </div>
             <div className="flex w-full md:w-auto gap-2">
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="مثال: iPhone 15 Pro أو MacBook Air" className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold" />
-              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2">
-                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                بحث
+              <button type="button" onClick={handleGSMSearch} disabled={searching} className="bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2 min-w-[120px] justify-center">
+                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <SearchIcon className="w-4 h-4" />}
+                {searching ? 'جاري البحث...' : 'بحث'}
               </button>
             </div>
+          </div>
+        )}
+
+        {searching && (
+          <div className="mb-8 p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-pulse">
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+            <p className="font-bold text-primary text-sm">🔍 جاري البحث عن مواصفات {searchQuery}...</p>
           </div>
         )}
 
@@ -676,25 +708,58 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
 
                <div className="bg-gray-100/50 p-6 rounded-[32px] grid grid-cols-2 gap-4">
                   <h4 className="col-span-2 font-black text-gray-400 text-[10px] uppercase tracking-widest mb-2">المواصفات التقنية</h4>
-                  {currentCategory.specs.map((key) => (
-                    <div key={key} className={cn("flex flex-col gap-1", key === 'notes' ? "col-span-2" : "col-span-1")}>
-                      <label className="text-[10px] font-black text-gray-400 uppercase">{key}</label>
-                      {key === 'notes' ? (
-                        <textarea 
-                          value={(form.specifications as any)?.[key] || ''} 
-                          onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
-                          className="bg-white rounded-lg p-3 text-xs outline-none min-h-[100px] font-bold"
-                          placeholder="اكتب مواصفات المنتج هنا..."
-                        />
-                      ) : (
-                        <input 
-                          value={(form.specifications as any)?.[key] || ''} 
-                          onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
-                          className="bg-white rounded-lg p-2 text-xs outline-none font-bold" 
-                        />
-                      )}
-                    </div>
-                  ))}
+                  {currentCategory.specs.map((key) => {
+                    const labelMap: any = {
+                      'screen': 'الشاشة',
+                      'processor': 'المعالج',
+                      'RAM': 'الرام',
+                      'storage': 'التخزين',
+                      'battery': 'البطارية',
+                      'camera': 'الكاميرا',
+                      'OS': 'نظام التشغيل',
+                      'colors': 'الألوان',
+                      'screen size': 'حجم الشاشة',
+                      'GPU': 'كرت الشاشة',
+                      'ports': 'المنافذ',
+                      'type': 'النوع',
+                      'connectivity': 'الاتصال',
+                      'battery life': 'عمر البطارية',
+                      'frequency response': 'استجابة التردد',
+                      'size': 'المقاس',
+                      'resolution': 'الدقة',
+                      'panel type': 'نوع اللوحة',
+                      'refresh rate': 'معدل التحديث',
+                      'smart/not': 'ذكي / عادي',
+                      'compatibility': 'التوافق',
+                      'material': 'المادة',
+                      'dimensions': 'الأبعاد',
+                      'sensor': 'المستشعر',
+                      'lens': 'العدسة',
+                      'weight': 'الوزن',
+                      'details': 'تفاصيل أخرى'
+                    };
+                    
+                    return (
+                      <div key={key} className={cn("flex flex-col gap-1", key === 'details' ? "col-span-2" : "col-span-1")}>
+                        <label className="text-[10px] font-black text-gray-400 uppercase">{labelMap[key] || key}</label>
+                        {key === 'details' ? (
+                          <textarea 
+                            value={(form.specifications as any)?.[key] || ''} 
+                            onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
+                            className="bg-white rounded-lg p-3 text-xs outline-none min-h-[100px] font-bold"
+                            placeholder="اكتب مواصفات المنتج هنا..."
+                          />
+                        ) : (
+                          <input 
+                            value={(form.specifications as any)?.[key] || ''} 
+                            onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
+                            className="bg-white rounded-lg p-2 text-xs outline-none font-bold" 
+                            placeholder={labelMap[key] || key}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                </div>
 
                <div className="flex gap-4 items-center bg-gray-50 p-4 rounded-xl">

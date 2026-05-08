@@ -6,7 +6,8 @@ import { uploadToCloudinary } from '../lib/cloudinary';
 import { formatPrice } from '../lib/utils';
 import { 
   Smartphone, Calculator, Image as ImageIcon, CheckCircle2, 
-  ArrowRight, ArrowLeft, Loader2, ShieldCheck, Upload, Trash2
+  ArrowRight, ArrowLeft, Loader2, ShieldCheck, Upload, Trash2,
+  Laptop, Tablet, Headphones, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';

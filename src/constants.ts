@@ -4,6 +4,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-1',
     name: 'آيفون 15 بروك ماكس',
+    category: 'هواتف ذكية',
     brand: 'Apple',
     price: 55000,
     discount: 10,
@@ -16,6 +17,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-2',
     name: 'سامسونج S24 ألترا',
+    category: 'هواتف ذكية',
     brand: 'Samsung',
     price: 48000,
     discount: 5,
@@ -28,6 +30,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-3',
     name: 'شاومي 14 برو',
+    category: 'هواتف ذكية',
     brand: 'Xiaomi',
     price: 35000,
     discount: 15,
@@ -40,6 +43,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-4',
     name: 'بيكسل 8 برو',
+    category: 'هواتف ذكية',
     brand: 'Google',
     price: 32000,
     discount: 0,
