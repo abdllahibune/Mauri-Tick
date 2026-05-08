@@ -1,0 +1,25 @@
+{
+  "name": "Mauri Tick",
+  "short_name": "Mauri Tick",
+  "description": "أفضل الإلكترونيات بأفضل الأسعار في موريتانيا",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1A237E",
+  "theme_color": "#1A237E",
+  "orientation": "portrait",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/1A237E/FFD700?text=MT",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/1A237E/FFD700?text=MT",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
