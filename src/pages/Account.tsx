@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db, ensureAuth, safeWrite } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { Order, Product } from '../types';
 import { User, ShoppingCart, Heart, ShieldCheck, LogOut, Package, Clock, CheckCircle, Truck, ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
@@ -215,9 +215,47 @@ function OrdersTab({ orders, loading }: { orders: Order[], loading: boolean }) {
 
 function WishlistTab({ products }: { products: Product[] }) {
   const { wishlist } = useCart();
-  const wishlistedItems = products.filter(p => wishlist.includes(p.id));
+  const [resolvedProducts, setResolvedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    const resolve = async () => {
+      setLoading(true);
+      const items: Product[] = [];
+      const missingIds: string[] = [];
 
-  if (wishlistedItems.length === 0) return (
+      wishlist.forEach(id => {
+        const found = products.find(p => p.id === id);
+        if (found) items.push(found);
+        else missingIds.push(id);
+      });
+
+      if (missingIds.length > 0) {
+        for (const id of missingIds) {
+          try {
+            const snap = await getDoc(doc(db, 'mt_products', id));
+            if (snap.exists()) items.push({ id: snap.id, ...snap.data() } as Product);
+          } catch (e) {
+            console.error("Error fetching wishlist item:", e);
+          }
+        }
+      }
+      setResolvedProducts(items);
+      setLoading(false);
+    };
+
+    resolve();
+  }, [wishlist, products]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (resolvedProducts.length === 0) return (
      <div className="py-20 text-center flex flex-col items-center gap-6">
         <div className="bg-gray-50 p-10 rounded-full"><Heart className="w-16 h-16 text-gray-200" /></div>
         <h3 className="text-2xl font-black text-gray-400">قائمة المفضلة فارغة</h3>
@@ -228,7 +266,7 @@ function WishlistTab({ products }: { products: Product[] }) {
     <div className="flex flex-col gap-8">
       <h2 className="text-3xl font-black text-primary mb-4 text-right">قائمة الأمنيات</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-         {wishlistedItems.map(p => <ProductCard key={p.id} product={p} />)}
+         {resolvedProducts.map(p => <ProductCard key={p.id} product={p} />)}
       </div>
     </div>
   );

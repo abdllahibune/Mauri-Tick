@@ -3,7 +3,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { formatPrice, generateOrderNumber } from '../lib/utils';
 import { ShieldCheck, Upload, Loader2, CheckCircle2, User, LogIn } from 'lucide-react';
@@ -90,10 +90,10 @@ export function Checkout() {
       
       // Update user stats
       if (user) {
-        await safeWrite(() => updateDoc(doc(db, 'mt_users', user.id), {
+        await safeWrite(() => setDoc(doc(db, 'mt_users', user.id), {
           totalSpent: increment(subtotal),
           ordersCount: increment(1)
-        }));
+        }, { merge: true }));
       }
 
       // 3. WhatsApp Integration

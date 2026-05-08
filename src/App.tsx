@@ -57,28 +57,32 @@ function MainApp() {
     let unsubConfig: (() => void) | undefined;
 
     const init = async () => {
-      await ensureAuth();
-      
-      // 1. Fetch Products
-      const q = query(collection(db, 'mt_products'), limit(100));
-      unsubProducts = onSnapshot(q, (snapshot) => {
-        setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-      });
+      try {
+        await ensureAuth();
+        
+        // 1. Fetch Products
+        const q = query(collection(db, 'mt_products'), limit(100));
+        unsubProducts = onSnapshot(q, (snapshot) => {
+          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+        }, (err) => console.error("Products fallback:", err));
 
-      // 2. Fetch Theme Colors
-      unsubConfig = onSnapshot(doc(db, 'mt_config', 'settings'), (snapshot) => {
-        if (snapshot.exists()) {
-          const config = snapshot.data() as StoreConfig;
-          if (config.themeColors) {
-            const root = document.documentElement;
-            root.style.setProperty('--primary', config.themeColors.primary);
-            root.style.setProperty('--accent', config.themeColors.accent);
-            root.style.setProperty('--bg-main', config.themeColors.background);
-            root.style.setProperty('--nav-bg', config.themeColors.navbar);
-            root.style.setProperty('--btn-bg', config.themeColors.button);
+        // 2. Fetch Theme Colors from 'mt_settings/general' as requested
+        unsubConfig = onSnapshot(doc(db, 'mt_settings', 'general'), (snapshot) => {
+          if (snapshot.exists()) {
+            const config = snapshot.data() as StoreConfig;
+            if (config.themeColors) {
+              const root = document.documentElement;
+              root.style.setProperty('--primary', config.themeColors.primary);
+              root.style.setProperty('--accent', config.themeColors.accent);
+              root.style.setProperty('--bg-main', config.themeColors.background);
+              root.style.setProperty('--nav-bg', config.themeColors.navbar);
+              root.style.setProperty('--btn-bg', config.themeColors.button);
+            }
           }
-        }
-      });
+        }, (err) => console.error("Config fallback:", err));
+      } catch (e) {
+        console.error("Initialization error:", e);
+      }
     };
 
     init();

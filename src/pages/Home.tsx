@@ -22,9 +22,14 @@ export function Home({ products }: { products: Product[] }) {
 
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 
-  const featured = displayProducts.filter(p => p.isFeatured).slice(0, 4);
-  const bestSellers = displayProducts.filter(p => p.isBestSeller).slice(0, 4);
-  const newArrivals = displayProducts.filter(p => p.isNewArrival).slice(0, 4);
+  // Improved filtering with fallbacks
+  const featured = displayProducts.filter(p => p.isFeatured).slice(0, 8);
+  const bestSellers = [...displayProducts].sort((a,b) => (b.soldCount || 0) - (a.soldCount || 0)).slice(0, 8);
+  const newArrivals = [...displayProducts].sort((a,b) => {
+    const da = a.createdAt?.toDate?.() || new Date(0);
+    const db = b.createdAt?.toDate?.() || new Date(0);
+    return db.getTime() - da.getTime();
+  }).slice(0, 8);
 
   const [timeLeft, setTimeLeft] = useState(3600 * 24); // 24 hours
 
@@ -49,20 +54,20 @@ export function Home({ products }: { products: Product[] }) {
     { icon: Headphones, text: 'دعم 24/7' },
   ];
 
+  const sections = [
+    { title: 'الأكثر مبيعاً', data: bestSellers.length > 0 ? bestSellers : displayProducts.slice(0, 8) },
+    { title: 'وصل حديثاً', data: newArrivals.length > 0 ? newArrivals : displayProducts.slice(8, 16) },
+    { title: 'منتجات مختارة', data: featured.length > 0 ? featured : displayProducts.slice(16, 24) },
+  ];
+
   return (
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Banner */}
       <section 
         className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000"
-        style={{ backgroundColor: config?.heroBackgroundColor || 'var(--primary)' }}
+        style={{ backgroundColor: config?.heroBackgroundColor || 'var(--primary)', backgroundImage: config?.heroImage ? `url(${config.heroImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
-        {config?.heroImage && (
-          <img 
-            src={config.heroImage} 
-            alt="Hero Background" 
-            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay"
-          />
-        )}
+        <div className="absolute inset-0 bg-primary/60" />
         <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/40 via-transparent to-transparent animate-pulse" />
         </div>
@@ -141,11 +146,7 @@ export function Home({ products }: { products: Product[] }) {
       </section>
 
       {/* Featured Sections */}
-      {[
-        { title: 'الأكثر مبيعاً', data: bestSellers },
-        { title: 'وصل حديثاً', data: newArrivals },
-        { title: 'منتجات مختارة', data: featured },
-      ].map((section, idx) => (
+      {sections.map((section, idx) => (
         <section key={idx} className="max-w-7xl mx-auto px-4 w-full">
           <div className="flex justify-between items-end mb-8">
             <div className="flex flex-col gap-1">
@@ -160,10 +161,9 @@ export function Home({ products }: { products: Product[] }) {
             {section.data.length > 0 ? (
               section.data.map(product => <ProductCard key={product.id} product={product} />)
             ) : (
-              // Empty state skeletons or placeholders
-              [1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-gray-100 animate-pulse h-[400px] rounded-3xl" />
-              ))
+              <div className="col-span-full py-20 text-center bg-gray-50 rounded-[40px]">
+                <p className="text-gray-400 font-bold">لا توجد منتجات متوفرة حالياً</p>
+              </div>
             )}
           </div>
         </section>

@@ -491,13 +491,6 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
         
-        // Accept only jpg, jpeg, png, webp
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-        if (!allowedTypes.includes(file.type)) {
-            toast.error(`نوع الملف غير مدعوم: ${file.name}`);
-            continue;
-        }
-
         const fileId = Math.random().toString(36).substring(7);
         try {
             const url = await uploadToCloudinary(file, (progress) => {
@@ -637,9 +630,9 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                         </div>
                         <div className="text-center">
                           <p className="font-black text-gray-600">اضغط للرفع أو اسحب الصور هنا</p>
-                          <p className="text-xs font-bold text-gray-400">JPG, PNG, WEBP (Max 5MB)</p>
+                          <p className="text-xs font-bold text-gray-400">جميع الصيغ مدعومة (Max 10MB)</p>
                         </div>
-                        <input type="file" multiple accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleImgUpload} />
+                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
                       </label>
                     )}
 
@@ -834,8 +827,9 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 
   const handleSave = async () => {
     await safeWrite(async () => {
-      await updateDoc(doc(db, 'mt_config', 'settings'), { ...form });
-      toast.success('تم حفظ الإعدادات وتطبيق الألوان بنجاح');
+      // Use mt_settings/general as requested
+      await setDoc(doc(db, 'mt_settings', 'general'), { ...form }, { merge: true });
+      toast.success('تم حفظ الإعدادات وتطبيق الألوان بنجاح ✅');
     });
   };
 

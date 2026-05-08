@@ -12,15 +12,16 @@ const CLOUDINARY_CLOUD_NAME = "dy5qfryut";
 const CLOUDINARY_UPLOAD_PRESET = "mauri_uploads";
 
 export const uploadToCloudinary = async (file: File, onProgress?: (progress: number) => void) => {
-  // Validate file
-  if (file.size > 5 * 1024 * 1024) {
-    alert("الصورة كبيرة جداً — الحد الأقصى 5MB");
+  // Validate file - Increased to 10MB as requested
+  if (file.size > 10 * 1024 * 1024) {
+    alert("الصورة كبيرة جداً — الحد الأقصى 10MB");
     return null;
   }
   
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("format", "jpg"); // Auto convert to jpg
   formData.append("quality", "auto");
   formData.append("fetch_format", "auto");
   

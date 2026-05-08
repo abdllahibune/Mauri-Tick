@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, safeWrite } from '../lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import toast from 'react-hot-toast';
 
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user) return;
-      await safeWrite(() => updateDoc(doc(db, 'mt_users', user.id), data));
+      await safeWrite(() => setDoc(doc(db, 'mt_users', user.id), data, { merge: true }));
       setUser(prev => prev ? { ...prev, ...data } : null);
       toast.success('تم تحديث البيانات');
   };
