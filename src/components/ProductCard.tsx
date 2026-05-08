@@ -123,16 +123,16 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         )}
         
         {/* Quick Add Overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform bg-gradient-to-t from-black/20 to-transparent">
+        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform bg-gradient-to-t from-black/20 to-transparent add-to-cart-overlay">
           <button 
             disabled={product.stock === 0}
             onClick={(e) => {
               e.preventDefault();
               addToCart(product);
             }}
-            className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
+            className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50 add-to-cart-btn"
           >
-            <ShoppingBag className="w-5 h-5" /> إضافة للسلة
+            <ShoppingBag className="w-5 h-5" /> <span className="hidden sm:inline">إضافة للسلة</span><span className="sm:hidden">🛒</span>
           </button>
         </div>
       </div>
@@ -151,12 +151,12 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             )}
             <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
           </div>
-          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md">
+          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md viewers">
             <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400">
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 sales-count">
           <span className="flex items-center gap-1">🔥 تم بيع {product.soldCount || 0} جهاز</span>
           {product.isNewArrival && <span className="text-blue-500">وصل حديثاً ✨</span>}
         </div>

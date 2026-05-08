@@ -64,21 +64,25 @@ export function Home({ products }: { products: Product[] }) {
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Banner */}
       <section 
-        className="relative h-[600px] flex items-center overflow-hidden transition-colors duration-1000 hero"
+        className="relative flex items-center transition-colors duration-1000 hero"
         style={{ 
           backgroundColor: config?.heroBackgroundColor || 'var(--primary)', 
           backgroundImage: `url(${config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'})`, 
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center' 
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col items-start gap-12">
+        <div className="hero-bg" />
+        <img 
+          src={config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'} 
+          alt="Hero" 
+          className="hero-image" 
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col items-start gap-12 hero-content">
           <motion.div 
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex flex-col gap-6 text-white max-w-2xl"
           >
-            <span className="bg-accent/20 text-accent text-xs font-bold px-4 py-2 rounded-full w-fit tracking-widest uppercase">موريتانيا - نواكشوط</span>
+            <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-4 py-2 rounded-full w-fit tracking-widest uppercase">موريتانيا - نواكشوط</span>
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter leading-none">
               {config?.heroTitle || (
                 <>موري تيك <br /><span className="text-accent underline decoration-8 decoration-accent/30 underline-offset-8">Mauri Tick</span></>
