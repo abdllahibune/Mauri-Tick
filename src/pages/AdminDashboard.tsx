@@ -339,6 +339,8 @@ function ProductsSection({ products }: { products: Product[] }) {
 
 function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Product | null }) {
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -386,6 +388,81 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     setForm(prev => ({ ...prev, images: [...(prev.images || []), imageUrlInput] }));
     setImageUrlInput('');
     toast.success('تمت إضافة رابط الصورة بنجاح');
+  };
+
+  const handleAutoSearch = async () => {
+    if (!searchQuery) return;
+    setSearching(true);
+    try {
+      const query = encodeURIComponent(searchQuery);
+      // Try TechSpecs v4
+      const res = await fetch(
+        `https://api.techspecs.io/v4/product/search?query=${query}`,
+        { headers: { 'Accept': 'application/json' } }
+      );
+      const data = await res.json();
+      
+      let foundSpecs: any = null;
+      let foundImages: string[] = [];
+
+      if (data?.data?.items?.length > 0) {
+        const item = data.data.items[0];
+        foundSpecs = item.specs;
+        if (item.image) foundImages = [item.image];
+      }
+
+      // Fallback to DummyJSON
+      if (!foundSpecs) {
+        const djRes = await fetch(`https://dummyjson.com/products/search?q=${query}`);
+        const djData = await djRes.json();
+        if (djData.products?.length > 0) {
+          const p = djData.products[0];
+          foundSpecs = {
+            brand: p.brand,
+            description: p.description,
+            category: p.category,
+            price: p.price,
+            images: p.images
+          };
+          foundImages = p.images || [];
+          
+          setForm(prev => ({
+            ...prev,
+            name: p.title,
+            brand: p.brand,
+            description: p.description,
+            price: p.price,
+            images: foundImages.slice(0, 5)
+          }));
+          toast.success('تم جلب البيانات من DummyJSON ✅');
+          return;
+        }
+      }
+
+      if (foundSpecs) {
+        setForm(prev => ({
+          ...prev,
+          name: searchQuery,
+          images: foundImages.slice(0, 5),
+          specifications: {
+            ...prev.specifications,
+            processor: foundSpecs.processor || foundSpecs.cpu || foundSpecs.chipset || '',
+            RAM: foundSpecs.ram || foundSpecs.memory || '',
+            storage: foundSpecs.storage || foundSpecs.hdd || foundSpecs.ssd || '',
+            battery: foundSpecs.battery || foundSpecs.capacity || '',
+            screen: foundSpecs.screen || foundSpecs.display || foundSpecs.resolution || ''
+          }
+        }));
+        toast.success('تم العثور على المواصفات بنجاح ✅');
+      } else {
+        toast.error('لم تُعثر على مواصفات — أدخلها يدوياً');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      toast.error('حدث خطأ أثناء البحث');
+    } finally {
+      setSearching(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -487,6 +564,39 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         <button onClick={onClose} className="absolute top-6 left-6 p-4 bg-gray-50 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors z-10"><XCircle className="w-6 h-6" /></button>
         <h3 className="text-2xl md:text-3xl font-black text-primary mb-8 md:mb-12 mt-4 md:mt-0">{initial ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
         
+        {!initial && (
+          <div className="bg-blue-50 p-6 rounded-2xl md:rounded-3xl mb-8 flex flex-col md:flex-row items-center gap-4 border border-blue-100">
+            <div className="bg-white p-3 rounded-2xl text-blue-500 shadow-sm"><SearchIcon className="w-6 h-6" /></div>
+            <div className="flex-1 text-right">
+              <h4 className="font-black text-blue-900 text-sm italic">البحث التلقائي الذكي</h4>
+              <p className="text-[10px] md:text-xs font-bold text-blue-700">أدخل اسم المنتج لجلب المواصفات والصورة تلقائياً</p>
+            </div>
+            <div className="flex w-full md:w-auto gap-2">
+              <input 
+                value={searchQuery} 
+                onChange={e => setSearchQuery(e.target.value)} 
+                placeholder="مثال: iPhone 15" 
+                className="bg-white rounded-xl px-4 py-3 outline-none flex-1 md:w-64 font-bold text-sm" 
+              />
+              <button 
+                type="button" 
+                onClick={handleAutoSearch} 
+                disabled={searching} 
+                className="bg-blue-500 text-white px-4 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2 justify-center"
+              >
+                {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <SearchIcon className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {searching && (
+          <div className="mb-8 p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3 animate-pulse">
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+            <p className="font-bold text-primary text-xs md:text-sm">🔍 جاري البحث عن مواصفات {searchQuery}...</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 text-right" dir="rtl">
             <div className="flex flex-col gap-6">
                <div className="flex flex-col gap-2">

@@ -21,9 +21,6 @@ export const uploadToCloudinary = async (file: File, onProgress?: (progress: num
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-  formData.append("format", "jpg"); // Auto convert to jpg
-  formData.append("quality", "auto");
-  formData.append("fetch_format", "auto");
   
   try {
     // Note: Fetch API doesn't support progress events for uploads natively.
