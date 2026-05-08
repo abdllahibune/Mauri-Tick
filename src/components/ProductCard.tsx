@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
@@ -12,6 +12,38 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { isInCompare, addToCompare, removeFromCompare } = useCompare();
   const isWishlisted = wishlist.includes(product.id);
   const isCompared = isInCompare(product.id);
+  const [timeLeft, setTimeLeft] = useState('');
+  const [viewers, setViewers] = useState(Math.floor(Math.random() * 12) + 3);
+
+  useEffect(() => {
+    // Countdown Timer (Resets every 24h)
+    const timer = setInterval(() => {
+      const now = new Date();
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+      const diff = endOfDay.getTime() - now.getTime();
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setTimeLeft(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    }, 1000);
+
+    const viewerInterval = setInterval(() => {
+      setViewers(prev => {
+        const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+        return Math.max(3, Math.min(15, prev + change));
+      });
+    }, 15000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(viewerInterval);
+    };
+  }, []);
 
   const discountedPrice = product.price * (1 - (product.discount || 0) / 100);
 
@@ -25,18 +57,29 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       {/* Badges */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
         {product.discount > 0 && (
-          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-            خصم {product.discount}%
-          </span>
+          <div className="flex flex-col gap-1 items-end">
+             <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                خصم {product.discount}%
+             </span>
+             <span className={cn(
+               "text-[9px] font-black px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm border shadow-sm flex items-center gap-1",
+               timeLeft.startsWith('00') ? "text-red-500 border-red-200" : "text-primary border-gray-100"
+             )}>
+                <Timer className="w-2 h-2" /> {timeLeft}
+             </span>
+          </div>
         )}
         {product.isBestSeller && (
           <span className="bg-accent text-primary text-[10px] font-black px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
             <TrendingUp className="w-3 h-3" /> الأكثر مبيعاً
           </span>
         )}
-        {product.stock === 1 && (
-          <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">
-            ⚡ آخر قطعة
+        {product.stock > 0 && product.stock <= 5 && (
+          <span className={cn(
+            "text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-pulse text-white",
+            product.stock <= 2 ? "bg-red-500" : "bg-orange-500"
+          )}>
+            {product.stock <= 2 ? `🏃 آخر ${product.stock} قطع!` : `⚠️ فقط ${product.stock} قطع`}
           </span>
         )}
       </div>
@@ -109,12 +152,12 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             <span className="text-lg font-black text-primary leading-none">{formatPrice(discountedPrice)}</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md">
-            <Eye className="w-3 h-3" /> {product.viewCount || 0} يشاهدون
+            <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
           </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400">
-          <span>✅ تم بيع {product.soldCount || 0} جهاز</span>
+          <span className="flex items-center gap-1">🔥 تم بيع {product.soldCount || 0} جهاز</span>
           {product.isNewArrival && <span className="text-blue-500">وصل حديثاً ✨</span>}
         </div>
       </Link>

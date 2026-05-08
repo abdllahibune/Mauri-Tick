@@ -11,7 +11,7 @@ import {
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
   XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon,
-  Search as SearchIcon, Palette, Smartphone, FileText, Star, Send
+  Search as SearchIcon, Palette, Smartphone, FileText, Star, Send, Gift
 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -366,6 +366,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     description: '',
     images: [],
     suggestedAccessories: [],
+    bundleAccessoryIds: [],
     specifications: {}
   });
 
@@ -541,13 +542,14 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     }
   };
 
-  const toggleAccessory = (id: string) => {
+  const toggleAccessory = (id: string, isBundle: boolean = false) => {
     setForm(prev => {
-        const current = prev.suggestedAccessories || [];
+        const key = isBundle ? 'bundleAccessoryIds' : 'suggestedAccessories';
+        const current = (prev as any)[key] || [];
         if (current.includes(id)) {
-            return { ...prev, suggestedAccessories: current.filter(x => x !== id) };
+            return { ...prev, [key]: current.filter((x: string) => x !== id) };
         } else {
-            return { ...prev, suggestedAccessories: [...current, id] };
+            return { ...prev, [key]: [...current, id] };
         }
     });
   };
@@ -627,7 +629,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                </div>
                
                <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-4">
-                  <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">الإكسسوارات المقترحة</h4>
+                  <h4 className="font-black text-gray-400 text-[10px] uppercase tracking-widest">إكسسوارات مقترحة (للعرض فقط)</h4>
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                      {allProducts.filter(p => p.id !== initial?.id).map(p => (
                        <button 
@@ -637,6 +639,26 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                         className={cn(
                           "px-3 py-1 rounded-full text-xs font-bold transition-all",
                           form.suggestedAccessories?.includes(p.id) ? "bg-primary text-white" : "bg-white text-gray-400 hover:bg-gray-100"
+                        )}
+                       >
+                         {p.name}
+                       </button>
+                     ))}
+                  </div>
+               </div>
+
+               <div className="bg-primary/5 p-6 rounded-[32px] flex flex-col gap-4 border border-primary/10">
+                  <h4 className="font-black text-primary text-[10px] uppercase tracking-widest">إكسسوارات الباقة (Bundle Offers) 🎁</h4>
+                  <p className="text-[10px] font-bold text-gray-400 -mt-2">اختر المنتجات التي ستؤلف "باقة" مع هذا المنتج للحصول على خصم إضافي</p>
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                     {allProducts.filter(p => p.id !== initial?.id).map(p => (
+                       <button 
+                        key={p.id}
+                        type="button"
+                        onClick={() => toggleAccessory(p.id, true)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-xs font-bold transition-all",
+                          form.bundleAccessoryIds?.includes(p.id) ? "bg-accent text-primary" : "bg-white text-gray-400 hover:bg-gray-100"
                         )}
                        >
                          {p.name}
@@ -1107,7 +1129,104 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
              </div>
           </section>
 
-          {/* Social Media Links */}
+          {/* Lucky Wheel Settings */}
+           <section id="lucky-wheel-settings" className="flex flex-col gap-8 md:col-span-2 shadow-2xl shadow-gray-200/50 bg-white p-8 md:p-12 rounded-[48px]">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                 <div className="flex items-center gap-3">
+                    <div className="bg-accent/10 p-2 rounded-xl text-accent"><Gift className="w-5 h-5" /></div>
+                    <h3 className="font-black text-gray-700">إعدادات عجلة الحظ</h3>
+                 </div>
+                 <button 
+                   onClick={() => setForm({...form, wheelSettings: { 
+                     isActive: !form.wheelSettings?.isActive,
+                     prizes: form.wheelSettings?.prizes || [
+                       { text: 'خصم 5%', type: 'percent', value: 5, probability: 35, color: '#FF6B6B' },
+                       { text: 'خصم 10%', type: 'percent', value: 10, probability: 25, color: '#4ECDC4' },
+                       { text: 'شحن مجاني', type: 'shipping', value: 0, probability: 20, color: '#45B7D1' },
+                       { text: 'خصم 15%', type: 'percent', value: 15, probability: 12, color: '#96CEB4' },
+                       { text: 'هدية مفاجئة', type: 'gift', value: 0, probability: 5, color: '#FFEAA7' },
+                       { text: 'خصم 20%', type: 'percent', value: 20, probability: 3, color: '#DDA0DD' }
+                     ],
+                     totalSpins: form.wheelSettings?.totalSpins || 0,
+                     totalCodesUsed: form.wheelSettings?.totalCodesUsed || 0
+                   }})}
+                   className={cn(
+                     "w-12 h-6 rounded-full relative transition-all",
+                     form.wheelSettings?.isActive ? "bg-green-500" : "bg-gray-200"
+                   )}
+                 >
+                   <div className={cn(
+                     "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                     form.wheelSettings?.isActive ? (isRTL ? "right-1" : "left-7") : (isRTL ? "right-7" : "left-1")
+                   )} />
+                 </button>
+              </div>
+
+              {form.wheelSettings?.isActive && (
+                <div className="flex flex-col gap-8">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-2xl">
+                         <span className="text-[10px] font-bold text-gray-400 block uppercase">إجمالي الدورات</span>
+                         <span className="text-xl font-black text-primary">{form.wheelSettings.totalSpins}</span>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-2xl">
+                         <span className="text-[10px] font-bold text-gray-400 block uppercase">أكواد مستخدمة</span>
+                         <span className="text-xl font-black text-accent">{form.wheelSettings.totalCodesUsed}</span>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {form.wheelSettings.prizes.map((prize, idx) => (
+                        <div key={idx} className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col gap-4 relative">
+                           <div className="w-4 h-4 rounded-full absolute top-4 left-4" style={{ backgroundColor: prize.color }} />
+                           <div className="flex flex-col gap-2">
+                              <label className="text-[10px] font-black text-gray-400 uppercase">نص الجائزة</label>
+                              <input 
+                                value={prize.text} 
+                                onChange={e => {
+                                  const newPrizes = [...form.wheelSettings!.prizes];
+                                  newPrizes[idx] = { ...prize, text: e.target.value };
+                                  setForm({ ...form, wheelSettings: { ...form.wheelSettings!, prizes: newPrizes } });
+                                }}
+                                className="bg-white rounded-xl p-3 text-sm font-bold outline-none"
+                              />
+                           </div>
+                           <div className="grid grid-cols-2 gap-3">
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-gray-400">القيمة</label>
+                                <input 
+                                  type="number"
+                                  value={prize.value} 
+                                  onChange={e => {
+                                    const newPrizes = [...form.wheelSettings!.prizes];
+                                    newPrizes[idx] = { ...prize, value: parseFloat(e.target.value) || 0 };
+                                    setForm({ ...form, wheelSettings: { ...form.wheelSettings!, prizes: newPrizes } });
+                                  }}
+                                  className="bg-white rounded-xl p-2 text-xs font-bold outline-none"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-gray-400">الاحتمالية %</label>
+                                <input 
+                                  type="number"
+                                  value={prize.probability} 
+                                  onChange={e => {
+                                    const newPrizes = [...form.wheelSettings!.prizes];
+                                    newPrizes[idx] = { ...prize, probability: parseFloat(e.target.value) || 0 };
+                                    setForm({ ...form, wheelSettings: { ...form.wheelSettings!, prizes: newPrizes } });
+                                  }}
+                                  className="bg-white rounded-xl p-2 text-xs font-bold outline-none"
+                                />
+                              </div>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              )}
+           </section>
+
+           {/* Social Media Links */}
           <section className="flex flex-col gap-8 md:col-span-2">
              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
                 <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><Globe className="w-5 h-5" /></div>

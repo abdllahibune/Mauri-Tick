@@ -27,6 +27,27 @@
         "aboutUs": { "type": "string" },
         "footerText": { "type": "string" },
         "adminPassword": { "type": "string" },
+        "wheelSettings": {
+          "type": "object",
+          "properties": {
+            "isActive": { "type": "boolean" },
+            "prizes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "type": { "type": "string", "enum": ["percent", "fixed", "shipping", "gift"] },
+                  "value": { "type": "number" },
+                  "probability": { "type": "number" },
+                  "color": { "type": "string" }
+                }
+              }
+            },
+            "totalSpins": { "type": "integer" },
+            "totalCodesUsed": { "type": "integer" }
+          }
+        },
         "socialLinks": {
           "type": "object",
           "properties": {
@@ -81,6 +102,10 @@
         "soldCount": { "type": "integer" },
         "viewCount": { "type": "integer" },
         "suggestedAccessories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "bundleAccessoryIds": {
           "type": "array",
           "items": { "type": "string" }
         },

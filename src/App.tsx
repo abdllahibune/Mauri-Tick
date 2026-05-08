@@ -37,6 +37,7 @@ import ReviewPage from './pages/ReviewPage';
 import { NotFound } from './pages/NotFound';
 import { ComparisonBar } from './components/ComparisonBar';
 import { InvestorPopup } from './components/InvestorPopup';
+import { LuckyWheel } from './components/LuckyWheel';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -125,6 +126,7 @@ function MainApp() {
       
       <ComparisonBar />
       <InvestorPopup />
+      <LuckyWheel />
       
       {/* Floating Elements */}
       <a 

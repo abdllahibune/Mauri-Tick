@@ -17,6 +17,7 @@ export interface Product {
   soldCount?: number;
   viewCount?: number;
   suggestedAccessories?: string[];
+  bundleAccessoryIds?: string[];
   createdAt?: any;
 }
 
@@ -120,6 +121,14 @@ export interface SupportRequest {
   createdAt: any;
 }
 
+export interface WheelPrize {
+  text: string;
+  type: 'percent' | 'fixed' | 'shipping' | 'gift';
+  value: number;
+  probability: number;
+  color: string;
+}
+
 export interface StoreConfig {
   storeName: string;
   tagline: string;
@@ -153,6 +162,12 @@ export interface StoreConfig {
   sellPageDescription?: string;
   sellMinImages?: number;
   adminPassword?: string;
+  wheelSettings?: {
+    isActive: boolean;
+    prizes: WheelPrize[];
+    totalSpins: number;
+    totalCodesUsed: number;
+  };
   socialLinks: {
     facebook: string;
     instagram: string;
@@ -173,6 +188,7 @@ export interface Coupon {
   usageLimit: number;
   usageCount: number;
   isActive: boolean;
+  deviceId?: string;
 }
 
 export interface Customer {
