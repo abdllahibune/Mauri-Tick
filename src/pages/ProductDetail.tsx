@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { Product } from '../types';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { doc, getDoc, collection, query, where, limit, updateDoc, increment } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
@@ -13,12 +13,49 @@ import toast from 'react-hot-toast';
 
 import { DEMO_PRODUCTS } from '../constants';
 
-export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
+class ErrorBoundary extends React.Component<any, any> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { 
+    return { hasError: true }; 
+  }
+  render() {
+    if (this.state.hasError)
+      return <div style={{padding:60, textAlign:'center', display:'flex', flexDirection:'column', gap:20, alignItems:'center'}}>
+        <h2 className="text-3xl font-black text-primary">حدث خطأ</h2>
+        <p className="text-gray-500">عذراً، حدث خطأ غير متوقع في هذه الصفحة.</p>
+        <button 
+          className="bg-primary text-white px-8 py-3 rounded-xl font-bold"
+          onClick={() => window.location.reload()}
+        >
+          إعادة تحميل
+        </button>
+        <button 
+          className="text-primary font-bold"
+          onClick={() => window.history.back()}
+        >
+          رجوع
+        </button>
+      </div>;
+    return (this.props as any).children;
+  }
+}
+
+export function ProductDetail(props: { allProducts: Product[] }) {
+  return (
+    <ErrorBoundary>
+      <ProductDetailContent {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function ProductDetailContent({ allProducts }: { allProducts: Product[] }) {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [selectedBundleAccessories, setSelectedBundleAccessories] = useState<string[]>([]);
   const { addToCart, toggleWishlist, wishlist } = useCart();
 
   useEffect(() => {
@@ -26,6 +63,7 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
     async function loadProduct() {
       if (!id) return;
       setLoading(true);
+      setError(null);
 
       // Check demo products first
       const demoProduct = DEMO_PRODUCTS.find(p => p.id === id);
@@ -43,9 +81,12 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
           setProduct(data);
           // Increment view count
           safeWrite(() => updateDoc(docRef, { viewCount: increment(1) }));
+        } else {
+          setProduct(null);
         }
-      } catch (error) {
-        console.error('Error loading product:', error);
+      } catch (err: any) {
+        console.error('Error loading product:', err);
+        setError(err.message || 'حدث خطأ أثناء تحميل المنتج');
       } finally {
         setLoading(false);
       }
@@ -66,6 +107,14 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
     </div>
   );
 
+  if (error) return (
+    <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-6">
+      <h2 className="text-3xl font-black text-red-500">حدث خطأ</h2>
+      <p className="text-gray-500">{error}</p>
+      <button onClick={() => window.location.reload()} className="bg-primary text-white px-8 py-3 rounded-xl font-bold">إعادة المحاولة</button>
+    </div>
+  );
+
   if (!product) return (
     <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-6">
       <h2 className="text-3xl font-black text-primary">المنتج غير موجود</h2>
@@ -77,7 +126,6 @@ export function ProductDetail({ allProducts }: { allProducts: Product[] }) {
   const isWishlisted = wishlist.includes(product.id);
 
   // Bundle Offers Logic
-  const [selectedBundleAccessories, setSelectedBundleAccessories] = useState<string[]>([]);
   const bundleProducts = allProducts.filter(p => product.bundleAccessoryIds?.includes(p.id)).slice(0, 3);
   
   const bundleDiscountPercent = 

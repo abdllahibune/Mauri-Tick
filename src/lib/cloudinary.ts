@@ -17,19 +17,14 @@ console.log('Preset:', CLOUDINARY_UPLOAD_PRESET);
 export async function uploadToCloudinary(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('upload_preset', 'mauri_uploads');
   
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    'https://api.cloudinary.com/v1_1/dy5qfryut/image/upload',
     { method: 'POST', body: formData }
   );
-  
   const data = await res.json();
-  
-  if (data.secure_url) {
-    return data.secure_url;
-  } else {
-    alert('خطأ: ' + JSON.stringify(data.error));
-    return null;
-  }
+  if (data.secure_url) return data.secure_url;
+  alert('خطأ رفع الصورة: ' + JSON.stringify(data.error));
+  return null;
 }
