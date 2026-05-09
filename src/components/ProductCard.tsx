@@ -54,8 +54,21 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       viewport={{ once: true }}
       className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 product-card"
     >
+      {/* Mobile Card Header (Facebook Post Style) */}
+      <div className="md:hidden flex items-center p-3 gap-3 product-card-header">
+        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black text-lg brand-avatar">
+          {product.brand.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs font-black text-gray-900 leading-none">{product.brand} Official</span>
+          <span className="text-[10px] font-bold text-gray-400 mt-1 flex items-center gap-1">
+            <TrendingUp className="w-2 h-2" /> منتج مميز • {timeLeft} متبقي
+          </span>
+        </div>
+      </div>
+
       {/* Badges */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+      <div className="absolute top-3 right-3 z-10 hidden md:flex flex-col gap-2">
         {product.discount > 0 && (
           <div className="flex flex-col gap-1 items-end">
              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
@@ -227,7 +240,35 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <MessageCircle className="w-4 h-4" /> استفسر عبر واتساب
         </button>
 
-        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 sales-count">
+      {/* Mobile Action Bar (Facebook Like Style) */}
+      <div className="md:hidden flex border-t border-gray-100 product-card-actions">
+        <button 
+          onClick={() => toggleWishlist(product.id)}
+          className={cn(
+            "product-action-btn",
+            isWishlisted ? "text-red-500" : "text-gray-500"
+          )}
+        >
+          <Heart className={cn("w-4 h-4", isWishlisted && "fill-current")} />
+          <span>{isWishlisted ? 'أعجبني' : 'إعجاب'}</span>
+        </button>
+        <button 
+          onClick={() => addToCart(product)}
+          className="product-action-btn"
+        >
+          <ShoppingBag className="w-4 h-4 text-primary" />
+          <span>سلة</span>
+        </button>
+        <button 
+          onClick={(e) => { e.preventDefault(); contactWhatsApp(product); }}
+          className="product-action-btn"
+        >
+          <MessageCircle className="w-4 h-4 text-[#25D366]" />
+          <span>واتساب</span>
+        </button>
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 sales-count">
           <span className="flex items-center gap-1">🔥 تم بيع {product.soldCount || 0} جهاز</span>
           {product.isNewArrival && <span className="text-blue-500">وصل حديثاً ✨</span>}
         </div>

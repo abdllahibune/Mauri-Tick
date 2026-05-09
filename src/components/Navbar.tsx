@@ -82,19 +82,9 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20 navbar-inner">
-          {/* Mobile Left: Menu Toggle */}
-          <div className="navbar-left">
-            <button 
-              className="p-2 text-gray-500 burger-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-
           {/* Logo */}
           <div onClick={handleLogoClick} className="flex flex-col cursor-pointer select-none navbar-logo">
-            <span className="text-xl font-black text-primary tracking-tighter">MAURI TICK</span>
+            <span className="text-xl font-black text-white md:text-primary tracking-tighter">MAURI TICK</span>
           </div>
 
           {/* Desktop Nav */}
@@ -115,10 +105,12 @@ export function Navbar() {
 
           {/* Icons / Right Side */}
           <div className="flex items-center gap-2 navbar-right">
+            {/* Search Icon (Visible always, customized via CSS for mobile) */}
             <Link to="/products" className="p-2 text-gray-500 hover:text-primary transition-colors search-btn flex">
               <Search className="w-6 h-6" />
             </Link>
 
+            {/* Notifications (Desktop only) */}
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 text-gray-500 hover:text-primary transition-colors relative notifications-btn hidden md:flex"
@@ -129,6 +121,7 @@ export function Navbar() {
               )}
             </button>
 
+            {/* Wishlist (Desktop only) */}
             <Link to="/wishlist" className="p-2 text-gray-500 hover:text-primary transition-colors relative wishlist-btn hidden md:flex">
               <Heart className="w-6 h-6" />
               {wishlist.length > 0 && (
@@ -138,15 +131,17 @@ export function Navbar() {
               )}
             </Link>
 
+            {/* Cart Icon (Visible always) */}
             <Link to="/cart" className="p-2 text-gray-500 hover:text-primary transition-colors relative cart-btn flex">
               <ShoppingCart className="w-6 h-6" />
               {cart.length > 0 && (
-                <span className="cart-badge">
+                <span className="cart-badge bg-accent text-primary text-[10px] font-bold min-w-[16px] h-4 rounded-full flex items-center justify-center absolute -top-1 -right-1 px-1 border border-white md:border-none">
                   {cart.length}
                 </span>
               )}
             </Link>
 
+            {/* Compare (Desktop only) */}
             <Link to="/compare" className="p-2 text-gray-500 hover:text-primary transition-colors relative compare-btn hidden md:flex">
                <LayoutGrid className="w-6 h-6" />
                {compareList.length > 0 && (
@@ -156,6 +151,7 @@ export function Navbar() {
                )}
             </Link>
 
+            {/* Language (Desktop only) */}
             <button 
               onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
               className="p-2 text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-bold text-xs lang-switcher hidden md:flex"
@@ -164,16 +160,25 @@ export function Navbar() {
               {language === 'ar' ? 'EN' : 'العربية'}
             </button>
             
+            {/* User Account / Login (Desktop only via CSS hidden user-btn) */}
             {user ? (
-               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-2 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all user-btn">
+               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-2 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all user-btn hidden md:flex">
                   <User className="w-5 h-5" />
                   <span className="text-xs font-black hidden lg:block">{user.name || user.phone}</span>
                </Link>
             ) : (
-               <Link to="/login" className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm user-btn">
+               <Link to="/login" className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm user-btn hidden md:flex">
                  <User className="w-5 h-5" /> <span className="hidden sm:inline">{t('nav.login')}</span>
                </Link>
             )}
+
+            {/* Mobile Menu Trigger (Removed from here, as we have bottom bar now, but keeping for desktop if needed? User said "Search + Cart only" on right top navbar for mobile) */}
+            <button 
+              className="p-2 text-gray-500 burger-btn md:hidden hidden"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
       </div>

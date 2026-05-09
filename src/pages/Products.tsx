@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
+import { cn } from '../lib/utils';
 import { Search, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ensureAuth, db } from '../lib/firebase';
@@ -111,6 +112,22 @@ export function Products({ products: initialProducts }: { products: Product[] })
               />
            </div>
         </div>
+      </div>
+
+      {/* Mobile Scrolling Categories (Facebook Style) */}
+      <div className="md:hidden categories-row -mx-4">
+        {categories.map(cat => (
+          <button 
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={cn(
+              "category-chip",
+              selectedCategory === cat && "active"
+            )}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12">

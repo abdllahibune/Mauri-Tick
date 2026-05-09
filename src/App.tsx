@@ -40,6 +40,7 @@ import { NotFound } from './pages/NotFound';
 import { ComparisonBar } from './components/ComparisonBar';
 import { InvestorPopup } from './components/InvestorPopup';
 import { LuckyWheel } from './components/LuckyWheel';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -131,6 +132,7 @@ function MainApp() {
       <ComparisonBar />
       <InvestorPopup />
       <LuckyWheel />
+      <MobileBottomNav />
       
       {/* Floating Elements */}
       <a 

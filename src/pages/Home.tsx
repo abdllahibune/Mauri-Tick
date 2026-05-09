@@ -72,6 +72,8 @@ export function Home({ products }: { products: Product[] }) {
     { icon: Headphones, text: 'دعم 24/7' },
   ];
 
+  const categories = Array.from(new Set(displayProducts.map(p => p.category).filter(Boolean)));
+
   const sections = [
     { title: 'الأكثر مبيعاً', data: bestSellers.length > 0 ? bestSellers : displayProducts.slice(0, 8) },
     { title: 'وصل حديثاً', data: newArrivals.length > 0 ? newArrivals : displayProducts.slice(8, 16) },
@@ -80,6 +82,25 @@ export function Home({ products }: { products: Product[] }) {
 
   return (
     <div className="flex flex-col gap-16 pb-20">
+      {/* Mobile Scrolling Categories (Facebook Stories Style) */}
+      <div className="md:hidden categories-row">
+        <button 
+          onClick={() => navigate('/products')}
+          className="category-chip active"
+        >
+          الكل
+        </button>
+        {categories.map(cat => (
+          <button 
+            key={cat}
+            onClick={() => navigate(`/products?category=${cat}`)}
+            className="category-chip"
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {/* Hero Banner */}
       <section 
         className="relative flex items-center transition-colors duration-1000 hero"
