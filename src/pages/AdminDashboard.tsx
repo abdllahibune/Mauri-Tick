@@ -341,11 +341,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
-  const [lastEnhanced, setLastEnhanced] = useState<{original: string, enhanced: string} | null>(null);
-  const [showComparison, setShowComparison] = useState(false);
   
   const categories = [
     { id: 'هواتف ذكية', name: 'هواتف ذكية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'] },
@@ -572,28 +569,18 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         return;
     }
 
-    for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        
-        const fileId = Math.random().toString(36).substring(7);
+    setLoading(true);
+    for (const file of filesToUpload) {
         try {
-            const data = await uploadToCloudinary(file, true);
-
-            if (data && typeof data === 'object') {
-                setForm(prev => ({ ...prev, images: [...(prev.images || []), data.enhanced] }));
-                setLastEnhanced({ original: data.original, enhanced: data.enhanced });
-                setShowComparison(true);
+            const url = await uploadToCloudinary(file);
+            if (url) {
+                setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
             }
-
-            setUploadProgress(prev => {
-                const n = { ...prev };
-                delete n[fileId];
-                return n;
-            });
         } catch (err) {
             toast.error(`فشل رفع ${file.name}`);
         }
     }
+    setLoading(false);
   };
 
   const toggleAccessory = (id: string, isBundle: boolean = false) => {
@@ -750,57 +737,32 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                     {/* Upload Area */}
                     {(form.images?.length || 0) < 5 && (
                       <label 
+                        id="uploadBtn"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           e.preventDefault();
                           handleImgUpload(e as any);
                         }}
-                        className="w-full h-48 md:h-64 border-4 border-dashed border-gray-200 rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group"
+                        className="w-full h-48 md:h-64 border-4 border-dashed border-gray-200 rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group relative"
                       >
-                        <div className="bg-white p-4 rounded-2xl shadow-sm text-gray-400 group-hover:text-primary transition-colors">
-                          <ImageIcon className="w-8 h-8" />
-                        </div>
-                        <div className="text-center px-4">
-                          <p className="font-black text-gray-600 text-sm">اضغط للرفع أو اسحب الصور هنا</p>
-                          <p className="text-[10px] font-bold text-gray-400">جميع الصيغ مدعومة (Max 10MB)</p>
-                        </div>
-                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
+                        {loading ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                            <p className="font-black text-primary text-sm">جاري الرفع...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="bg-white p-4 rounded-2xl shadow-sm text-gray-400 group-hover:text-primary transition-colors">
+                              <ImageIcon className="w-8 h-8" />
+                            </div>
+                            <div className="text-center px-4">
+                              <p className="font-black text-gray-600 text-sm">اضغط للرفع أو اسحب الصور هنا</p>
+                              <p className="text-[10px] font-bold text-gray-400">جميع الصيغ مدعومة (Max 10MB)</p>
+                            </div>
+                          </>
+                        )}
+                        <input id="productImages" type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
                       </label>
-                    )}
-
-                    {showComparison && lastEnhanced && (
-                      <div className="mt-4 p-4 bg-white border border-gray-100 rounded-[24px] shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                          <p className="text-[12px] font-bold text-green-600">✨ معاينة التحسين التلقائي</p>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setForm(prev => ({
-                                ...prev,
-                                images: prev.images?.map(img => img === lastEnhanced.enhanced ? lastEnhanced.original : img)
-                              }));
-                              setShowComparison(false);
-                              toast.success('تمت العودة للصورة الأصلية');
-                            }}
-                            className="text-[10px] font-bold text-gray-400 hover:text-red-500 underline"
-                          >
-                            استخدم الأصلية
-                          </button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '12px', color: '#666', margin: '0 0 4px' }}>الأصلية</p>
-                            <img src={lastEnhanced.original} style={{ width: '100%', borderRadius: '8px', border: '1px solid #eee' }} />
-                          </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '12px', color: '#2E7D32', margin: '0 0 4px', fontWeight: 'bold' }}>✨ محسّنة</p>
-                            <img src={lastEnhanced.enhanced} style={{ width: '100%', borderRadius: '8px', border: '2px solid #4CAF50' }} />
-                          </div>
-                        </div>
-                        <p style={{ fontSize: '12px', color: '#4CAF50', textAlign: 'center', marginTop: '8px', fontWeight: 'bold', fontFamily: 'Cairo' }}>
-                          ✅ تم تحسين الصورة تلقائياً
-                        </p>
-                      </div>
                     )}
 
                     {/* Add by URL */}
@@ -822,26 +784,11 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                       </div>
                     )}
 
-                    {/* Progress Bars */}
-                    {Object.entries(uploadProgress).map(([id, prog]) => (
-                      <div key={id} className="bg-gray-50 p-4 rounded-2xl flex flex-col gap-2">
-                        <div className="flex justify-between items-center text-xs font-bold">
-                          <span className="text-primary text-[10px]">جاري الرفع... {prog}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary transition-all" 
-                            style={{ width: `${prog}%` }} 
-                          />
-                        </div>
-                      </div>
-                    ))}
-
                     {/* Previews */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {form.images?.map((url, i) => (
                         <div key={i} className="aspect-square bg-gray-50 rounded-2xl overflow-hidden relative group border-2 border-transparent hover:border-primary/20 transition-all shadow-sm">
-                           <img src={url} className="w-full h-full object-cover" />
+                           <img id={i === 0 ? "imagePreview" : undefined} src={url} className="w-full h-full object-cover" />
                            {i === 0 && (
                              <div className="absolute top-2 right-2 bg-primary text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">صورة رئيسية</div>
                            )}
