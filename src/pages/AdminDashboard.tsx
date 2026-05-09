@@ -344,6 +344,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [lastEnhanced, setLastEnhanced] = useState<{original: string, enhanced: string} | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
   
   const categories = [
     { id: 'هواتف ذكية', name: 'هواتف ذكية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'] },
@@ -391,78 +393,126 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   };
 
   const handleAutoSearch = async () => {
-    if (!searchQuery) return;
-    setSearching(true);
-    try {
-      const query = encodeURIComponent(searchQuery);
-      // Try TechSpecs v4
-      const res = await fetch(
-        `https://api.techspecs.io/v4/product/search?query=${query}`,
-        { headers: { 'Accept': 'application/json' } }
-      );
-      const data = await res.json();
-      
-      let foundSpecs: any = null;
-      let foundImages: string[] = [];
-
-      if (data?.data?.items?.length > 0) {
-        const item = data.data.items[0];
-        foundSpecs = item.specs;
-        if (item.image) foundImages = [item.image];
-      }
-
-      // Fallback to DummyJSON
-      if (!foundSpecs) {
-        const djRes = await fetch(`https://dummyjson.com/products/search?q=${query}`);
-        const djData = await djRes.json();
-        if (djData.products?.length > 0) {
-          const p = djData.products[0];
-          foundSpecs = {
-            brand: p.brand,
-            description: p.description,
-            category: p.category,
-            price: p.price,
-            images: p.images
-          };
-          foundImages = p.images || [];
-          
-          setForm(prev => ({
-            ...prev,
-            name: p.title,
-            brand: p.brand,
-            description: p.description,
-            price: p.price,
-            images: foundImages.slice(0, 5)
-          }));
-          toast.success('تم جلب البيانات من DummyJSON ✅');
-          return;
-        }
-      }
-
-      if (foundSpecs) {
-        setForm(prev => ({
-          ...prev,
-          name: searchQuery,
-          images: foundImages.slice(0, 5),
-          specifications: {
-            ...prev.specifications,
-            processor: foundSpecs.processor || foundSpecs.cpu || foundSpecs.chipset || '',
-            RAM: foundSpecs.ram || foundSpecs.memory || '',
-            storage: foundSpecs.storage || foundSpecs.hdd || foundSpecs.ssd || '',
-            battery: foundSpecs.battery || foundSpecs.capacity || '',
-            screen: foundSpecs.screen || foundSpecs.display || foundSpecs.resolution || ''
-          }
-        }));
-        toast.success('تم العثور على المواصفات بنجاح ✅');
-      } else {
-        toast.error('لم تُعثر على مواصفات — أدخلها يدوياً');
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      toast.error('حدث خطأ أثناء البحث');
-    } finally {
-      setSearching(false);
+    const productName = searchQuery || form.name;
+    if (!productName) {
+      toast.error('أدخل اسم المنتج أولاً');
+      return;
     }
+    setSearching(true);
+    
+    let specs: any = null;
+    
+    // Source 1: DummyJSON
+    try {
+      const res = await fetch(`https://dummyjson.com/products/search?q=${encodeURIComponent(productName)}&limit=1`);
+      const data = await res.json();
+      if (data.products?.[0]) {
+        const p = data.products[0];
+        specs = {
+          brand: p.brand || '',
+          description: p.description || '',
+          category: p.category || '',
+          image: p.thumbnail || p.images?.[0] || '',
+          price: p.price
+        };
+      }
+    } catch(e) {}
+
+    // Source 2: Open Product Data API
+    if (!specs) {
+      try {
+        const res = await fetch(`https://api.upcitemdb.com/prod/trial/search?s=${encodeURIComponent(productName)}&type=product`);
+        const data = await res.json();
+        if (data.items?.[0]) {
+          const item = data.items[0];
+          specs = {
+            brand: item.brand || '',
+            description: item.description || '',
+            image: item.images?.[0] || ''
+          };
+        }
+      } catch(e) {}
+    }
+
+    // Source 3: Wikipedia API
+    if (!specs) {
+      try {
+        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(productName)}`);
+        const data = await res.json();
+        if (data.extract) {
+          specs = {
+            description: data.extract.substring(0, 200),
+            image: data.thumbnail?.source || ''
+          };
+        }
+      } catch(e) {}
+    }
+
+    if (specs) {
+      setForm(prev => ({
+        ...prev,
+        brand: specs.brand || prev.brand,
+        description: specs.description || prev.description,
+        name: productName
+      }));
+
+      // Auto-fill image if found
+      if (specs.image && (form.images?.length || 0) < 5) {
+        try {
+          const url = await uploadToCloudinary(specs.image);
+          if (url) {
+            setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+            toast.success('✅ تم جلب صورة المنتج تلقائياً');
+          }
+        } catch(e) {}
+      }
+
+      // Auto-fill phone specs if applicable
+      const n = productName.toLowerCase();
+      if (n.includes('iphone') || n.includes('samsung') || n.includes('huawei') || n.includes('redmi') || n.includes('xiaomi')) {
+        autoFillPhoneSpecs(productName);
+      }
+
+      toast.success('✅ تم جلب المعلومات المتاحة');
+    } else {
+      toast.error('⚠️ لم تُعثر على مواصفات — أدخلها يدوياً');
+    }
+    setSearching(false);
+  };
+
+  const autoFillPhoneSpecs = (name: string) => {
+    const n = name.toUpperCase();
+    
+    // Brand detection
+    const brands: any = {
+      'IPHONE': 'Apple', 'SAMSUNG': 'Samsung',
+      'HUAWEI': 'Huawei', 'XIAOMI': 'Xiaomi',
+      'REDMI': 'Xiaomi/Redmi', 'OPPO': 'OPPO',
+      'VIVO': 'Vivo', 'REALME': 'Realme',
+      'ONEPLUS': 'OnePlus', 'NOKIA': 'Nokia'
+    };
+    
+    let detectedBrand = '';
+    for (const [key, b] of Object.entries(brands)) {
+      if (n.includes(key)) {
+        detectedBrand = b as string;
+        break;
+      }
+    }
+
+    // Storage and RAM extraction
+    const storageMatch = n.match(/(\d+)\s*GB/);
+    const ramMatch = n.match(/(\d+)\s*RAM|RAM\s*(\d+)/);
+
+    setForm(prev => ({
+      ...prev,
+      brand: detectedBrand || prev.brand,
+      specifications: {
+        ...prev.specifications,
+        storage: storageMatch ? storageMatch[1] + 'GB' : (prev.specifications as any)?.storage,
+        RAM: ramMatch ? (ramMatch[1] || ramMatch[2]) + 'GB' : (prev.specifications as any)?.RAM
+      }
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -524,10 +574,12 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         
         const fileId = Math.random().toString(36).substring(7);
         try {
-            const url = await uploadToCloudinary(file);
+            const data = await uploadToCloudinary(file, true);
 
-            if (url) {
-                setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
+            if (data && typeof data === 'object') {
+                setForm(prev => ({ ...prev, images: [...(prev.images || []), data.enhanced] }));
+                setLastEnhanced({ original: data.original, enhanced: data.enhanced });
+                setShowComparison(true);
             }
 
             setUploadProgress(prev => {
@@ -611,7 +663,16 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                   </select>
                </div>
                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-gray-500 mr-2">اسم المنتج</label>
+                  <div className="flex justify-between items-center mr-2">
+                    <label className="text-xs font-bold text-gray-500">اسم المنتج</label>
+                    <button 
+                      type="button" 
+                      onClick={handleAutoSearch} 
+                      className="text-primary text-[10px] font-black hover:underline"
+                    >
+                      🔍 بحث عن المواصفات
+                    </button>
+                  </div>
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
                </div>
                <div className="flex flex-col gap-2">
@@ -700,6 +761,43 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                         </div>
                         <input type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
                       </label>
+                    )}
+
+                    {showComparison && lastEnhanced && (
+                      <div className="bg-green-50 p-6 rounded-3xl border border-green-100 flex flex-col gap-4">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-black text-green-900 text-xs">✨ تحسين الصورة تلقائياً</h4>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev,
+                                images: prev.images?.map(img => img === lastEnhanced.enhanced ? lastEnhanced.original : img)
+                              }));
+                              setShowComparison(false);
+                              toast.success('تمت العودة للصورة الأصلية');
+                            }}
+                            className="text-xs font-bold text-green-700 hover:underline"
+                          >
+                            استخدم الأصلية
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 text-center">الأصلية</span>
+                            <div className="aspect-square rounded-xl overflow-hidden border border-gray-200">
+                              <img src={lastEnhanced.original} className="w-full h-full object-cover" />
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <span className="text-[10px] font-bold text-green-600 text-center">✨ محسّنة</span>
+                            <div className="aspect-square rounded-xl overflow-hidden border-2 border-green-500">
+                              <img src={lastEnhanced.enhanced} className="w-full h-full object-cover" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-green-700 text-center">✅ تم تحسين جودة الصورة والألوان تلقائياً</p>
+                      </div>
                     )}
 
                     {/* Add by URL */}
