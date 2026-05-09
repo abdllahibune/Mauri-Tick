@@ -18,9 +18,13 @@ export async function uploadToCloudinary(file: File | string, returnBoth: boolea
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', 'mauri_uploads');
-  // Add eager transformations if available via eager param, 
-  // but manual replacement is also fine as requested.
-  
+  formData.append('eager', 
+    'e_improve,e_sharpen:100,e_vibrance:50,' +
+    'q_auto:best,f_auto,w_800,h_800,c_pad,' +
+    'b_white'
+  );
+  formData.append('eager_async', 'false');
+
   const res = await fetch(
     'https://api.cloudinary.com/v1_1/dy5qfryut/image/upload',
     { method: 'POST', body: formData }
@@ -29,10 +33,16 @@ export async function uploadToCloudinary(file: File | string, returnBoth: boolea
   
   if (data.secure_url) {
     const original = data.secure_url;
-    const enhanced = original.replace(
-      '/upload/',
-      '/upload/e_improve,e_sharpen:80,e_vibrance:30,q_auto:best,f_auto/'
-    );
+    // Use enhanced version from eager if available, otherwise manual fallback
+    let enhanced = original;
+    if (data.eager?.[0]?.secure_url) {
+      enhanced = data.eager[0].secure_url;
+    } else {
+      enhanced = original.replace(
+        '/upload/',
+        '/upload/e_improve,e_sharpen:80,e_vibrance:30,q_auto:best,f_auto/'
+      );
+    }
     
     if (returnBoth) {
       return { original, enhanced };
@@ -40,6 +50,6 @@ export async function uploadToCloudinary(file: File | string, returnBoth: boolea
     return enhanced;
   }
   
-  alert('خطأ رفع الصورة: ' + JSON.stringify(data.error));
+  console.error('Cloudinary upload error:', data.error);
   return null;
 }

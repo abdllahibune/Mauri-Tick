@@ -402,7 +402,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     
     let specs: any = null;
     
-    // Source 1: DummyJSON
+    // Source 1: DummyJSON (works for common products)
     try {
       const res = await fetch(`https://dummyjson.com/products/search?q=${encodeURIComponent(productName)}&limit=1`);
       const data = await res.json();
@@ -434,7 +434,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       } catch(e) {}
     }
 
-    // Source 3: Wikipedia API
+    // Source 3: Wikipedia API for device info
     if (!specs) {
       try {
         const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(productName)}`);
@@ -449,6 +449,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     }
 
     if (specs) {
+      // Auto-fill available fields
       setForm(prev => ({
         ...prev,
         brand: specs.brand || prev.brand,
@@ -467,7 +468,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         } catch(e) {}
       }
 
-      // Auto-fill phone specs if applicable
+      // Parse specs from description if phone
       const n = productName.toLowerCase();
       if (n.includes('iphone') || n.includes('samsung') || n.includes('huawei') || n.includes('redmi') || n.includes('xiaomi')) {
         autoFillPhoneSpecs(productName);
@@ -483,6 +484,12 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const autoFillPhoneSpecs = (name: string) => {
     const n = name.toUpperCase();
     
+    // Storage from name
+    const storageMatch = n.match(/(\d+)\s*GB/);
+    
+    // RAM from name  
+    const ramMatch = n.match(/(\d+)\s*RAM|RAM\s*(\d+)/);
+
     // Brand detection
     const brands: any = {
       'IPHONE': 'Apple', 'SAMSUNG': 'Samsung',
@@ -493,16 +500,12 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     };
     
     let detectedBrand = '';
-    for (const [key, b] of Object.entries(brands)) {
+    for (const [key, brand] of Object.entries(brands)) {
       if (n.includes(key)) {
-        detectedBrand = b as string;
+        detectedBrand = brand as string;
         break;
       }
     }
-
-    // Storage and RAM extraction
-    const storageMatch = n.match(/(\d+)\s*GB/);
-    const ramMatch = n.match(/(\d+)\s*RAM|RAM\s*(\d+)/);
 
     setForm(prev => ({
       ...prev,
@@ -666,18 +669,20 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                   <div className="flex justify-between items-center mr-2">
                     <label className="text-xs font-bold text-gray-500">اسم المنتج</label>
                     <button 
+                      id="searchSpecs"
                       type="button" 
                       onClick={handleAutoSearch} 
-                      className="text-primary text-[10px] font-black hover:underline"
+                      disabled={searching}
+                      className="text-primary text-[10px] font-black hover:underline disabled:opacity-50"
                     >
-                      🔍 بحث عن المواصفات
+                      {searching ? '🔍 جاري البحث...' : '🔍 بحث تلقائي'}
                     </button>
                   </div>
-                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
+                  <input id="productName" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
                </div>
                <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-gray-500 mr-2">الماركة</label>
-                  <input value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
+                  <input id="productBrand" value={form.brand} onChange={e => setForm({...form, brand: e.target.value})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
                </div>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="flex flex-col gap-2">
@@ -695,7 +700,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                </div>
                <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-gray-500 mr-2">الوصف</label>
-                  <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm h-32 resize-none" />
+                  <textarea id="productDescription" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm h-32 resize-none" />
                </div>
                
                <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-4">
@@ -764,9 +769,9 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                     )}
 
                     {showComparison && lastEnhanced && (
-                      <div className="bg-green-50 p-6 rounded-3xl border border-green-100 flex flex-col gap-4">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-black text-green-900 text-xs">✨ تحسين الصورة تلقائياً</h4>
+                      <div className="mt-4 p-4 bg-white border border-gray-100 rounded-[24px] shadow-sm">
+                        <div className="flex justify-between items-center mb-4">
+                          <p className="text-[12px] font-bold text-green-600">✨ معاينة التحسين التلقائي</p>
                           <button 
                             type="button" 
                             onClick={() => {
@@ -777,26 +782,24 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                               setShowComparison(false);
                               toast.success('تمت العودة للصورة الأصلية');
                             }}
-                            className="text-xs font-bold text-green-700 hover:underline"
+                            className="text-[10px] font-bold text-gray-400 hover:text-red-500 underline"
                           >
                             استخدم الأصلية
                           </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-2">
-                            <span className="text-[10px] font-bold text-gray-400 text-center">الأصلية</span>
-                            <div className="aspect-square rounded-xl overflow-hidden border border-gray-200">
-                              <img src={lastEnhanced.original} className="w-full h-full object-cover" />
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: '12px', color: '#666', margin: '0 0 4px' }}>الأصلية</p>
+                            <img src={lastEnhanced.original} style={{ width: '100%', borderRadius: '8px', border: '1px solid #eee' }} />
                           </div>
-                          <div className="flex flex-col gap-2">
-                            <span className="text-[10px] font-bold text-green-600 text-center">✨ محسّنة</span>
-                            <div className="aspect-square rounded-xl overflow-hidden border-2 border-green-500">
-                              <img src={lastEnhanced.enhanced} className="w-full h-full object-cover" />
-                            </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: '12px', color: '#2E7D32', margin: '0 0 4px', fontWeight: 'bold' }}>✨ محسّنة</p>
+                            <img src={lastEnhanced.enhanced} style={{ width: '100%', borderRadius: '8px', border: '2px solid #4CAF50' }} />
                           </div>
                         </div>
-                        <p className="text-[10px] font-bold text-green-700 text-center">✅ تم تحسين جودة الصورة والألوان تلقائياً</p>
+                        <p style={{ fontSize: '12px', color: '#4CAF50', textAlign: 'center', marginTop: '8px', fontWeight: 'bold', fontFamily: 'Cairo' }}>
+                          ✅ تم تحسين الصورة تلقائياً
+                        </p>
                       </div>
                     )}
 
@@ -893,6 +896,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                         <label className="text-[10px] font-black text-gray-400 uppercase">{labelMap[key] || key}</label>
                         {key === 'details' ? (
                           <textarea 
+                            id={key}
                             value={(form.specifications as any)?.[key] || ''} 
                             onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
                             className="bg-white rounded-lg p-3 text-xs outline-none min-h-[100px] font-bold"
@@ -900,6 +904,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                           />
                         ) : (
                           <input 
+                            id={key}
                             value={(form.specifications as any)?.[key] || ''} 
                             onChange={e => setForm({...form, specifications: {...form.specifications, [key]: e.target.value}})} 
                             className="bg-white rounded-lg p-2 text-xs outline-none font-bold" 
