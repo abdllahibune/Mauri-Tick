@@ -247,16 +247,23 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             {product.name}
           </h1>
           
-          <div style={{margin:'24px 0', background: '#F8F9FF', padding: '20px', borderRadius: '20px'}}>
+          <div style={{margin:'24px 0', background: '#F8F9FF', padding: '20px', borderRadius: '20px', border: '1px solid #EEF2FF'}}>
             {(() => {
               const tier = getProductTier(product);
               return (
-                <span 
-                  className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border mb-3"
-                  style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
-                >
-                  {tier.label}
-                </span>
+                <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px'}}>
+                  <span 
+                    className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border shadow-sm"
+                    style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
+                  >
+                    {tier.label}
+                  </span>
+                  {tier.desc && (
+                    <span style={{color: '#999', fontSize: '12px', fontWeight: 'bold', marginRight: '6px'}}>
+                      {tier.desc}
+                    </span>
+                  )}
+                </div>
               );
             })()}
             <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
@@ -446,6 +453,27 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                               />
                           </div>
                           <div style={{padding: '10px'}}>
+                            {(() => {
+                              const tier = getProductTier(p);
+                              return (
+                                <span 
+                                  style={{ 
+                                    background: tier.color, 
+                                    color: tier.textColor, 
+                                    border: `1px solid ${tier.border}`,
+                                    padding: '3px 10px',
+                                    borderRadius: '20px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    fontFamily: 'Cairo',
+                                    display: 'inline-block',
+                                    marginBottom: '6px'
+                                  }}
+                                >
+                                  {tier.label}
+                                </span>
+                              );
+                            })()}
                             <p style={{fontSize: '11px', color: '#999', margin: '0'}}>{p.brand}</p>
                             <h3 style={{
                               fontSize: '13px', 

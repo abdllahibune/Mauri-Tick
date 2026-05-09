@@ -164,8 +164,18 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             const tier = getProductTier(product);
             return (
               <span 
-                className="tier-badge inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border mb-1"
-                style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
+                style={{ 
+                  background: tier.color, 
+                  color: tier.textColor, 
+                  border: `1px solid ${tier.border}`,
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  fontFamily: 'Cairo',
+                  display: 'inline-block',
+                  marginBottom: '6px'
+                }}
               >
                 {tier.label}
               </span>
