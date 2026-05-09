@@ -2,15 +2,18 @@ import { Product, StoreConfig } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { motion } from 'motion/react';
 import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db, ensureAuth } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 
 import { DEMO_PRODUCTS } from '../constants';
 
 export function Home({ products }: { products: Product[] }) {
   const [config, setConfig] = useState<StoreConfig | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     ensureAuth();
@@ -113,56 +116,55 @@ export function Home({ products }: { products: Product[] }) {
         </div>
       </section>
 
-      {/* Trade-in & Sell Services */}
+      {/* Main Categories & Services Banners */}
       <section className="max-w-7xl mx-auto px-4 w-full">
-        <div 
-          className="rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, #1A237E, #283593)',
-            direction: 'rtl'
-          }}
-        >
-          <h2 className="text-2xl md:text-4xl font-black text-center mb-10">🔄 خدمات التبديل والبيع</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 font-sans">
-            {/* Trade-in card */}
-            <div 
-              onClick={() => navigate('/tradein')}
-              className="bg-white rounded-3xl p-8 text-center cursor-pointer hover:scale-[1.02] transition-transform shadow-xl group"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           {/* Banner 1: Accessories */}
+           <div 
+             onClick={() => navigate('/products?category=إكسسوارات')}
+             className="bg-gray-900 rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
             >
-              <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">🔄</div>
-              <h3 className="text-primary text-xl font-black mb-3">تبديل جهازك</h3>
-              <p className="text-gray-500 font-bold text-sm mb-6 leading-relaxed">
-                بدّل جهازك القديم بجديد وادفع الفرق فقط. نوفر لك أفضل تقييم لجهازك الحالي.
-              </p>
-              <span className="inline-block bg-primary/5 text-primary px-6 py-2 rounded-full font-black text-xs group-hover:bg-primary group-hover:text-white transition-colors">
-                اكتشف العروض ←
-              </span>
-            </div>
+              <img 
+                src="https://images.unsplash.com/photo-1605648916319-cf082f7524a1?auto=format&fit=crop&w=800&q=80" 
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" 
+              />
+              <div className="relative z-10 flex flex-col gap-2 text-white">
+                <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] w-fit font-black mb-2 uppercase">متوفرة الآن</span>
+                <h3 className="text-2xl md:text-3xl font-black italic">إكسسوارات الهواتف</h3>
+                <p className="text-gray-300 font-bold text-xs">سماعات، شواحن، وحماية للشاشة.</p>
+                <span className="mt-2 text-white font-black text-sm flex items-center gap-2 group-hover:gap-4 transition-all">تصفح الكل <ArrowLeft className="w-4 h-4" /></span>
+              </div>
+           </div>
 
-            {/* Sell card */}
-            <div 
-              onClick={checkAndGoToSell}
-              className="bg-white rounded-3xl p-8 text-center cursor-pointer hover:scale-[1.02] transition-transform shadow-xl group"
+           {/* Banner 2: Used Phones */}
+           <div 
+             onClick={() => navigate('/products?isUsed=true')}
+             className="bg-accent rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
             >
-              <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">💰</div>
-              <h3 className="text-primary text-xl font-black mb-3">بيع جهازك</h3>
-              <p className="text-gray-500 font-bold text-sm mb-6 leading-relaxed">
-                بع جهازك المستعمل بأفضل سعر في السوق. نضمن لك عملية بيع سريعة وآمنة.
-              </p>
-              <span className="inline-block bg-accent/10 text-orange-600 px-6 py-2 rounded-full font-black text-xs group-hover:bg-accent group-hover:text-primary transition-colors">
-                ⚠️ للزبائن فقط
-              </span>
-            </div>
-          </div>
+              <img 
+                src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=800&q=80" 
+                className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" 
+              />
+              <div className="relative z-10 flex flex-col gap-2 text-primary">
+                <span className="bg-primary/10 px-3 py-1 rounded-full text-[10px] w-fit font-black mb-2 uppercase">أجهزة مضمونة</span>
+                <h3 className="text-2xl md:text-3xl font-black italic">هواتف مستعملة</h3>
+                <p className="text-primary/70 font-bold text-xs">نظيفة، مضمونة وبأفضل سعر.</p>
+                <span className="mt-2 text-primary font-black text-sm flex items-center gap-2 group-hover:gap-4 transition-all">شاهد العروض <ArrowLeft className="w-4 h-4" /></span>
+              </div>
+           </div>
 
-          <div className="mt-8 bg-white/10 backdrop-blur-md rounded-2xl p-6 flex flex-col md:flex-row items-center gap-4 border border-white/10">
-            <div className="bg-white/20 p-3 rounded-xl">ℹ️</div>
-            <p className="text-sm font-bold leading-relaxed text-center md:text-right">
-              خدمة البيع والتبديل متاحة <span className="text-accent">فقط للزبائن الذين اشتروا أجهزتهم من Mauri Tick</span>. 
-              يجب تقديم إثبات الشراء عند التقديم.
-            </p>
-          </div>
+           {/* Banner 3: Trade-in & Sell */}
+           <div 
+             onClick={() => navigate('/tradein')}
+             className="bg-gradient-to-br from-[#1A237E] to-[#0D47A1] rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
+            >
+              <div className="absolute top-6 right-6 text-7xl opacity-20 group-hover:rotate-12 transition-transform">🔄</div>
+              <div className="relative z-10 flex flex-col gap-2 text-white">
+                <h3 className="text-2xl md:text-3xl font-black italic">تبديل وبيع</h3>
+                <p className="text-white/80 font-bold text-xs mb-4">بدّل جهازك أو بعه باحترافية وسهولة.</p>
+                <span className="bg-accent text-primary px-5 py-2 rounded-xl font-black text-sm w-fit mt-2 group-hover:scale-105 transition-transform">اكتشف الخدمة</span>
+              </div>
+           </div>
         </div>
       </section>
 
