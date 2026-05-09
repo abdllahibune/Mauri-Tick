@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageCircle, X, Send, Bot, Smartphone, DollarSign, Package, Phone, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product, Order } from '../types';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db, safeWrite } from '../lib/firebase';
 import { formatPrice, cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -14,8 +15,9 @@ type Message = {
   products?: Product[];
 };
 
-export function AIAssistant({ products }: { products: Product[] }) {
+export function AIAssistant({ products: initialProducts }: { products: Product[] }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -81,8 +83,8 @@ export function AIAssistant({ products }: { products: Product[] }) {
 
   const showProductsByBrand = (brand: string) => {
     addUserMessage(brand === 'all' ? 'أي ماركة' : brand);
-    const filtered = brand === 'all' ? products : products.filter(p => p.brand.toLowerCase() === brand.toLowerCase());
-    const slice = filtered.slice(0, 3);
+    const filtered = brand === 'all' ? initialProducts : initialProducts.filter(p => p.brand.toLowerCase() === brand.toLowerCase());
+    const slice = filtered.slice(0, 4);
     if (slice.length > 0) {
       addBotMessage(`إليك أفضل ما لدينا من ${brand === 'all' ? 'الهواتف' : brand}:`, undefined, slice);
       addBotMessage("هل تريد إضافته للسلة؟ 🛒", [
@@ -97,8 +99,8 @@ export function AIAssistant({ products }: { products: Product[] }) {
 
   const showProductsByBudget = (min: number, max: number) => {
     addUserMessage(`ميزانيتي بين ${min} و ${max}`);
-    const filtered = products.filter(p => p.price >= min && p.price <= max);
-    const slice = filtered.slice(0, 3);
+    const filtered = initialProducts.filter(p => p.price >= min && p.price <= max);
+    const slice = filtered.slice(0, 4);
     if (slice.length > 0) {
       addBotMessage(`إليك ما يناسب ميزانيتك:`, undefined, slice);
       addBotMessage("هل تريد إضافته للسلة؟ 🛒", [
@@ -111,6 +113,210 @@ export function AIAssistant({ products }: { products: Product[] }) {
     }
   };
 
+  const getBotResponse = async (userMessage: string) => {
+    const msg = userMessage.toLowerCase().trim();
+    
+    // ===== BUDGET SEARCH =====
+    const budgetMatch = msg.match(/(\d[\d,\.]+)\s*(أوقية|ouguiya|مهم|ميزانية)?/);
+    
+    if (budgetMatch || msg.includes('ميزانية') || msg.includes('بسعر') || msg.includes('أقل من')) {
+      let budget = 0;
+      if (budgetMatch) {
+        budget = parseInt(budgetMatch[1].replace(/[,\.]/g, ''));
+      }
+      
+      if (budget > 0) {
+        try {
+          const q = query(
+            collection(db, 'mt_products'),
+            where('price', '<=', budget),
+            orderBy('price', 'desc'),
+            limit(4)
+          );
+          const snap = await getDocs(q);
+          
+          if (snap.empty) {
+            const q2 = query(
+              collection(db, 'mt_products'),
+              where('price', '<=', budget * 1.2),
+              orderBy('price', 'asc'),
+              limit(4)
+            );
+            const snap2 = await getDocs(q2);
+            
+            if (snap2.empty) {
+              return {
+                text: `لم أجد منتجات بميزانية ${budget.toLocaleString()} أوقية 😔\nهل تريد زيادة الميزانية قليلاً؟`,
+                products: []
+              };
+            }
+            
+            const results = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+            return {
+              text: `أقرب ما وجدته لميزانيتك 💡`,
+              products: results
+            };
+          }
+          
+          const results = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+          return {
+            text: `وجدت ${results.length} منتج بميزانية ${budget.toLocaleString()} أوقية 🎯`,
+            products: results
+          };
+        } catch (e) {
+          console.error('Budget search error:', e);
+        }
+      }
+    }
+    
+    // ===== BRAND SEARCH =====
+    const brands = [
+      'apple', 'iphone', 'سامسونج', 'samsung',
+      'هواوي', 'huawei', 'شاومي', 'xiaomi',
+      'ريدمي', 'redmi', 'اوبو', 'oppo',
+      'ريلمي', 'realme', 'نوكيا', 'nokia',
+      'ون بلس', 'oneplus', 'سوني', 'sony',
+      'ال جي', 'lg', 'موتورولا', 'motorola'
+    ];
+    
+    let detectedBrand = null;
+    for (const brand of brands) {
+      if (msg.includes(brand)) {
+        const brandMap: any = {
+          'iphone': 'Apple', 'apple': 'Apple',
+          'samsung': 'Samsung', 'سامسونج': 'Samsung',
+          'huawei': 'Huawei', 'هواوي': 'Huawei',
+          'xiaomi': 'Xiaomi', 'شاومي': 'Xiaomi',
+          'redmi': 'Redmi', 'ريدمي': 'Redmi',
+          'oppo': 'OPPO', 'اوبو': 'OPPO',
+          'realme': 'Realme', 'ريلمي': 'Realme',
+          'nokia': 'Nokia', 'نوكيا': 'Nokia',
+        };
+        detectedBrand = brandMap[brand] || brand.charAt(0).toUpperCase() + brand.slice(1);
+        break;
+      }
+    }
+    
+    if (detectedBrand) {
+      try {
+        const allQ = query(collection(db, 'mt_products'), limit(50));
+        const allSnap = await getDocs(allQ);
+        const brandProducts = allSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Product))
+          .filter(p => 
+            p.brand?.toLowerCase() === detectedBrand?.toLowerCase() ||
+            p.name?.toLowerCase().includes(detectedBrand?.toLowerCase() || '')
+          )
+          .slice(0, 4);
+        
+        if (brandProducts.length === 0) {
+          return {
+            text: `لا توجد منتجات ${detectedBrand} حالياً 😔\nسيتم إضافتها قريباً!`,
+            products: []
+          };
+        }
+        
+        return {
+          text: `هذه منتجات ${detectedBrand} المتوفرة لدينا 📱`,
+          products: brandProducts
+        };
+      } catch (e) {
+        console.error('Brand search error:', e);
+      }
+    }
+    
+    // ===== CATEGORY SEARCH =====
+    const categoryMap: any = {
+      'سماعة': 'سماعات وصوتيات',
+      'سماعات': 'سماعات وصوتيات',
+      'headphone': 'سماعات وصوتيات',
+      'كفر': 'إكسسوارات',
+      'شاحن': 'إكسسوارات',
+      'لابتوب': 'لابتوب وحاسوب',
+      'حاسوب': 'لابتوب وحاسوب',
+      'laptop': 'لابتوب وحاسوب',
+      'تابلت': 'أجهزة لوحية',
+      'شاشة': 'شاشات وتلفزيونات',
+      'تلفزيون': 'شاشات وتلفزيونات',
+    };
+    
+    for (const [keyword, category] of Object.entries(categoryMap)) {
+      if (msg.includes(keyword)) {
+        try {
+          const q = query(
+            collection(db, 'mt_products'),
+            where('category', '==', category),
+            limit(4)
+          );
+          const snap = await getDocs(q);
+          
+          if (!snap.empty) {
+            return {
+              text: `هذه ${category} المتوفرة لدينا 🎧`,
+              products: snap.docs.map(d => ({ id: d.id, ...d.data() } as Product))
+            };
+          }
+        } catch (e) {}
+      }
+    }
+    
+    // ===== SPECIFIC PRODUCT SEARCH =====
+    if (msg.length > 3) {
+      try {
+        const allQ = query(collection(db, 'mt_products'), limit(100));
+        const allSnap = await getDocs(allQ);
+        const matched = allSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Product))
+          .filter(p =>
+            p.name?.toLowerCase().includes(msg) ||
+            p.brand?.toLowerCase().includes(msg) ||
+            p.description?.toLowerCase().includes(msg)
+          )
+          .slice(0, 4);
+        
+        if (matched.length > 0) {
+          return {
+            text: `وجدت هذه النتائج لـ "${userMessage}" 🔍`,
+            products: matched
+          };
+        }
+      } catch (e) {}
+    }
+    
+    // ===== DEFAULT RESPONSES =====
+    if (msg.includes('مرحبا') || msg.includes('اهلا') || msg.includes('السلام')) {
+      return {
+        text: 'أهلاً وسهلاً! 👋\nأنا Mauri Bot، كيف أساعدك؟\n\nيمكنني مساعدتك في:\n🔍 البحث عن منتج\n💰 العثور على أفضل سعر\n📦 تتبع طلبك',
+        products: []
+      };
+    }
+    
+    if (msg.includes('طلب') || msg.includes('تتبع')) {
+      return {
+        text: 'لتتبع طلبك، اذهب إلى صفحة "تتبع الطلب" من القائمة العلوية، أو تواصل معنا على واتساب 📦',
+        products: [],
+        whatsapp: true
+      };
+    }
+    
+    // Show random products as suggestions
+    try {
+      const q = query(collection(db, 'mt_products'), limit(4));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return {
+          text: 'لم أفهم طلبك جيداً 😅\nإليك بعض منتجاتنا المميزة:',
+          products: snap.docs.map(d => ({ id: d.id, ...d.data() } as Product))
+        };
+      }
+    } catch (e) {}
+    
+    return {
+      text: 'كيف يمكنني مساعدتك؟ 🤖\nاكتب اسم الجهاز أو الميزانية أو الماركة',
+      products: []
+    };
+  };
+
   const handleManualInput = async () => {
     if (!input.trim()) return;
     const val = input.trim();
@@ -118,7 +324,6 @@ export function AIAssistant({ products }: { products: Product[] }) {
     setInput('');
 
     if (flow === 'support') {
-      // Save support request (instantly)
       safeWrite(() => addDoc(collection(db, 'mt_support_requests'), {
         phone: val,
         createdAt: serverTimestamp(),
@@ -130,25 +335,25 @@ export function AIAssistant({ products }: { products: Product[] }) {
       ]);
       setFlow('initial');
     } else if (flow === 'track') {
-      // Fetch orders instantly
-      const fetchOrders = async () => {
-        const q = query(collection(db, 'mt_orders'), where('phone', '==', val), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(q);
-        if (snap.empty) {
-          addBotMessage(`لم نجد أي طلبات مسجلة برقم الهاتف: ${val}`);
-        } else {
-          const order = snap.docs[0].data() as Order;
-          addBotMessage(`وجدنا طلبك الأخير!\nرقم الطلب: ${order.orderNumber}\nالحالة: ${order.status}\nالمجموع: ${formatPrice(order.total)}`);
-        }
-        addBotMessage('كيف أساعدك مرة أخرى؟', [
-           { label: 'العودة للقائمة الرئيسية', action: showInitialOptions }
-        ]);
-      };
-      fetchOrders();
+      const q = query(collection(db, 'mt_orders'), where('phone', '==', val), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        addBotMessage(`لم نجد أي طلبات مسجلة برقم الهاتف: ${val}`);
+      } else {
+        const order = snap.docs[0].data() as Order;
+        addBotMessage(`وجدنا طلبك الأخير!\nرقم الطلب: ${order.orderNumber}\nالحالة: ${order.status}\nالمجموع: ${formatPrice(order.total)}`);
+      }
+      addBotMessage('كيف أساعدك مرة أخرى؟', [
+         { label: 'العودة للقائمة الرئيسية', action: showInitialOptions }
+      ]);
       setFlow('initial');
     } else {
-      addBotMessage("عذراً، أنا حالياً مبرمج للرد على الخيارات السريعة فقط.");
-      showInitialOptions();
+      const response = await getBotResponse(val);
+      const options = response.whatsapp ? [
+        { label: 'تواصل واتساب 💬', action: () => window.open('https://wa.me/22236096100'), icon: MessageCircle }
+      ] : undefined;
+      
+      addBotMessage(response.text, options, response.products);
     }
   };
 
@@ -198,14 +403,38 @@ export function AIAssistant({ products }: { products: Product[] }) {
 
                   {/* Product Suggestions */}
                   {msg.products && (
-                    <div className="grid grid-cols-2 gap-3 mt-2">
-                       {msg.products.map(p => (
-                         <div key={p.id} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2">
-                            <img src={p.images[0]} className="w-full h-20 object-contain rounded-xl" />
-                            <span className="text-[10px] font-black text-primary truncate">{p.name}</span>
-                            <span className="text-[10px] font-black text-accent">{formatPrice(p.price)}</span>
-                         </div>
-                       ))}
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {msg.products.map(p => {
+                        const price = p.discount > 0
+                          ? Math.round(p.price * (1 - p.discount / 100))
+                          : p.price;
+                        return (
+                          <div 
+                            key={p.id}
+                            onClick={() => { setIsOpen(false); navigate(`/product/${p.id}`); }}
+                            className="bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100 transition-transform hover:-translate-y-0.5 shadow-sm"
+                          >
+                            <div className="bg-[#f8f8f8] aspect-[5/3] flex items-center justify-center p-2">
+                              <img 
+                                src={p.images?.[0] || ''} 
+                                className="w-full h-full object-contain"
+                                onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150/f5f5f5/1A237E?text=📱')}
+                              />
+                            </div>
+                            <div className="p-2">
+                              <p className="text-[9px] text-gray-400 font-bold m-0 leading-none">
+                                {p.brand || ''}
+                              </p>
+                              <p className="text-[11px] font-bold m-0 mt-0.5 line-clamp-2 leading-tight text-gray-800">
+                                {p.name}
+                              </p>
+                              <p className="text-primary font-black text-xs m-0 mt-1">
+                                {price.toLocaleString()} أوقية
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
