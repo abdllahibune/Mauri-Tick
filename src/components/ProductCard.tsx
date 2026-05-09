@@ -4,7 +4,7 @@ import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer, MessageCircle }
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
-import { formatPrice, cn, contactWhatsApp } from '../lib/utils';
+import { formatPrice, cn, contactWhatsApp, getProductTier } from '../lib/utils';
 import { motion } from 'motion/react';
 
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
@@ -160,7 +160,20 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       {/* Info */}
       <Link to={`/product/${product.id}`} className="p-4 block">
         <div className="mb-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand}</span>
+          {(() => {
+            const tier = getProductTier(product);
+            return (
+              <span 
+                className="tier-badge inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border mb-1"
+                style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
+              >
+                {tier.label}
+              </span>
+            );
+          })()}
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand}</span>
+          </div>
           <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1 name">{product.name}</h3>
         </div>
 

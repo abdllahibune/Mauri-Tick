@@ -40,3 +40,43 @@ export function contactWhatsApp(product: any) {
     '_blank'
   );
 }
+
+export function getProductTier(product: any) {
+  const price = product.discount > 0
+    ? Math.round(product.price * (1 - product.discount/100))
+    : (product.usedPrice || product.price);
+  const cat = product.category || '';
+
+  let economy, mid;
+  
+  if (cat.includes('هاتف') || cat.includes('phone')) {
+    economy = 100000; mid = 250000;
+  } else if (cat.includes('لابتوب') || 
+             cat.includes('laptop')) {
+    economy = 150000; mid = 350000;
+  } else if (cat.includes('سماع') || 
+             cat.includes('إكسس')) {
+    economy = 20000; mid = 60000;
+  } else {
+    economy = 50000; mid = 150000;
+  }
+
+  if (price < economy) return {
+    label: '💚 اقتصادي',
+    color: '#E8F5E9',
+    textColor: '#2E7D32',
+    border: '#A5D6A7'
+  };
+  if (price < mid) return {
+    label: '🔵 متوسط',
+    color: '#E3F2FD', 
+    textColor: '#1565C0',
+    border: '#90CAF9'
+  };
+  return {
+    label: '⭐ رائد',
+    color: '#FFF8E1',
+    textColor: '#F57F17',
+    border: '#FFD54F'
+  };
+}

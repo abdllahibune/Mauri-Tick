@@ -9,13 +9,28 @@ window.onerror = function(msg, src, line) {
   return false;
 };
 
-class ErrorBoundary extends (Component as any) {
-  state = {hasError: false};
-  static getDerivedStateFromError() { return {hasError: true}; }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+interface Props {
+  children?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false
+  };
+
+  public static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("React Error Boundary:", error, errorInfo);
   }
-  render() {
+
+  public render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 text-center">
@@ -27,7 +42,8 @@ class ErrorBoundary extends (Component as any) {
         </div>
       );
     }
-    return (this.props as any).children;
+
+    return this.props.children;
   }
 }
 

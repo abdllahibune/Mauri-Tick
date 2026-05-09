@@ -4,8 +4,8 @@ import { doc, getDoc, getDocs, query, where, limit, collection } from 'firebase/
 import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
-import { contactWhatsApp } from '../lib/utils';
-import { MessageCircle } from 'lucide-react';
+import { contactWhatsApp, getProductTier } from '../lib/utils';
+import { MessageCircle, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Error Boundary as specifically requested
@@ -91,34 +91,52 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
   async function loadRelated(currentProduct: Product) {
     try {
-      // 1. Try Same Brand
-      const brandQ = query(
+      // 1. Try same brand + same category
+      const q1 = query(
         collection(db, 'mt_products'),
         where('brand', '==', currentProduct.brand),
-        limit(7) // Fetch 7 to filter out current
+        where('category', '==', currentProduct.category),
+        limit(8)
       );
-      const brandSnap = await getDocs(brandQ);
-      let relatedItems = brandSnap.docs
+      const s1 = await getDocs(q1);
+      let suggested = s1.docs
         .map(d => ({ id: d.id, ...d.data() } as Product))
-        .filter(p => p.id !== currentProduct.id)
-        .slice(0, 6);
+        .filter(p => p.id !== currentProduct.id);
 
-      // 2. Fallback to Same Category if not enough found
-      if (relatedItems.length < 4) {
-        const catQ = query(
+      // 2. Fill with same category if needed
+      if (suggested.length < 4) {
+        const q2 = query(
           collection(db, 'mt_products'),
           where('category', '==', currentProduct.category),
           limit(10)
         );
-        const catSnap = await getDocs(catQ);
-        const catItems = catSnap.docs
+        const s2 = await getDocs(q2);
+        const extra = s2.docs
           .map(d => ({ id: d.id, ...d.data() } as Product))
-          .filter(p => p.id !== currentProduct.id && !relatedItems.find(r => r.id === p.id));
-        
-        relatedItems = [...relatedItems, ...catItems].slice(0, 6);
+          .filter(p => 
+            p.id !== currentProduct.id && 
+            !suggested.find(s => s.id === p.id)
+          );
+        suggested = [...suggested, ...extra].slice(0, 6);
       }
 
-      setRelated(relatedItems);
+      // 3. Last fallback: any products
+      if (suggested.length < 4) {
+        const q3 = query(
+          collection(db, 'mt_products'),
+          limit(10)
+        );
+        const s3 = await getDocs(q3);
+        const randomExtra = s3.docs
+          .map(d => ({ id: d.id, ...d.data() } as Product))
+          .filter(p => 
+            p.id !== currentProduct.id && 
+            !suggested.find(s => s.id === p.id)
+          );
+        suggested = [...suggested, ...randomExtra].slice(0, 6);
+      }
+
+      setRelated(suggested);
     } catch (e) {
       console.error('Related products fetch error:', e);
     }
@@ -230,6 +248,17 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           </h1>
           
           <div style={{margin:'24px 0', background: '#F8F9FF', padding: '20px', borderRadius: '20px'}}>
+            {(() => {
+              const tier = getProductTier(product);
+              return (
+                <span 
+                  className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border mb-3"
+                  style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
+                >
+                  {tier.label}
+                </span>
+              );
+            })()}
             <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
                <span style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}>
                 {discountedPrice.toLocaleString()} أوقية
@@ -376,35 +405,71 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
       {/* Related Products */}
       {related.length > 0 && (
-         <div style={{marginTop:'60px'}}>
-            <div style={{borderBottom: '3px solid #FFD700', width: 'fit-content', paddingBottom: '5px', marginBottom: '24px'}}>
-                 <h2 style={{fontSize:'24px', fontWeight: '900', color: '#1A237E'}}>منتجات مشابهة من {product.brand}</h2>
-            </div>
+         <div style={{marginTop:'60px'}} id="productPageRoot">
             <div style={{
-                display: 'grid',
-                gridTemplateColumns: window.innerWidth < 1024 ? (window.innerWidth < 640 ? '1fr' : '1fr 1fr') : 'repeat(4, 1fr)',
-                gap: '20px'
+              borderRight: '4px solid #FFD700', 
+              paddingRight: '12px', 
+              marginBottom: '20px'
             }}>
-                {related.map(p => (
-                    <Link to={`/product/${p.id}`} key={p.id} style={{textDecoration: 'none', color: 'inherit'}}>
-                        <div style={{
-                            background: '#fff', borderRadius: '20px', padding: '15px', 
-                            border: '1px solid #eee', height: '100%', 
-                            display: 'flex', flexDirection: 'column', gap: '10px'
-                        }}>
-                            <div style={{height: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                                <img src={p.images?.[0]} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} />
-                            </div>
-                            <span style={{fontSize: '12px', color: '#666'}}>{p.brand}</span>
-                            <h3 style={{fontSize: '16px', fontWeight: 'bold', margin: '0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{p.name}</h3>
-                            <span style={{fontSize: '18px', fontWeight: '900', color: '#1A237E'}}>
-                                {p.discount > 0 
-                                    ? Math.round(p.price * (1 - p.discount/100)).toLocaleString() 
-                                    : p.price.toLocaleString()} أوقية
-                            </span>
-                        </div>
-                    </Link>
-                ))}
+                 <h2 style={{fontSize:'20px', fontWeight: '900', color: '#1A237E', fontFamily: 'Cairo'}}>قد يعجبك أيضاً 💡</h2>
+            </div>
+            <div 
+              id="suggestedGrid" 
+              style={{
+                display: 'grid',
+                gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: window.innerWidth < 768 ? '8px' : '20px'
+              }}
+            >
+                {related.map(p => {
+                    const price = p.discount > 0
+                      ? Math.round(p.price * (1 - p.discount/100))
+                      : (p.usedPrice || p.price);
+                    
+                    return (
+                      <Link to={`/product/${p.id}`} key={p.id} className="suggested-card" style={{
+                        textDecoration: 'none', 
+                        color: 'inherit',
+                        background: 'white',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        transition: 'transform 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}>
+                          <div style={{height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8f8f8'}}>
+                              <img 
+                                src={p.images?.[0] || 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱'} 
+                                style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '10px'}} 
+                                onError={(e: any) => e.target.src = 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱'}
+                              />
+                          </div>
+                          <div style={{padding: '10px'}}>
+                            <p style={{fontSize: '11px', color: '#999', margin: '0'}}>{p.brand}</p>
+                            <h3 style={{
+                              fontSize: '13px', 
+                              fontWeight: 'bold', 
+                              margin: '4px 0', 
+                              lineHeight: '1.3',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              height: '34px'
+                            }}>{p.name}</h3>
+                            {p.discount > 0 && (
+                              <p style={{textDecoration: 'line-through', color: '#999', fontSize: '11px', margin: '0'}}>
+                                {p.price.toLocaleString()} أوقية
+                              </p>
+                            )}
+                            <p style={{color: '#1A237E', fontWeight: 'bold', fontSize: '14px', margin: '2px 0'}}>
+                              {price.toLocaleString()} أوقية
+                            </p>
+                          </div>
+                      </Link>
+                    );
+                })}
             </div>
          </div>
       )}

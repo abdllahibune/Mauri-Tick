@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Phone, Lock, LogIn, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ensureAuth } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export function Login() {
   const [phone, setPhone] = useState('');
