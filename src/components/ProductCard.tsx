@@ -243,7 +243,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       {/* Mobile Action Bar (Facebook Like Style) */}
       <div className="md:hidden flex border-t border-gray-100 product-card-actions">
         <button 
-          onClick={() => toggleWishlist(product.id)}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(product.id); }}
           className={cn(
             "product-action-btn",
             isWishlisted ? "text-red-500" : "text-gray-500"
@@ -253,14 +253,14 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <span>{isWishlisted ? 'أعجبني' : 'إعجاب'}</span>
         </button>
         <button 
-          onClick={() => addToCart(product)}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }}
           className="product-action-btn"
         >
           <ShoppingBag className="w-4 h-4 text-primary" />
           <span>سلة</span>
         </button>
         <button 
-          onClick={(e) => { e.preventDefault(); contactWhatsApp(product); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); contactWhatsApp(product); }}
           className="product-action-btn"
         >
           <MessageCircle className="w-4 h-4 text-[#25D366]" />
