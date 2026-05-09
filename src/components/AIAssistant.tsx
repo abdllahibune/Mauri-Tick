@@ -199,7 +199,7 @@ export function AIAssistant({ products: initialProducts }: { products: Product[]
     
     if (detectedBrand) {
       try {
-        const allQ = query(collection(db, 'mt_products'), limit(50));
+        const allQ = query(collection(db, 'mt_products'), limit(100));
         const allSnap = await getDocs(allQ);
         const brandProducts = allSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as Product))
@@ -403,7 +403,7 @@ export function AIAssistant({ products: initialProducts }: { products: Product[]
 
                   {/* Product Suggestions */}
                   {msg.products && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="grid grid-cols-2 gap-2 mt-3">
                       {msg.products.map(p => {
                         const price = p.discount > 0
                           ? Math.round(p.price * (1 - p.discount / 100))
@@ -412,23 +412,23 @@ export function AIAssistant({ products: initialProducts }: { products: Product[]
                           <div 
                             key={p.id}
                             onClick={() => { setIsOpen(false); navigate(`/product/${p.id}`); }}
-                            className="bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100 transition-transform hover:-translate-y-0.5 shadow-sm"
+                            className="bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100 transition-all hover:-translate-y-1 hover:shadow-md flex flex-col"
                           >
-                            <div className="bg-[#f8f8f8] aspect-[5/3] flex items-center justify-center p-2">
+                            <div className="bg-[#f8f8f8] h-20 flex items-center justify-center p-2">
                               <img 
-                                src={p.images?.[0] || ''} 
+                                src={p.mainImage || p.images?.[0] || ''} 
                                 className="w-full h-full object-contain"
                                 onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150/f5f5f5/1A237E?text=📱')}
                               />
                             </div>
-                            <div className="p-2">
-                              <p className="text-[9px] text-gray-400 font-bold m-0 leading-none">
+                            <div className="p-2 flex flex-col gap-0.5">
+                              <p className="text-[10px] text-gray-400 font-bold leading-none uppercase">
                                 {p.brand || ''}
                               </p>
-                              <p className="text-[11px] font-bold m-0 mt-0.5 line-clamp-2 leading-tight text-gray-800">
+                              <p className="text-[11px] font-bold text-gray-800 leading-tight line-clamp-2 h-7">
                                 {p.name}
                               </p>
-                              <p className="text-primary font-black text-xs m-0 mt-1">
+                              <p className="text-primary font-black text-xs mt-1">
                                 {price.toLocaleString()} أوقية
                               </p>
                             </div>

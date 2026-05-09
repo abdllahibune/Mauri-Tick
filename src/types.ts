@@ -8,6 +8,7 @@ export interface Product {
   stock: number;
   description: string;
   images: string[];
+  mainImage?: string;
   specifications: {
     [key: string]: string | undefined;
   };

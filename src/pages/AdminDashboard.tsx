@@ -340,6 +340,7 @@ function ProductsSection({ products }: { products: Product[] }) {
 function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Product | null }) {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -738,12 +739,21 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                     {(form.images?.length || 0) < 5 && (
                       <label 
                         id="uploadBtn"
-                        onDragOver={(e) => e.preventDefault()}
+                        htmlFor="productImages"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={() => setIsDragging(false)}
                         onDrop={(e) => {
                           e.preventDefault();
+                          setIsDragging(false);
                           handleImgUpload(e as any);
                         }}
-                        className="w-full h-48 md:h-64 border-4 border-dashed border-gray-200 rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group relative"
+                        className={cn(
+                          "w-full h-48 md:h-64 border-4 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group relative",
+                          isDragging ? "border-primary bg-primary/10" : "border-gray-200 hover:border-primary hover:bg-primary/5"
+                        )}
                       >
                         {loading ? (
                           <div className="flex flex-col items-center gap-2">
@@ -761,9 +771,16 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                             </div>
                           </>
                         )}
-                        <input id="productImages" type="file" multiple accept="image/*" className="hidden" onChange={handleImgUpload} />
                       </label>
                     )}
+                    <input 
+                      id="productImages" 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleImgUpload} 
+                    />
 
                     {/* Add by URL */}
                     {(form.images?.length || 0) < 5 && (
