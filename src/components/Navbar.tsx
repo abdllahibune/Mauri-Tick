@@ -73,6 +73,8 @@ export function Navbar() {
   const navLinks = [
     { name: t('nav.home'), path: '/' },
     { name: t('nav.products'), path: '/products' },
+    { name: 'إكسسوارات', path: '/accessories' },
+    { name: 'هواتف مستعملة', path: '/used' },
     { name: 'تتبع الطلب', path: '/track' },
   ];
 

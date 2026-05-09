@@ -4,6 +4,8 @@ import { doc, getDoc, getDocs, query, where, limit, collection } from 'firebase/
 import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
+import { contactWhatsApp } from '../lib/utils';
+import { MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Error Boundary as specifically requested
@@ -294,6 +296,27 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           >
             {product.stock === 0 
               ? 'نفذ المخزون' : '🛒 أضف للسلة'}
+          </button>
+
+          <button
+            onClick={() => contactWhatsApp(product)}
+            style={{
+              width:'100%', padding:'16px',
+              background: '#25D366',
+              color:'white', border:'none',
+              borderRadius:'16px', fontSize:'18px',
+              fontWeight: '900',
+              cursor: 'pointer',
+              marginTop:'12px', fontFamily:'Cairo',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              transition: 'all 0.2s',
+              boxShadow: '0 5px 15px rgba(37, 211, 102, 0.2)'
+            }}
+          >
+            <MessageCircle className="w-6 h-6" /> استفسر عبر واتساب
           </button>
 
           {/* Features */}

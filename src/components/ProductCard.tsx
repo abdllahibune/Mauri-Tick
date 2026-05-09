@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer, MessageCircle } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
-import { formatPrice, cn } from '../lib/utils';
+import { formatPrice, cn, contactWhatsApp } from '../lib/utils';
 import { motion } from 'motion/react';
 
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
@@ -73,6 +73,23 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <span className="bg-accent text-primary text-[10px] font-black px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
             <TrendingUp className="w-3 h-3" /> الأكثر مبيعاً
           </span>
+        )}
+        {product.isUsed && (
+          <div className="flex flex-col gap-1 items-end">
+            <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">
+              مستعمل
+            </span>
+            {product.condition && (
+              <span className={cn(
+                "text-[9px] font-bold px-2 py-1 rounded-full shadow-sm border",
+                product.condition === 'ممتاز' ? "bg-green-50 text-green-600 border-green-200" :
+                product.condition === 'جيد' ? "bg-blue-50 text-blue-600 border-blue-200" :
+                "bg-orange-50 text-orange-600 border-orange-200"
+              )}>
+                {product.condition}
+              </span>
+            )}
+          </div>
         )}
         {product.stock > 0 && product.stock <= 5 && (
           <span className={cn(
@@ -149,15 +166,43 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
-            {product.discount > 0 && (
-              <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(product.price)}</span>
+            {product.isUsed ? (
+              <>
+                {product.originalPrice && (
+                  <span className="text-[10px] text-gray-400 line-through mb--1">الجديد: {formatPrice(product.originalPrice)}</span>
+                )}
+                <span className="text-lg font-black text-green-600 leading-none price">{formatPrice(product.usedPrice || product.price)}</span>
+              </>
+            ) : (
+              <>
+                {product.discount > 0 && (
+                  <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(product.price)}</span>
+                )}
+                <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
+              </>
             )}
-            <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md viewers">
             <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
           </div>
         </div>
+
+        {product.isUsed && product.problems && (
+          <p className="mt-2 text-[10px] font-bold text-orange-600 bg-orange-50 p-2 rounded-lg line-clamp-1">
+            🔧 {product.problems}
+          </p>
+        )}
+
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            contactWhatsApp(product);
+          }}
+          className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-black text-xs hover:scale-[1.02] transition-transform shadow-sm"
+        >
+          <MessageCircle className="w-4 h-4" /> استفسر عبر واتساب
+        </button>
 
         <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 sales-count">
           <span className="flex items-center gap-1">🔥 تم بيع {product.soldCount || 0} جهاز</span>

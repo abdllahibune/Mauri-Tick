@@ -18,6 +18,12 @@ export interface Product {
   viewCount?: number;
   suggestedAccessories?: string[];
   bundleAccessoryIds?: string[];
+  // Used Phone Fields
+  isUsed?: boolean;
+  condition?: 'ممتاز' | 'جيد' | 'مقبول' | 'به أعطال';
+  problems?: string;
+  originalPrice?: number;
+  usedPrice?: number;
   createdAt?: any;
 }
 

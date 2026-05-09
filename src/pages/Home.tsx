@@ -41,11 +41,11 @@ export function Home({ products }: { products: Product[] }) {
         'هل تريد تسجيل الدخول؟'
       );
       if (confirmed) {
-        window.location.href = '/login?redirect=/sell';
+        window.location.href = '/login?redirect=/used?tab=sell';
       }
       return;
     }
-    navigate('/sell');
+    navigate('/used?tab=sell');
   };
 
   useEffect(() => {

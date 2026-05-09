@@ -29,6 +29,8 @@ import { Account } from './pages/Account';
 import { ComparePage } from './pages/ComparePage';
 import { TradeInPage } from './pages/TradeIn';
 import { Sell } from './pages/Sell';
+import { Accessories } from './pages/Accessories';
+import { UsedPage } from './pages/Used';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import ReturnPolicy from './pages/ReturnPolicy';
@@ -113,6 +115,8 @@ function MainApp() {
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/tradein" element={<TradeInPage />} />
           <Route path="/sell" element={<Sell />} />
+          <Route path="/accessories" element={<Accessories products={products} />} />
+          <Route path="/used" element={<UsedPage products={products} />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/policy" element={<ReturnPolicy />} />

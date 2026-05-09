@@ -20,3 +20,23 @@ export function formatNumber(num: number) {
 export function generateOrderNumber() {
   return 'MT-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 }
+
+export function contactWhatsApp(product: any) {
+  const price = product.discount > 0
+    ? Math.round(product.price * (1 - product.discount/100))
+    : (product.usedPrice || product.price);
+    
+  const msg = 
+    `مرحباً Mauri Tick 👋\n` +
+    `أريد الاستفسار عن هذا المنتج:\n\n` +
+    `📱 المنتج: ${product.name}\n` +
+    `🏷️ الماركة: ${product.brand}\n` +
+    `💰 السعر: ${price.toLocaleString()} أوقية\n` +
+    `🔗 الرابط: ${window.location.origin}/product/${product.id}\n\n` +
+    `هل هو متوفر؟`;
+    
+  window.open(
+    `https://wa.me/22236096100?text=${encodeURIComponent(msg)}`,
+    '_blank'
+  );
+}

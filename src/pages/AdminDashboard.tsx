@@ -817,6 +817,65 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                  <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({...form, isFeatured: e.target.checked})} id="isFeatured" className="w-5 h-5 accent-primary" />
                  <label htmlFor="isFeatured" className="text-sm font-bold text-primary">تمييز المنتج كـ "Featured"</label>
                </div>
+
+               {/* Used Phone Settings */}
+               <div className="bg-orange-50 p-6 rounded-[32px] flex flex-col gap-6 border border-orange-100">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" checked={form.isUsed} onChange={e => setForm({...form, isUsed: e.target.checked})} id="isUsed" className="w-5 h-5 accent-orange-500" />
+                    <label htmlFor="isUsed" className="text-sm font-black text-orange-900">هذا المنتج "مستعمل / مجدد" 📱</label>
+                  </div>
+
+                  {form.isUsed && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black text-orange-400 uppercase">حالة الجهاز</label>
+                        <select 
+                          value={form.condition} 
+                          onChange={e => setForm({...form, condition: e.target.value as any})}
+                          className="bg-white rounded-xl p-3 text-xs font-bold outline-none border border-orange-100"
+                        >
+                          <option value="ممتاز">ممتاز (مثل الجديد)</option>
+                          <option value="جيد">جيد (خدوش بسيطة)</option>
+                          <option value="مقبول">مقبول (مستعمل بوضوح)</option>
+                          <option value="به أعطال">به أعطال (للقطع أو الإصلاح)</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[10px] font-black text-orange-400 uppercase">سعر الجديد (للمقارنة)</label>
+                          <input 
+                            type="number" 
+                            value={form.originalPrice} 
+                            onChange={e => setForm({...form, originalPrice: parseFloat(e.target.value)})}
+                            className="bg-white rounded-xl p-3 text-xs font-bold outline-none border border-orange-100"
+                            placeholder="مثال: 45000"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[10px] font-black text-orange-400 uppercase">سعر المستعمل</label>
+                          <input 
+                            type="number" 
+                            value={form.usedPrice} 
+                            onChange={e => setForm({...form, usedPrice: parseFloat(e.target.value)})}
+                            className="bg-white rounded-xl p-3 text-xs font-bold outline-none border border-orange-100"
+                            placeholder="مثال: 32000"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black text-orange-400 uppercase">وصف المشاكل أو العيوب</label>
+                        <textarea 
+                          value={form.problems} 
+                          onChange={e => setForm({...form, problems: e.target.value})}
+                          className="bg-white rounded-xl p-3 text-xs font-bold outline-none border border-orange-100 h-20 resize-none"
+                          placeholder="مثال: خدش في الشاشة، البطارية 85%..."
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+               </div>
             </div>
 
             <button type="submit" disabled={loading} className="md:col-span-2 bg-primary text-white p-6 rounded-3xl font-black text-xl flex items-center justify-center gap-4 mt-4 shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-50">
