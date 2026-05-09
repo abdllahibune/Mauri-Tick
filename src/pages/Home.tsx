@@ -33,6 +33,21 @@ export function Home({ products }: { products: Product[] }) {
 
   const [timeLeft, setTimeLeft] = useState(3600 * 24); // 24 hours
 
+  const checkAndGoToSell = () => {
+    if (!user) {
+      const confirmed = window.confirm(
+        'هذه الخدمة للزبائن فقط 🔒\n\n' +
+        'يجب أن تكون زبوناً لدينا وتملك إثبات شراء.\n\n' +
+        'هل تريد تسجيل الدخول؟'
+      );
+      if (confirmed) {
+        window.location.href = '/login?redirect=/sell';
+      }
+      return;
+    }
+    navigate('/sell');
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => prev - 1);
@@ -95,6 +110,59 @@ export function Home({ products }: { products: Product[] }) {
               </Link>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Trade-in & Sell Services */}
+      <section className="max-w-7xl mx-auto px-4 w-full">
+        <div 
+          className="rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #1A237E, #283593)',
+            direction: 'rtl'
+          }}
+        >
+          <h2 className="text-2xl md:text-4xl font-black text-center mb-10">🔄 خدمات التبديل والبيع</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10 font-sans">
+            {/* Trade-in card */}
+            <div 
+              onClick={() => navigate('/tradein')}
+              className="bg-white rounded-3xl p-8 text-center cursor-pointer hover:scale-[1.02] transition-transform shadow-xl group"
+            >
+              <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">🔄</div>
+              <h3 className="text-primary text-xl font-black mb-3">تبديل جهازك</h3>
+              <p className="text-gray-500 font-bold text-sm mb-6 leading-relaxed">
+                بدّل جهازك القديم بجديد وادفع الفرق فقط. نوفر لك أفضل تقييم لجهازك الحالي.
+              </p>
+              <span className="inline-block bg-primary/5 text-primary px-6 py-2 rounded-full font-black text-xs group-hover:bg-primary group-hover:text-white transition-colors">
+                اكتشف العروض ←
+              </span>
+            </div>
+
+            {/* Sell card */}
+            <div 
+              onClick={checkAndGoToSell}
+              className="bg-white rounded-3xl p-8 text-center cursor-pointer hover:scale-[1.02] transition-transform shadow-xl group"
+            >
+              <div className="text-5xl mb-6 group-hover:scale-110 transition-transform">💰</div>
+              <h3 className="text-primary text-xl font-black mb-3">بيع جهازك</h3>
+              <p className="text-gray-500 font-bold text-sm mb-6 leading-relaxed">
+                بع جهازك المستعمل بأفضل سعر في السوق. نضمن لك عملية بيع سريعة وآمنة.
+              </p>
+              <span className="inline-block bg-accent/10 text-orange-600 px-6 py-2 rounded-full font-black text-xs group-hover:bg-accent group-hover:text-primary transition-colors">
+                ⚠️ للزبائن فقط
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-8 bg-white/10 backdrop-blur-md rounded-2xl p-6 flex flex-col md:flex-row items-center gap-4 border border-white/10">
+            <div className="bg-white/20 p-3 rounded-xl">ℹ️</div>
+            <p className="text-sm font-bold leading-relaxed text-center md:text-right">
+              خدمة البيع والتبديل متاحة <span className="text-accent">فقط للزبائن الذين اشتروا أجهزتهم من Mauri Tick</span>. 
+              يجب تقديم إثبات الشراء عند التقديم.
+            </p>
+          </div>
         </div>
       </section>
 

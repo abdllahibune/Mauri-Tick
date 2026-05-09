@@ -87,7 +87,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       <button 
         onClick={() => toggleWishlist(product.id)}
         className={cn(
-          "absolute top-3 left-3 z-10 p-2 rounded-full shadow-md transition-all",
+          "absolute top-3 left-3 z-10 p-2 rounded-full shadow-md transition-all wishlist-trigger",
           isWishlisted ? "bg-red-50 text-red-500" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500"
         )}
       >
@@ -100,7 +100,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           isCompared ? removeFromCompare(product.id) : addToCompare(product);
         }}
         className={cn(
-          "absolute top-3 left-14 z-10 p-2 rounded-full shadow-md transition-all",
+          "absolute top-3 left-14 z-10 p-2 rounded-full shadow-md transition-all compare-trigger",
           isCompared ? "bg-blue-50 text-blue-500 ring-2 ring-blue-500/20" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-blue-500"
         )}
         title="أضف للمقارنة"
@@ -109,12 +109,15 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       </button>
 
       {/* Image Overlay on Hover */}
-      <div className="relative aspect-square overflow-hidden bg-gray-50">
+      <div className="relative aspect-square overflow-hidden bg-gray-50 flex-shrink-0">
         <img 
-          src={product.images[0] || 'https://via.placeholder.com/400x400?text=Phone'} 
+          src={product.images[0] || 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱'} 
           alt={product.name}
-          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 p-6"
+          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 p-6 product-image"
           loading="lazy"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱';
+          }}
         />
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">

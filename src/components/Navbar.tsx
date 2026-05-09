@@ -113,7 +113,7 @@ export function Navbar() {
 
           {/* Icons / Right Side */}
           <div className="flex items-center gap-2 navbar-right">
-            <Link to="/products" className="p-2 text-gray-500 hover:text-primary transition-colors search-btn hidden md:flex">
+            <Link to="/products" className="p-2 text-gray-500 hover:text-primary transition-colors search-btn flex">
               <Search className="w-6 h-6" />
             </Link>
 
