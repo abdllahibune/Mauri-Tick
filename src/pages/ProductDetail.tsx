@@ -56,6 +56,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState('');
   const [related, setRelated] = useState<Product[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [showFullDesc, setShowFullDesc] = useState(false);
+  const DESC_LIMIT = 120;
 
   useEffect(() => {
     if (!id) {
@@ -64,6 +68,17 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
     }
     fetchProduct();
   }, [id]);
+
+  useEffect(() => {
+    if (product) {
+      if (product.variants && product.variants.length > 0) {
+        setSelectedVariant(product.variants[0]);
+      }
+      if (product.colors && product.colors.length > 0) {
+        setSelectedColor(product.colors[0]);
+      }
+    }
+  }, [product]);
 
   async function fetchProduct() {
     if (!id) return;
@@ -168,9 +183,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
     </div>
   );
 
-  const discountedPrice = product.discount > 0
-    ? Math.round(product.price * (1 - product.discount/100))
-    : product.price;
+  const currentPrice = selectedVariant?.price 
+    || (product.discount > 0
+      ? Math.round(product.price * (1 - product.discount/100))
+      : product.price);
 
   return (
     <div style={{
@@ -248,40 +264,99 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           </h1>
           
           <div style={{margin:'24px 0', background: '#F8F9FF', padding: '20px', borderRadius: '20px', border: '1px solid #EEF2FF'}}>
-            {(() => {
-              const tier = getProductTier(product);
-              return (
-                <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px'}}>
-                  <span 
-                    className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border shadow-sm"
-                    style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
-                  >
-                    {tier.label}
-                  </span>
-                  {tier.desc && (
-                    <span style={{color: '#999', fontSize: '12px', fontWeight: 'bold', marginRight: '6px'}}>
-                      {tier.desc}
+            {product.tier && (
+              <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px'}}>
+                {(() => {
+                  const tier = getProductTier(product);
+                  return (
+                    <span 
+                      className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border shadow-sm"
+                      style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
+                    >
+                      {tier.label}
                     </span>
-                  )}
-                </div>
-              );
-            })()}
+                  );
+                })()}
+              </div>
+            )}
             <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
                <span style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}>
-                {discountedPrice.toLocaleString()} أوقية
+                {currentPrice.toLocaleString()} أوقية
               </span>
-              {product.discount > 0 && (
+              {product.discount > 0 && !selectedVariant && (
                 <div style={{display: 'flex', flexDirection: 'column'}}>
                   <span style={{textDecoration:'line-through', color:'#999', fontSize:'16px'}}>
                     {product.price?.toLocaleString()} أوقية
                   </span>
-                  <span style={{color: '#E53935', fontSize: '12px', fontWeight: 'bold'}}>
-                    وفر {Math.round(product.price - discountedPrice).toLocaleString()} أوقية
-                  </span>
                 </div>
               )}
             </div>
+            {selectedVariant && (
+              <div style={{fontSize: '13px', color: '#666', marginTop: '4px', fontWeight: 'bold'}}>
+                سعر نسخة {selectedVariant.storage} {selectedColor ? ` — ${selectedColor}` : ''}
+              </div>
+            )}
           </div>
+
+          {/* Variants Selector */}
+          {product.variants && product.variants.length > 0 && (
+            <div style={{marginTop:20, direction:'rtl'}}>
+              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>💾 السعة:</p>
+              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                {product.variants.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => setSelectedVariant(v)}
+                    style={{
+                      padding:'10px 18px',
+                      border: selectedVariant?.id === v.id ? '2px solid #1A237E' : '1px solid #ddd',
+                      borderRadius:10,
+                      background: selectedVariant?.id === v.id ? '#E8EAF6' : 'white',
+                      color: selectedVariant?.id === v.id ? '#1A237E' : '#333',
+                      fontWeight: selectedVariant?.id === v.id ? 'bold' : 'normal',
+                      cursor:'pointer',
+                      transition:'all 0.2s',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <div style={{fontSize:14}}>{v.storage}</div>
+                    <div style={{fontSize:13, color:'#1A237E', fontWeight:'bold'}}>
+                      {v.price.toLocaleString()} أوقية
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Colors Selector */}
+          {product.colors && product.colors.length > 0 && (
+            <div style={{marginTop:16, direction:'rtl'}}>
+              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>
+                🎨 اللون: <span style={{fontWeight:'normal', color:'#666', marginRight:8}}>{selectedColor}</span>
+              </p>
+              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                {product.colors.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    style={{
+                      padding:'8px 16px',
+                      border: selectedColor === color ? '2px solid #1A237E' : '1px solid #ddd',
+                      borderRadius:20,
+                      background: selectedColor === color ? '#1A237E' : 'white',
+                      color: selectedColor === color ? 'white' : '#333',
+                      fontSize:13,
+                      cursor:'pointer',
+                      transition:'all 0.2s'
+                    }}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{margin: '20px 0'}}>
             <p style={{
@@ -304,9 +379,26 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               fontSize: '15px', 
               lineHeight: '1.6', 
               margin: '20px 0', 
-              whiteSpace: 'pre-wrap'
           }}>
-            {product.description}
+            <p style={{ margin: 0 }}>
+              {showFullDesc || (product.description || '').length <= DESC_LIMIT
+                ? product.description
+                : product.description.substring(0, DESC_LIMIT) + '...'
+              }
+            </p>
+            {product.description && product.description.length > DESC_LIMIT && (
+              <button
+                onClick={() => setShowFullDesc(!showFullDesc)}
+                style={{
+                  background:'none', border:'none',
+                  color:'#1A237E', fontFamily:'Cairo',
+                  fontSize:13, cursor:'pointer',
+                  padding:'4px 0', fontWeight:'bold'
+                }}
+              >
+                {showFullDesc ? '▲ عرض أقل' : '▼ المزيد'}
+              </button>
+            )}
           </div>
 
           {/* Add to cart */}

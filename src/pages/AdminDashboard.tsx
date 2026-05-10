@@ -368,8 +368,52 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     images: [],
     suggestedAccessories: [],
     bundleAccessoryIds: [],
-    specifications: {}
+    specifications: {},
+    variants: [],
+    colors: [],
+    tier: ''
   });
+
+  const [colorInput, setColorInput] = useState('');
+
+  const addVariant = () => {
+    const id = Date.now();
+    setForm(prev => ({
+      ...prev,
+      variants: [...(prev.variants || []), { id, storage: '', price: 0 }]
+    }));
+  };
+
+  const updateVariant = (id: number, field: string, value: any) => {
+    setForm(prev => ({
+      ...prev,
+      variants: prev.variants?.map(v => v.id === id ? { ...v, [field]: value } : v)
+    }));
+  };
+
+  const removeVariant = (id: number) => {
+    setForm(prev => ({
+      ...prev,
+      variants: prev.variants?.filter(v => v.id !== id)
+    }));
+  };
+
+  const addColor = () => {
+    const color = colorInput.trim();
+    if (!color || form.colors?.includes(color)) return;
+    setForm(prev => ({
+      ...prev,
+      colors: [...(prev.colors || []), color]
+    }));
+    setColorInput('');
+  };
+
+  const removeColor = (color: string) => {
+    setForm(prev => ({
+      ...prev,
+      colors: prev.colors?.filter(c => c !== color)
+    }));
+  };
 
   const currentCategory = categories.find(c => c.id === form.category) || categories[0];
 
@@ -645,10 +689,15 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       const productData = {
         ...form,
         brand: form.brand?.trim().toUpperCase(),
-        price: Number(form.price),
+        price: form.variants && form.variants.length > 0
+          ? Math.min(...form.variants.map(v => v.price))
+          : Number(form.price),
         discount: Number(form.discount) || 0,
         stock: Number(form.stock) || 0,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        variants: form.variants || [],
+        colors: form.colors || [],
+        tier: form.tier || ''
       };
 
       if (initial) {
@@ -803,9 +852,97 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                   <label className="text-xs font-bold text-gray-500 mr-2">المخزون</label>
                   <input type="number" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
                </div>
+
+               <div className="flex flex-col gap-2">
+                 <label className="text-xs font-bold text-gray-500 mr-2">تصنيف الفئة (Tier)</label>
+                 <select 
+                   value={form.tier} 
+                   onChange={e => setForm({...form, tier: e.target.value as any})}
+                   className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]"
+                 >
+                   <option value="">بدون تصنيف</option>
+                   <option value="economy">💚 اقتصادي</option>
+                   <option value="mid">🔵 متوسط</option>
+                   <option value="flagship">⭐ رائد</option>
+                 </select>
+               </div>
+
                <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-gray-500 mr-2">الوصف</label>
                   <textarea id="productDescription" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm h-32 resize-none" />
+               </div>
+
+               {/* Variants & Colors */}
+               <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-6">
+                 <div className="flex flex-col gap-4">
+                   <h4 className="font-black text-gray-700 text-sm italic">💾 خيارات التخزين والسعر</h4>
+                   <div className="flex flex-col gap-3">
+                     {form.variants?.map((v) => (
+                       <div key={v.id} className="flex gap-2 items-center">
+                         <select 
+                           value={v.storage} 
+                           onChange={e => updateVariant(v.id, 'storage', e.target.value)}
+                           className="flex-1 bg-white rounded-xl p-3 text-xs font-bold border border-gray-100"
+                         >
+                           <option value="">اختر السعة</option>
+                           <option value="64GB">64GB</option>
+                           <option value="128GB">128GB</option>
+                           <option value="256GB">256GB</option>
+                           <option value="512GB">512GB</option>
+                           <option value="1TB">1TB</option>
+                         </select>
+                         <input 
+                           type="number" 
+                           placeholder="السعر بالأوقية"
+                           value={v.price || ''}
+                           onChange={e => updateVariant(v.id, 'price', parseFloat(e.target.value))}
+                           className="flex-1 bg-white rounded-xl p-3 text-xs font-bold border border-gray-100"
+                         />
+                         <button 
+                           type="button" 
+                           onClick={() => removeVariant(v.id)}
+                           className="p-3 bg-red-50 text-red-500 rounded-xl"
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
+                     ))}
+                     <button 
+                       type="button" 
+                       onClick={addVariant}
+                       className="bg-primary/5 text-primary py-3 rounded-xl text-xs font-black border border-dashed border-primary/20"
+                     >
+                       + إضافة خيار تخزين
+                     </button>
+                   </div>
+                 </div>
+
+                 <div className="flex flex-col gap-4">
+                   <h4 className="font-black text-gray-700 text-sm italic">🎨 الألوان المتوفرة</h4>
+                   <div className="flex flex-wrap gap-2">
+                      {form.colors?.map((color, i) => (
+                        <span key={i} className="bg-white px-3 py-1.5 rounded-full text-xs font-bold border border-gray-100 flex items-center gap-2">
+                          {color}
+                          <button type="button" onClick={() => removeColor(color)} className="text-gray-400 hover:text-red-500">×</button>
+                        </span>
+                      ))}
+                   </div>
+                   <div className="flex gap-2">
+                     <input 
+                       value={colorInput}
+                       onChange={e => setColorInput(e.target.value)}
+                       placeholder="اسم اللون مثل: أسود"
+                       className="flex-1 bg-white rounded-xl p-3 text-xs font-bold outline-none border border-gray-100"
+                     />
+                     <button 
+                       type="button" 
+                       onClick={addColor}
+                       className="bg-primary text-white px-6 py-3 rounded-xl text-xs font-black"
+                     >
+                       إضافة
+                     </button>
+                   </div>
+                 </div>
                </div>
                
                <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-4">

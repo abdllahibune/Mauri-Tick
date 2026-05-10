@@ -45,7 +45,11 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     };
   }, []);
 
-  const discountedPrice = product.price * (1 - (product.discount || 0) / 100);
+  const minPrice = product.variants && product.variants.length > 0
+    ? Math.min(...product.variants.map(v => v.price))
+    : product.price;
+
+  const discountedPrice = minPrice * (1 - (product.discount || 0) / 100);
 
   return (
     <motion.div 
@@ -75,8 +79,8 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 خصم {product.discount}%
              </span>
              <span className={cn(
-               "text-[9px] font-black px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm border shadow-sm flex items-center gap-1",
-               timeLeft.startsWith('00') ? "text-red-500 border-red-200" : "text-primary border-gray-100"
+                "text-[9px] font-black px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm border shadow-sm flex items-center gap-1",
+                timeLeft.startsWith('00') ? "text-red-500 border-red-200" : "text-primary border-gray-100"
              )}>
                 <Timer className="w-2 h-2" /> {timeLeft}
              </span>
@@ -173,7 +177,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       {/* Info */}
       <Link to={`/product/${product.id}`} className="p-4 block">
         <div className="mb-2">
-          {(() => {
+          {product.tier && (() => {
             const tier = getProductTier(product);
             return (
               <span 
@@ -200,6 +204,22 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1 name">{product.name}</h3>
         </div>
 
+        {/* Key Specs Row */}
+        {(product.specifications?.RAM || (product.variants && product.variants.length > 0)) && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+             {product.specifications?.RAM && (
+               <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100">
+                 {product.specifications.RAM} RAM
+               </span>
+             )}
+             {product.variants?.map((v, i) => (
+               <span key={i} className="bg-gray-50 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-gray-100">
+                 {v.storage}
+               </span>
+             ))}
+          </div>
+        )}
+
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
             {product.isUsed ? (
@@ -212,15 +232,31 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             ) : (
               <>
                 {product.discount > 0 && (
-                  <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(product.price)}</span>
+                  <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(minPrice)}</span>
                 )}
-                <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
+                <div className="flex flex-col">
+                  {product.variants && product.variants.length > 0 && (
+                    <span className="text-[9px] font-bold text-gray-400 leading-none mb-1">يبدأ من</span>
+                  )}
+                  <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
+                </div>
               </>
             )}
           </div>
-          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md viewers">
-            <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
-          </div>
+
+          {/* Color Dots */}
+          {product.colors && product.colors.length > 0 && (
+            <div className="flex gap-1">
+               {product.colors.slice(0, 3).map((c, i) => (
+                 <div key={i} className="w-2 h-2 rounded-full border border-gray-100 bg-gray-200" title={c} />
+               ))}
+               {product.colors.length > 3 && <span className="text-[8px] text-gray-400">+{product.colors.length - 3}</span>}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md viewers mt-3">
+          <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
         </div>
 
         {product.isUsed && product.problems && (

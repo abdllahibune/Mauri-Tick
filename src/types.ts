@@ -1,3 +1,9 @@
+export interface ProductVariant {
+  id: number;
+  storage: string;
+  price: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -12,6 +18,9 @@ export interface Product {
   specifications: {
     [key: string]: string | undefined;
   };
+  variants?: ProductVariant[];
+  colors?: string[];
+  tier?: 'economy' | 'mid' | 'flagship' | '';
   isFeatured?: boolean;
   isBestSeller?: boolean;
   isNewArrival?: boolean;
