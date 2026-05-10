@@ -390,128 +390,245 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     toast.success('تمت إضافة رابط الصورة بنجاح');
   };
 
-  const handleAutoSearch = async () => {
-    const productName = searchQuery || form.name;
-    if (!productName) {
+  const searchProductSpecs = async (productName: string) => {
+    const name = productName.trim();
+    if (!name) {
       toast.error('أدخل اسم المنتج أولاً');
       return;
     }
     setSearching(true);
     
     let specs: any = null;
-    
-    // Source 1: DummyJSON (works for common products)
+
+    // Source 1: GSMarena API (Unofficial/Requested)
     try {
-      const res = await fetch(`https://dummyjson.com/products/search?q=${encodeURIComponent(productName)}&limit=1`);
+      const res = await fetch(
+        `https://api.gsmarena.com/?q=${encodeURIComponent(name)}`,
+        { headers: { 'Accept': 'application/json' } }
+      );
       const data = await res.json();
-      if (data.products?.[0]) {
-        const p = data.products[0];
-        specs = {
-          brand: p.brand || '',
-          description: p.description || '',
-          category: p.category || '',
-          image: p.thumbnail || p.images?.[0] || '',
-          price: p.price
-        };
-      }
+      if (data?.specs) specs = data.specs;
     } catch(e) {}
 
-    // Source 2: Open Product Data API
+    // Source 2: DeviceSpecifications (Scraper logic as requested)
     if (!specs) {
       try {
-        const res = await fetch(`https://api.upcitemdb.com/prod/trial/search?s=${encodeURIComponent(productName)}&type=product`);
-        const data = await res.json();
-        if (data.items?.[0]) {
-          const item = data.items[0];
-          specs = {
-            brand: item.brand || '',
-            description: item.description || '',
-            image: item.images?.[0] || ''
-          };
+        const res = await fetch(
+          `https://www.devicespecifications.com/en/search/quick/${encodeURIComponent(name)}`
+        );
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // Extract specs from page
+        const rows = doc.querySelectorAll('.model-brief-specifications tr');
+        if (rows.length > 0) {
+          specs = {};
+          rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 2) {
+              specs[cells[0].textContent?.trim() || ''] = cells[1].textContent?.trim() || '';
+            }
+          });
         }
       } catch(e) {}
     }
 
-    // Source 3: Wikipedia API for device info
+    // Source 3: Parse from product name pattern
     if (!specs) {
-      try {
-        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(productName)}`);
-        const data = await res.json();
-        if (data.extract) {
-          specs = {
-            description: data.extract.substring(0, 200),
-            image: data.thumbnail?.source || ''
-          };
-        }
-      } catch(e) {}
+      specs = parseSpecsFromName(name);
     }
 
-    if (specs) {
-      // Auto-fill available fields
-      setForm(prev => ({
-        ...prev,
-        brand: specs.brand || prev.brand,
-        description: specs.description || prev.description,
-        name: productName
-      }));
-
-      // Auto-fill image if found
-      if (specs.image && (form.images?.length || 0) < 5) {
-        try {
-          const url = await uploadToCloudinary(specs.image);
-          if (url) {
-            setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
-            toast.success('✅ تم جلب صورة المنتج تلقائياً');
-          }
-        } catch(e) {}
-      }
-
-      // Parse specs from description if phone
-      const n = productName.toLowerCase();
-      if (n.includes('iphone') || n.includes('samsung') || n.includes('huawei') || n.includes('redmi') || n.includes('xiaomi')) {
-        autoFillPhoneSpecs(productName);
-      }
-
-      toast.success('✅ تم جلب المعلومات المتاحة');
+    if (specs && Object.keys(specs).length > 0) {
+      fillSpecFields(specs, name);
+      toast.success('✅ تم جلب المواصفات');
     } else {
       toast.error('⚠️ لم تُعثر على مواصفات — أدخلها يدوياً');
     }
     setSearching(false);
   };
 
-  const autoFillPhoneSpecs = (name: string) => {
+  const parseSpecsFromName = (name: string) => {
     const n = name.toUpperCase();
-    
-    // Storage from name
-    const storageMatch = n.match(/(\d+)\s*GB/);
-    
-    // RAM from name  
-    const ramMatch = n.match(/(\d+)\s*RAM|RAM\s*(\d+)/);
+    const specs: any = {};
 
-    // Brand detection
+    // Detect brand
     const brands: any = {
       'IPHONE': 'Apple', 'SAMSUNG': 'Samsung',
       'HUAWEI': 'Huawei', 'XIAOMI': 'Xiaomi',
       'REDMI': 'Xiaomi/Redmi', 'OPPO': 'OPPO',
-      'VIVO': 'Vivo', 'REALME': 'Realme',
-      'ONEPLUS': 'OnePlus', 'NOKIA': 'Nokia'
+      'REALME': 'Realme', 'VIVO': 'Vivo',
+      'ONEPLUS': 'OnePlus', 'NOKIA': 'Nokia',
+      'TECNO': 'Tecno', 'INFINIX': 'Infinix',
+      'ITEL': 'iTel'
     };
-    
-    let detectedBrand = '';
     for (const [key, brand] of Object.entries(brands)) {
       if (n.includes(key)) {
-        detectedBrand = brand as string;
+        specs['الماركة'] = brand;
         break;
       }
     }
 
+    // Storage from name (e.g. 128GB, 256GB)
+    const storageMatch = n.match(/(\d+)\s*GB/);
+    if (storageMatch) {
+      specs['التخزين'] = storageMatch[1] + 'GB';
+    }
+
+    // RAM (e.g. 8GB RAM, 12GB)
+    const ramMatch = n.match(/(\d+)\s*GB\s*RAM|(\d+)\s*RAM/);
+    if (ramMatch) {
+      specs['الرام'] = (ramMatch[1] || ramMatch[2]) + 'GB';
+    }
+
+    // Known iPhone specs
+    if (n.includes('IPHONE')) {
+      if (n.includes('15 PRO MAX')) {
+        specs['الشاشة'] = '6.7 بوصة OLED';
+        specs['المعالج'] = 'Apple A17 Pro';
+        specs['الرام'] = '8GB';
+        specs['البطارية'] = '4422 mAh';
+        specs['الكاميرا'] = '48MP + 12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 17';
+      } else if (n.includes('15 PRO')) {
+        specs['الشاشة'] = '6.1 بوصة OLED';
+        specs['المعالج'] = 'Apple A17 Pro';
+        specs['الرام'] = '8GB';
+        specs['البطارية'] = '3274 mAh';
+        specs['الكاميرا'] = '48MP + 12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 17';
+      } else if (n.includes('15')) {
+        specs['الشاشة'] = '6.1 بوصة OLED';
+        specs['المعالج'] = 'Apple A16 Bionic';
+        specs['الرام'] = '6GB';
+        specs['البطارية'] = '3349 mAh';
+        specs['الكاميرا'] = '48MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 17';
+      } else if (n.includes('14 PRO MAX')) {
+        specs['الشاشة'] = '6.7 بوصة OLED';
+        specs['المعالج'] = 'Apple A16 Bionic';
+        specs['الرام'] = '6GB';
+        specs['البطارية'] = '4323 mAh';
+        specs['الكاميرا'] = '48MP + 12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 16';
+      } else if (n.includes('14')) {
+        specs['الشاشة'] = '6.1 بوصة OLED';
+        specs['المعالج'] = 'Apple A15 Bionic';
+        specs['الرام'] = '6GB';
+        specs['البطارية'] = '3279 mAh';
+        specs['الكاميرا'] = '12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 16';
+      } else if (n.includes('13')) {
+        specs['الشاشة'] = '6.1 بوصة OLED';
+        specs['المعالج'] = 'Apple A15 Bionic';
+        specs['الرام'] = '4GB';
+        specs['البطارية'] = '3227 mAh';
+        specs['الكاميرا'] = '12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 15';
+      } else if (n.includes('12')) {
+        specs['الشاشة'] = '6.1 بوصة OLED';
+        specs['المعالج'] = 'Apple A14 Bionic';
+        specs['الرام'] = '4GB';
+        specs['البطارية'] = '2815 mAh';
+        specs['الكاميرا'] = '12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 14';
+      } else if (n.includes('11')) {
+        specs['الشاشة'] = '6.1 بوصة LCD';
+        specs['المعالج'] = 'Apple A13 Bionic';
+        specs['الرام'] = '4GB';
+        specs['البطارية'] = '3110 mAh';
+        specs['الكاميرا'] = '12MP + 12MP';
+        specs['نظام التشغيل'] = 'iOS 13';
+      }
+    }
+
+    // Known Samsung specs
+    if (n.includes('SAMSUNG') || n.includes('GALAXY')) {
+      if (n.includes('S24 ULTRA')) {
+        specs['الشاشة'] = '6.8 بوصة AMOLED';
+        specs['المعالج'] = 'Snapdragon 8 Gen 3';
+        specs['الرام'] = '12GB';
+        specs['التخزين'] = '256GB';
+        specs['البطارية'] = '5000 mAh';
+        specs['الكاميرا'] = '200MP + 12MP + 50MP + 10MP';
+        specs['نظام التشغيل'] = 'Android 14';
+      } else if (n.includes('S24')) {
+        specs['الشاشة'] = '6.2 بوصة AMOLED';
+        specs['المعالج'] = 'Snapdragon 8 Gen 3';
+        specs['الرام'] = '8GB';
+        specs['البطارية'] = '4000 mAh';
+        specs['الكاميرا'] = '50MP + 12MP + 10MP';
+        specs['نظام التشغيل'] = 'Android 14';
+      } else if (n.includes('A55')) {
+        specs['الشاشة'] = '6.6 بوصة AMOLED';
+        specs['المعالج'] = 'Exynos 1480';
+        specs['الرام'] = '8GB';
+        specs['البطارية'] = '5000 mAh';
+        specs['الكاميرا'] = '50MP + 12MP + 5MP';
+        specs['نظام التشغيل'] = 'Android 14';
+      } else if (n.includes('A35')) {
+        specs['الشاشة'] = '6.6 بوصة AMOLED';
+        specs['المعالج'] = 'Exynos 1380';
+        specs['الرام'] = '6GB';
+        specs['البطارية'] = '5000 mAh';
+        specs['الكاميرا'] = '50MP + 8MP + 5MP';
+        specs['نظام التشغيل'] = 'Android 14';
+      }
+    }
+
+    // Known Xiaomi/Redmi specs  
+    if (n.includes('REDMI') || n.includes('XIAOMI')) {
+      if (n.includes('NOTE 13 PRO')) {
+        specs['الشاشة'] = '6.67 بوصة AMOLED';
+        specs['المعالج'] = 'Snapdragon 7s Gen 2';
+        specs['الرام'] = '8GB';
+        specs['البطارية'] = '5100 mAh';
+        specs['الكاميرا'] = '200MP + 8MP + 2MP';
+        specs['نظام التشغيل'] = 'Android 13';
+      } else if (n.includes('NOTE 13')) {
+        specs['الشاشة'] = '6.67 بوصة AMOLED';
+        specs['المعالج'] = 'Snapdragon 685';
+        specs['الرام'] = '6GB';
+        specs['البطارية'] = '5000 mAh';
+        specs['الكاميرا'] = '108MP + 8MP + 2MP';
+        specs['نظام التشغيل'] = 'Android 13';
+      }
+    }
+
+    return specs;
+  };
+
+  const fillSpecFields = (specs: any, name: string) => {
+    const fieldMap: any = {
+      'الشاشة': 'screen',
+      'المعالج': 'processor',
+      'الرام': 'RAM',
+      'التخزين': 'storage',
+      'البطارية': 'battery',
+      'الكاميرا': 'camera',
+      'نظام التشغيل': 'OS',
+      'الألوان': 'colors'
+    };
+
+    const newSpecs: any = { ...form.specifications };
+    let updatedBrand = form.brand;
+
+    if (specs['الماركة']) updatedBrand = specs['الماركة'];
+
+    Object.entries(fieldMap).forEach(([arabicKey, stateKey]) => {
+      const value = specs[arabicKey] || specs[stateKey as string] || specs[stateKey.toString().toLowerCase()];
+      if (value) {
+        newSpecs[stateKey as string] = value;
+      }
+    });
+
     setForm(prev => ({
       ...prev,
-      brand: detectedBrand || prev.brand,
+      name: name,
+      brand: updatedBrand,
       specifications: {
         ...prev.specifications,
-        storage: storageMatch ? storageMatch[1] + 'GB' : (prev.specifications as any)?.storage,
-        RAM: ramMatch ? (ramMatch[1] || ramMatch[2]) + 'GB' : (prev.specifications as any)?.RAM
+        ...newSpecs
       }
     }));
   };
@@ -622,7 +739,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
               />
               <button 
                 type="button" 
-                onClick={handleAutoSearch} 
+                onClick={() => searchProductSpecs(searchQuery)} 
                 disabled={searching} 
                 className="bg-blue-500 text-white px-4 py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center gap-2 justify-center"
               >
@@ -659,7 +776,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                     <button 
                       id="searchSpecs"
                       type="button" 
-                      onClick={handleAutoSearch} 
+                      onClick={() => searchProductSpecs(form.name || '')} 
                       disabled={searching}
                       className="text-primary text-[10px] font-black hover:underline disabled:opacity-50"
                     >
