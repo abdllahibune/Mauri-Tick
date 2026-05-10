@@ -7,7 +7,7 @@ import { ensureAuth } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
 export function Login() {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +19,8 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(phone, password);
+      await login(email, password);
+      // Small delay to ensure AuthContext state is updated before navigating
       const redirect = new URLSearchParams(window.location.search).get('redirect') || '/account';
       navigate(redirect);
     } catch (error: any) {
@@ -41,15 +42,16 @@ export function Login() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-gray-500 mr-2">رقم الهاتف</label>
+            <label className="text-xs font-bold text-gray-500 mr-2">البريد الإلكتروني</label>
             <div className="relative">
-              <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+              <LogIn className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
               <input 
-                type="text" 
+                id="email"
+                type="email" 
                 required
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="2XXXXXXX"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="example@mail.com"
                 className="w-full bg-gray-50 border-none rounded-2xl py-4 pr-12 pl-4 text-lg font-bold outline-none focus:ring-2 ring-primary/20"
                 dir="ltr"
               />

@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 
 export function Register() {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -55,11 +56,11 @@ export function Register() {
         // Show for demo, as actual WhatsApp sending requires external API
         toast.success(`رمز التحقق المرسل لواتساب (للتجربة): ${otp}`, { duration: 8000 });
       } else if (config?.verificationMode === 'manual') {
-        await register(phone, password, name);
+        await register(email, password, name, phone);
         toast.success('تم إنشاء الحساب! سيتم تفعيله من قبل الإدارة قريباً.');
         navigate('/account');
       } else {
-        await register(phone, password, name);
+        await register(email, password, name, phone);
         navigate('/account');
       }
     } catch (error: any) {
@@ -71,7 +72,7 @@ export function Register() {
     e.preventDefault();
     if (verificationCode === generatedOTP) {
       try {
-        await register(phone, password, name);
+        await register(email, password, name, phone);
         toast.success('تم التحقق وإنشاء الحساب بنجاح! 🎉');
         navigate('/account');
       } catch (err: any) {
@@ -144,6 +145,23 @@ export function Register() {
                 onChange={e => setName(e.target.value)}
                 placeholder="الاسم الثلاثي"
                 className="w-full bg-gray-50 border-none rounded-2xl py-4 pr-12 pl-4 text-lg font-bold outline-none focus:ring-2 ring-primary/20"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">البريد الإلكتروني</label>
+            <div className="relative">
+              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+              <input 
+                type="email" 
+                required
+                id="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="example@mail.com"
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 pr-12 pl-4 text-lg font-bold outline-none focus:ring-2 ring-primary/20"
+                dir="ltr"
               />
             </div>
           </div>

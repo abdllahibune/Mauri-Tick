@@ -69,6 +69,7 @@ export interface Investor {
 export interface UserProfile {
   id: string;
   phone: string;
+  email?: string;
   password?: string; // Hashed/stored for custom auth
   name?: string;
   city?: string;
