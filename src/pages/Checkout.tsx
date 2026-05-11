@@ -6,9 +6,78 @@ import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import { formatPrice, generateOrderNumber } from '../lib/utils';
-import { ShieldCheck, Upload, Loader2, CheckCircle2, User, LogIn } from 'lucide-react';
+import { ShieldCheck, Upload, Loader2, CheckCircle2, User, LogIn, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
+
+const PAYMENT_METHODS = [
+  {
+    id: 'bankily',
+    name: 'بنكيلي',
+    nameEn: 'Bankily',
+    color: '#004B9B',
+    bgColor: '#E8F0FE',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Bankily_logo.png/200px-Bankily_logo.png',
+    description: 'الدفع عبر تطبيق بنكيلي BPM'
+  },
+  {
+    id: 'masrvi',
+    name: 'مصرفي',
+    nameEn: 'Masrvi',
+    color: '#00A651',
+    bgColor: '#E8F5E9',
+    logo: 'https://play-lh.googleusercontent.com/YWGzCdGhZEGMfYLh9tYZZELsXK7BN_0EYwg3JF8JvQBiYY0EB8TXHetEf4nNKhUFKg=w240',
+    description: 'الدفع عبر تطبيق مصرفي BVCI'
+  },
+  {
+    id: 'sedad',
+    name: 'السداد',
+    nameEn: 'Sedad Bank',
+    color: '#1B3F7B',
+    bgColor: '#E8EAF6',
+    logo: 'https://play-lh.googleusercontent.com/Lk1ESYSMZv_jZSSt1aXRWH1a7FJmPSHxgHJiDqmIY9H_kxfgPRi5XfnkxBGi15YAXA=w240',
+    description: 'الدفع عبر بنك السداد BMI'
+  }
+];
+
+const PAYMENT_INSTRUCTIONS: Record<string, string> = {
+  bankily: `
+    <div style="background:#E8F0FE; border-radius:12px; padding:16px; direction:rtl; font-family:Cairo; margin-top:12px;">
+      <h4 style="color:#004B9B; margin:0 0 10px;">📱 خطوات الدفع عبر بنكيلي</h4>
+      <ol style="margin:0; padding-right:20px; color:#333; line-height:2;">
+        <li>افتح تطبيق بنكيلي BPM</li>
+        <li>اختر "تحويل" أو "دفع"</li>
+        <li>أدخل الرقم: <strong>36096100</strong></li>
+        <li>أدخل المبلغ المطلوب</li>
+        <li>أرسل صورة الإيصال</li>
+      </ol>
+    </div>
+  `,
+  masrvi: `
+    <div style="background:#E8F5E9; border-radius:12px; padding:16px; direction:rtl; font-family:Cairo; margin-top:12px;">
+      <h4 style="color:#00A651; margin:0 0 10px;">📱 خطوات الدفع عبر مصرفي</h4>
+      <ol style="margin:0; padding-right:20px; color:#333; line-height:2;">
+        <li>افتح تطبيق مصرفي BVCI</li>
+        <li>اختر "تحويل أموال"</li>
+        <li>أدخل الرقم: <strong>36096100</strong></li>
+        <li>أدخل المبلغ المطلوب</li>
+        <li>أرسل صورة الإيصال</li>
+      </ol>
+    </div>
+  `,
+  sedad: `
+    <div style="background:#E8EAF6; border-radius:12px; padding:16px; direction:rtl; font-family:Cairo; margin-top:12px;">
+      <h4 style="color:#1B3F7B; margin:0 0 10px;">🏦 خطوات الدفع عبر السداد</h4>
+      <ol style="margin:0; padding-right:20px; color:#333; line-height:2;">
+        <li>افتح تطبيق بنك السداد BMI</li>
+        <li>اختر "تحويل"</li>
+        <li>أدخل الرقم: <strong>36096100</strong></li>
+        <li>أدخل المبلغ المطلوب</li>
+        <li>أرسل صورة الإيصال</li>
+      </ol>
+    </div>
+  `
+};
 
 export function Checkout() {
   const { cart, subtotal, clearCart } = useCart();
@@ -97,7 +166,8 @@ export function Checkout() {
       }
 
       // 3. WhatsApp Integration
-      const message = `طلب جديد موري تيك! 📱%0Aالرقم: ${orderNumber}%0Aالاسم: ${formData.name}%0Aالهاتف: ${formData.phone}%0Aالمبلغ: ${subtotal} أوقية%0Aطريقة الدفع: ${paymentMethod}`;
+      const selectedMethod = PAYMENT_METHODS.find(m => m.id === paymentMethod);
+      const message = `طلب جديد موري تيك! 📱%0Aالرقم: ${orderNumber}%0Aالاسم: ${formData.name}%0Aالهاتف: ${formData.phone}%0Aالمبلغ: ${subtotal} أوقية%0Aطريقة الدفع: ${selectedMethod?.name || paymentMethod}`;
       const waLink = `https://wa.me/22236096100?text=${message}`;
 
       // 4. Clear cart and redirect
@@ -107,7 +177,7 @@ export function Checkout() {
       // Delay to show toast
       setTimeout(() => {
         window.open(waLink, '_blank');
-        navigate('/confirmation', { state: { orderNumber, total: subtotal, paymentMethod, orderId: docRef.id } });
+        navigate('/confirmation', { state: { orderNumber, total: subtotal, paymentMethod: selectedMethod?.name || paymentMethod, orderId: docRef.id } });
       }, 1000);
 
     } catch (error) {
@@ -117,33 +187,6 @@ export function Checkout() {
       setLoading(false);
     }
   };
-
-  const paymentOptions = [
-    { 
-      id: 'bankily',
-      name: 'بنكيلي', 
-      englishName: 'Bankily',
-      color: '#00A651', 
-      desc: 'تطبيق بنك موريتانيا الإسلامي',
-      icon: 'https://play-lh.googleusercontent.com/YWGzCdGhZEGMfYLh9tYZZELsXK7BN_0EYwg3JF8JvQBiYY0EB8TXHetEf4nNKhUFKg=w240-h480-rw'
-    },
-    { 
-      id: 'masrafi',
-      name: 'مصرفي', 
-      englishName: 'Masrafi',
-      color: '#FF6B00', 
-      desc: 'تطبيق بنك التجارة والصناعة',
-      icon: 'https://play-lh.googleusercontent.com/7Y-x8AX3HvfZBGMiRqCTkKYnBXmBNHJwKHjGAzfqAD2cJmHWvBhB-kGPg_IZiHYFLg=w240-h480-rw'
-    },
-    { 
-      id: 'sedad',
-      name: 'سداد', 
-      englishName: 'Sedad',
-      color: '#003087', 
-      desc: 'تطبيق البريد الموريتاني',
-      icon: 'https://play-lh.googleusercontent.com/Lk1ESYSMZv_jZSSt1aXRWH1a7FJmPSHxgHJiDqmIY9H_kxfgPRi5XfnkxBGi15YAXA=w240-h480-rw'
-    },
-  ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col gap-8">
@@ -213,39 +256,110 @@ export function Checkout() {
           <section className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 flex flex-col gap-8">
             <h2 className="text-3xl font-black text-primary">اختر طريقة الدفع</h2>
             <div className="grid grid-cols-1 gap-4">
-              {paymentOptions.map((opt) => (
+              {PAYMENT_METHODS.map((method) => (
                 <button
-                  key={opt.name}
+                  key={method.id}
                   type="button"
-                  onClick={() => setPaymentMethod(opt.name)}
-                  className={`p-4 rounded-[32px] border-2 transition-all flex items-center justify-between group ${paymentMethod === opt.name ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50 hover:bg-gray-100'}`}
+                  onClick={() => setPaymentMethod(method.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '16px',
+                    border: `2px solid ${paymentMethod === method.id ? method.color : '#e0e0e0'}`,
+                    borderRadius: '14px',
+                    cursor: 'pointer',
+                    background: paymentMethod === method.id ? method.bgColor : 'white',
+                    transition: 'all 0.2s',
+                    direction: 'rtl',
+                    marginBottom: '10px',
+                    textAlign: 'right',
+                    width: '100%'
+                  }}
                 >
-                  <div className="flex items-center gap-4">
-                     <div className="relative w-14 h-14 flex-shrink-0">
-                        <img 
-                          src={opt.icon} 
-                          alt={opt.name}
-                          className="w-full h-full rounded-2xl object-cover shadow-lg group-hover:scale-110 transition-transform"
-                          onError={(e) => {
-                             const target = e.target as HTMLImageElement;
-                             target.style.display = 'none';
-                             const parent = target.parentElement;
-                             if (parent && !parent.querySelector('.fallback')) {
-                               const fallback = document.createElement('div');
-                               fallback.className = 'fallback w-full h-full rounded-2xl flex items-center justify-center text-white text-2xl font-black';
-                               fallback.style.backgroundColor = opt.color;
-                               fallback.textContent = opt.name[0];
-                               parent.appendChild(fallback);
-                             }
-                          }}
-                        />
-                     </div>
-                     <div className="text-right">
-                        <h4 className="font-black text-lg text-primary">{opt.name}</h4>
-                        <p className="text-gray-400 text-xs font-bold">{opt.englishName} ({opt.desc})</p>
-                     </div>
+                  {/* Logo with fallback */}
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '12px',
+                    background: method.bgColor,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    border: `1px solid ${method.color}30`,
+                  }}>
+                    <img 
+                      src={method.logo}
+                      style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = parent.querySelector('.payment-fallback') as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    {/* Fallback */}
+                    <div 
+                      className="payment-fallback"
+                      style={{
+                        display: 'none',
+                        width: '48px',
+                        height: '48px',
+                        background: method.color,
+                        borderRadius: '10px',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        fontFamily: 'Cairo',
+                      }}
+                    >
+                      {method.name[0]}
+                    </div>
                   </div>
-                  {paymentMethod === opt.name && <CheckCircle2 className="text-primary w-8 h-8" />}
+                  
+                  {/* Text */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      color: '#1A1A1A',
+                      fontFamily: 'Cairo',
+                    }}>{method.name}</div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#666',
+                      fontFamily: 'Cairo',
+                      marginTop: '2px',
+                    }}>{method.description}</div>
+                  </div>
+                  
+                  {/* Radio indicator */}
+                  <div style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    border: `2px solid ${paymentMethod === method.id ? method.color : '#ccc'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {paymentMethod === method.id && (
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: method.color,
+                      }}></div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -263,45 +377,43 @@ export function Checkout() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="bg-white/10 rounded-3xl p-8 border border-white/10 flex flex-col gap-6"
+                  className="bg-white/10 rounded-3xl p-6 border border-white/10 flex flex-col gap-6"
                 >
-                  <div className="flex justify-between items-center text-accent">
-                     <span className="font-bold underline">ادفع عبر {paymentMethod}</span>
-                     <span className="text-sm">الرقم: 36096100</span>
-                  </div>
-                  <div className="flex flex-col items-center py-4 border-y border-white/5">
+                  <div className="flex flex-col items-center py-4 border-b border-white/5">
                      <span className="text-sm font-bold text-gray-400">المبلغ المطلوب</span>
                      <span className="text-4xl font-black text-accent">{formatPrice(subtotal)}</span>
                   </div>
-                  <div className="text-sm text-gray-300 font-bold leading-relaxed">
-                     <p className="mb-2">خطوات الدفع:</p>
-                     <ol className="list-decimal list-inside flex flex-col gap-1 pr-2">
-                       <li>افتح تطبيق {paymentMethod}</li>
-                       <li>اختر تحويل الأموال</li>
-                       <li>أدخل الرقم: 36096100</li>
-                       <li>أدخل المبلغ واضغط تأكيد</li>
-                       <li>ارفع صورة إثبات الدفع هنا 👇</li>
-                     </ol>
-                  </div>
+                  
+                  <div dangerouslySetInnerHTML={{ __html: PAYMENT_INSTRUCTIONS[paymentMethod] }} />
 
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-4 mt-4">
+                     <p className="font-bold text-sm text-white/90 mr-1">📎 أرفق إيصال الدفع</p>
                      <label className="cursor-pointer group">
-                        <div className="bg-accent text-primary h-16 rounded-2xl flex items-center justify-center gap-3 font-black group-hover:brightness-110 transition-all">
-                           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                           {proofImage ? 'تغيير صورة الإثبات' : 'ارفع صورة الإثبات'}
+                        <div className="bg-[#F8F9FF] border-2 border-accent border-dashed text-primary min-h-[120px] rounded-2xl flex flex-col items-center justify-center gap-2 group-hover:brightness-105 transition-all p-4">
+                           <div className="text-3xl">🧾</div>
+                           <span className="font-black text-sm">{proofImage ? 'تغيير صورة الإثبات' : 'اضغط لرفع صورة الإيصال'}</span>
+                           <span className="text-[10px] text-gray-500 font-bold">JPG, PNG — حتى 5MB</span>
                         </div>
                         <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                      </label>
                      
                      {proofPreview && (
-                       <div className="relative rounded-2xl overflow-hidden border-2 border-accent/20 aspect-video">
-                          <img src={proofPreview} className="w-full h-full object-contain bg-black/20" />
+                       <div className="relative rounded-2xl overflow-hidden border-2 border-accent/20">
+                          <img src={proofPreview} className="w-full h-full object-contain max-h-[300px] bg-black/20" />
+                          <div className="absolute bottom-2 right-2 bg-green-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-lg">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> ✅ تم رفع الإيصال
+                          </div>
                           <button 
                             type="button" 
-                            onClick={() => {setProofImage(null); setProofPreview(null);}} 
-                            className="absolute top-2 left-2 bg-red-500 text-white p-2 rounded-full"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setProofImage(null); 
+                              setProofPreview(null);
+                            }} 
+                            className="absolute top-2 left-2 bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
                           >
-                             <Upload className="w-4 h-4 rotate-180" />
+                             <Trash2 className="w-4 h-4" />
                           </button>
                        </div>
                      )}
