@@ -61,7 +61,10 @@ export interface TradeIn {
   condition: string;
   photos: string[];
   estimatedValue: number;
+  minValue?: number;
+  maxValue?: number;
   targetPhoneId: string;
+  desiredPhoneManual?: string;
   status: 'pending' | 'contacted' | 'completed' | 'rejected';
   createdAt: any;
 }

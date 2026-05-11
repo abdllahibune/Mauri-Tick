@@ -13,11 +13,117 @@ import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 
 const CONDITIONS = [
-  { id: 'excellent', label: 'ممتاز', multiplier: 0.85, color: 'text-green-500', bg: 'bg-green-50', icon: '⭐', desc: 'لا خدوش تماماً', statusText: '85% من القيمة' },
-  { id: 'good', label: 'جيد', multiplier: 0.65, color: 'text-blue-500', bg: 'bg-blue-50', icon: '👍', desc: 'خدوش بسيطة', statusText: '65% من القيمة' },
-  { id: 'fair', label: 'مقبول', multiplier: 0.45, color: 'text-orange-500', bg: 'bg-orange-50', icon: '👌', desc: 'خدوش واضحة', statusText: '45% من القيمة' },
-  { id: 'broken', label: 'به أعطال', multiplier: 0.25, color: 'text-red-500', bg: 'bg-red-50', icon: '🔧', desc: 'يحتاج إصلاح', statusText: '25% من القيمة' }
+  { id: 'excellent', label: 'ممتاز', color: 'text-green-500', bg: 'bg-green-50', icon: '⭐', desc: 'لا خدوش تماماً', statusText: 'حالة ممتازة' },
+  { id: 'good', label: 'جيد', color: 'text-blue-500', bg: 'bg-blue-50', icon: '👍', desc: 'خدوش بسيطة', statusText: 'حالة جيدة' },
+  { id: 'fair', label: 'مقبول', color: 'text-orange-500', bg: 'bg-orange-50', icon: '👌', desc: 'خدوش واضحة', statusText: 'حالة مستعملة' },
+  { id: 'broken', label: 'به أعطال', color: 'text-red-500', bg: 'bg-red-50', icon: '🔧', desc: 'يحتاج إصلاح', statusText: 'للقطع أو الإصلاح' }
 ];
+
+const PHONE_BASE_PRICES: Record<string, number> = {
+  // Apple
+  'iphone 15 pro max': 450000,
+  'iphone 15 pro': 380000,
+  'iphone 15': 320000,
+  'iphone 14 pro max': 380000,
+  'iphone 14 pro': 320000,
+  'iphone 14': 260000,
+  'iphone 13 pro max': 320000,
+  'iphone 13 pro': 270000,
+  'iphone 13': 220000,
+  'iphone 12 pro max': 260000,
+  'iphone 12 pro': 210000,
+  'iphone 12': 170000,
+  'iphone 11 pro max': 200000,
+  'iphone 11 pro': 170000,
+  'iphone 11': 130000,
+  'iphone xr': 90000,
+  'iphone x': 80000,
+  'iphone xs': 85000,
+  
+  // Samsung Galaxy A series
+  'galaxy a55': 120000,
+  'galaxy a54': 100000,
+  'galaxy a35': 85000,
+  'galaxy a34': 75000,
+  'galaxy a25': 65000,
+  'galaxy a24': 60000,
+  'galaxy a15': 50000,
+  'galaxy a14': 45000,
+  'galaxy a13': 40000,
+  
+  // Samsung Galaxy S series
+  'galaxy s24 ultra': 450000,
+  'galaxy s24+': 350000,
+  'galaxy s24': 280000,
+  'galaxy s23 ultra': 380000,
+  'galaxy s23': 220000,
+  'galaxy s22 ultra': 300000,
+  'galaxy s22': 170000,
+  'galaxy s21': 130000,
+  
+  // Redmi/Xiaomi
+  'redmi note 13 pro': 90000,
+  'redmi note 13': 70000,
+  'redmi note 12': 60000,
+  'redmi note 11': 50000,
+  'redmi 13c': 45000,
+  'redmi 12c': 38000,
+  'xiaomi 14': 250000,
+  'xiaomi 13': 200000,
+  
+  // Huawei
+  'huawei p60 pro': 280000,
+  'huawei p50 pro': 220000,
+  'huawei nova 11': 120000,
+  'huawei nova 10': 100000,
+  'huawei y9s': 60000,
+};
+
+function estimateTradeInValue(brand: string, model: string, storage: string, condition: string) {
+  const searchKey = (brand + ' ' + model).toLowerCase().trim();
+  let basePrice = 0;
+  
+  for (const [key, price] of Object.entries(PHONE_BASE_PRICES)) {
+    if (searchKey.includes(key) || key.includes(model.toLowerCase())) {
+      basePrice = price;
+      break;
+    }
+  }
+  
+  if (basePrice === 0) {
+    const brandLower = brand.toLowerCase();
+    if (brandLower.includes('apple') || brandLower.includes('iphone')) {
+      basePrice = 150000;
+    } else if (brandLower.includes('samsung')) {
+      basePrice = 80000;
+    } else if (brandLower.includes('huawei')) {
+      basePrice = 90000;
+    } else if (brandLower.includes('xiaomi') || brandLower.includes('redmi')) {
+      basePrice = 60000;
+    } else {
+      basePrice = 50000;
+    }
+  }
+  
+  const storageMultiplier: Record<string, number> = {
+    '64GB': 0.85,
+    '128GB': 1.0,
+    '256GB': 1.15,
+    '512GB': 1.3,
+    '1TB': 1.5
+  };
+  basePrice *= (storageMultiplier[storage] || 1.0);
+  
+  const conditionMultiplier: Record<string, number> = {
+    'excellent': 0.55,
+    'good': 0.40,
+    'fair': 0.25,
+    'broken': 0.10
+  };
+  
+  const tradeValue = Math.round(basePrice * (conditionMultiplier[condition] || 0.3));
+  return Math.round(tradeValue / 1000) * 1000;
+}
 
 const PHONE_BRANDS = [
   'Apple / iPhone',
@@ -57,6 +163,7 @@ export function TradeInPage() {
     problems: '',
     photos: [] as string[],
     targetPhoneId: '',
+    desiredPhoneManual: '',
     basePrice: 150000 
   });
 
@@ -74,7 +181,9 @@ export function TradeInPage() {
   }, []);
 
   const currentCondition = CONDITIONS.find(c => c.id === formData.condition);
-  const estimatedValue = formData.basePrice * (currentCondition?.multiplier || 0);
+  const tradeValue = estimateTradeInValue(formData.brand, formData.oldPhoneModel, formData.storage, formData.condition);
+  const minValue = Math.round(tradeValue * 0.9 / 1000) * 1000;
+  const maxValue = Math.round(tradeValue * 1.1 / 1000) * 1000;
   const targetPhone = products.find(p => p.id === formData.targetPhoneId);
 
   // Update base price based on model/brand (simulated)
@@ -119,13 +228,32 @@ export function TradeInPage() {
     await safeWrite(async () => {
         await addDoc(collection(db, 'mt_tradein'), {
             ...formData,
-            estimatedValue,
+            estimatedValue: tradeValue,
+            minValue,
+            maxValue,
             status: 'pending',
             createdAt: serverTimestamp()
         });
 
         // WhatsApp notification
-        const message = `طلب استبدال جديد! 🔄%0Aالاسم: ${formData.customerName}%0Aالهاتف: ${formData.customerPhone}%0Aالفئة: ${formData.category}%0Aالجهاز القديم: ${formData.brand} ${formData.oldPhoneModel} (${currentCondition?.label})%0Aالقيمة المقدرة: ${formatPrice(estimatedValue)}%0Aالجهاز المنشود: ${targetPhone?.name || 'لم يحدد'}`;
+        const desiredText = formData.targetPhoneId === 'other' || !formData.targetPhoneId
+          ? formData.desiredPhoneManual || 'لم يحدد'
+          : products.find(p => p.id === formData.targetPhoneId)?.name || 'لم يحدد';
+
+        const message = encodeURIComponent(
+          `مرحباً Mauri Tick 👋\n` +
+          `طلب استبدال جديد:\n\n` +
+          `📱 هاتفي الحالي:\n` +
+          `   الماركة: ${formData.brand}\n` +
+          `   الموديل: ${formData.oldPhoneModel}\n` +
+          `   السعة: ${formData.storage}\n` +
+          `   الحالة: ${currentCondition?.label}\n\n` +
+          `✨ الهاتف المطلوب:\n` +
+          `   ${desiredText}\n\n` +
+          `💰 القيمة التقديرية: ` +
+          `${minValue.toLocaleString()} — ${maxValue.toLocaleString()} أوقية\n\n` +
+          `📞 رقمي: ${formData.customerPhone}`
+        );
         window.open(`https://wa.me/22236096100?text=${message}`);
 
         setStep(4);
@@ -246,6 +374,53 @@ export function TradeInPage() {
                     />
                   </div>
                 )}
+
+                {/* Desired Phone Field */}
+                <div className="bg-[#F8F9FF] rounded-[24px] p-6 border border-[#E8EAF6] mt-4">
+                  <h3 className="text-primary font-black text-lg mb-4 flex items-center gap-2">
+                    📱 ما الهاتف الذي تريد؟
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black text-gray-400 mr-2">اختر من متجرنا</label>
+                      <select 
+                        value={formData.targetPhoneId}
+                        onChange={e => setFormData({...formData, targetPhoneId: e.target.value})}
+                        className="bg-white border border-gray-100 rounded-2xl p-4 font-bold outline-none focus:ring-2 ring-primary/20"
+                      >
+                        <option value="">-- اختر هاتفاً --</option>
+                        {products
+                          .filter(p => p.category === 'هواتف ذكية' && p.stock > 0)
+                          .map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.brand} {p.name} — {p.price.toLocaleString()} أوقية
+                            </option>
+                          ))
+                        }
+                        <option value="other">هاتف غير موجود في المتجر</option>
+                      </select>
+                    </div>
+
+                    <div className="relative py-2 text-center">
+                      <span className="bg-[#F8F9FF] px-4 relative z-10 text-xs font-black text-gray-300">أو</span>
+                      <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-gray-100" />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black text-gray-400 mr-2">اكتب اسم الهاتف الذي تريده</label>
+                      <input 
+                        value={formData.desiredPhoneManual}
+                        onChange={e => setFormData({...formData, desiredPhoneManual: e.target.value})}
+                        placeholder="مثال: iPhone 15, Samsung S24..."
+                        className="bg-white border border-gray-100 rounded-2xl p-4 font-bold outline-none focus:ring-2 ring-primary/20"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold mt-4 leading-relaxed">
+                    ℹ️ إذا كان الهاتف المطلوب غير متوفر حالياً، سنتواصل معك عند توفره
+                  </p>
+                </div>
                 
                 <div className="flex flex-col gap-4">
                   <label className="text-xs font-black text-gray-400 mr-2">صور الهاتف (3 صور على الأقل)</label>
@@ -305,9 +480,12 @@ export function TradeInPage() {
               <div className="bg-gradient-to-br from-[#1A237E] to-[#283593] rounded-[32px] p-10 flex flex-col items-center text-center text-white shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 blur-[100px] -translate-y-1/2 translate-x-1/2" />
                 <p className="text-white/70 font-bold uppercase tracking-wider text-xs mb-2">القيمة التقديرية لهاتفك</p>
-                <h3 className="text-5xl font-black mb-4">
-                  {formatPrice(estimatedValue)}
-                </h3>
+                <div className="flex flex-col items-center">
+                  <h3 className="text-4xl font-black mb-2">
+                    {minValue.toLocaleString()} — {maxValue.toLocaleString()}
+                  </h3>
+                  <span className="text-2xl font-black text-accent mb-4">أوقية</span>
+                </div>
                 <p className="text-xs text-white/60 italic">* السعر النهائي بعد الفحص الفعلي</p>
               </div>
 
@@ -318,7 +496,7 @@ export function TradeInPage() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {suggestedPhones.map(p => {
-                    const diff = p.price - estimatedValue;
+                    const diff = p.price - tradeValue;
                     return (
                       <div 
                         key={p.id}
@@ -369,13 +547,23 @@ export function TradeInPage() {
               {/* WhatsApp CTA */}
               <button 
                 onClick={() => {
+                  const desiredText = formData.targetPhoneId === 'other' || !formData.targetPhoneId
+                    ? formData.desiredPhoneManual || 'لم يحدد'
+                    : products.find(p => p.id === formData.targetPhoneId)?.name || 'لم يحدد';
+
                   const message = encodeURIComponent(
                     `مرحباً Mauri Tick 👋\n` +
-                    `أريد تبديل هاتفي:\n` +
-                    `📱 الهاتف: ${formData.brand} ${formData.oldPhoneModel}\n` +
-                    `💾 السعة: ${formData.storage}\n` +
-                    `⭐ الحالة: ${currentCondition?.label}\n` +
-                    `💰 القيمة التقديرية: ${formatPrice(estimatedValue)}`
+                    `طلب استبدال جديد:\n\n` +
+                    `📱 هاتفي الحالي:\n` +
+                    `   الماركة: ${formData.brand}\n` +
+                    `   الموديل: ${formData.oldPhoneModel}\n` +
+                    `   السعة: ${formData.storage}\n` +
+                    `   الحالة: ${currentCondition?.label}\n\n` +
+                    `✨ الهاتف المطلوب:\n` +
+                    `   ${desiredText}\n\n` +
+                    `💰 القيمة التقديرية: ` +
+                    `${minValue.toLocaleString()} — ${maxValue.toLocaleString()} أوقية\n\n` +
+                    `📞 رقمي: ${formData.customerPhone}`
                   );
                   window.open(`https://wa.me/22236096100?text=${message}`, '_blank');
                 }}
@@ -455,11 +643,15 @@ export function TradeInPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                        <span className="text-[10px] font-black text-gray-400">القيمة المقدرة:</span>
-                       <span className="font-black text-sm text-green-600">{formatPrice(estimatedValue)}</span>
+                       <span className="font-black text-sm text-green-600">{minValue.toLocaleString()} — {maxValue.toLocaleString()} أوقية</span>
                     </div>
                     <div className="flex flex-col gap-1">
                        <span className="text-[10px] font-black text-gray-400">الجهاز الجديد:</span>
-                       <span className="font-bold text-sm">{targetPhone?.name}</span>
+                       <span className="font-bold text-sm">
+                        {formData.targetPhoneId === 'other' || !formData.targetPhoneId
+                          ? formData.desiredPhoneManual || 'لم يحدد'
+                          : products.find(p => p.id === formData.targetPhoneId)?.name || 'لم يحدد'}
+                       </span>
                     </div>
                  </div>
               </div>
