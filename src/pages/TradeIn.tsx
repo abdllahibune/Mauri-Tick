@@ -391,7 +391,8 @@ export function TradeInPage() {
                       >
                         <option value="">-- اختر هاتفاً --</option>
                         {products
-                          .filter(p => p.category === 'هواتف ذكية' && p.stock > 0)
+                          .filter(p => p.category === 'هواتف ذكية' && (p.stock ?? 0) > 0)
+                          .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0) || a.price - b.price)
                           .map(p => (
                             <option key={p.id} value={p.id}>
                               {p.brand} {p.name} — {p.price.toLocaleString()} أوقية
