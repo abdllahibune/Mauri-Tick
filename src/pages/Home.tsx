@@ -106,13 +106,14 @@ export function Home({ products }: { products: Product[] }) {
         <img 
           src={config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'} 
           alt="Hero" 
-          className="hero-bg-image" 
+          className="hero-bg" 
         />
-        <div className="max-w-7xl mx-auto px-4 w-full hero-content">
+        <div className="hero-overlay" />
+        <div className="hero-content">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="hero-content-glass"
+            className="hero-glass"
           >
             <span className="hero-badge">موريتانيا - نواكشوط</span>
             {config?.heroTitle ? (
