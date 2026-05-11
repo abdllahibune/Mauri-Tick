@@ -327,14 +327,15 @@ body, #app, #root, main {
   position: relative;
   z-index: 2;
   background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 24px !important;
-  padding: 40px 48px !important;
+  padding: 36px 44px !important;
   text-align: center !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
-  max-width: 520px !important;
+  max-width: 540px !important;
+  width: 100% !important;
   margin: 0 auto !important;
 }
 
@@ -343,13 +344,14 @@ body, #app, #root, main {
   background: rgba(255,255,255,0.2) !important;
   border: 1px solid rgba(255,255,255,0.4) !important;
   color: white !important;
-  padding: 6px 14px !important;
+  padding: 5px 14px !important;
   border-radius: 20px !important;
   font-size: 13px !important;
   font-family: Cairo !important;
   display: inline-block !important;
   margin-bottom: 16px !important;
-  backdrop-filter: blur(8px) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Main Arabic title */
@@ -454,8 +456,8 @@ body, #app, #root, main {
 @media (max-width: 768px) {
   .hero-glass {
     padding: 24px 20px !important;
+    max-width: 90% !important;
     border-radius: 16px !important;
-    max-width: 88% !important;
   }
   
   .hero-content {
