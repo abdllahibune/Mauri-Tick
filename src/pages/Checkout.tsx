@@ -277,52 +277,58 @@ export function Checkout() {
                     width: '100%'
                   }}
                 >
-                  {/* Logo with fallback */}
-                  <div style={{
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '12px',
-                    background: method.bgColor,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    border: `1px solid ${method.color}30`,
-                  }}>
-                    <img 
-                      src={method.logo}
-                      style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          const fallback = parent.querySelector('.payment-fallback') as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }
-                      }}
-                    />
-                    {/* Fallback */}
-                    <div 
-                      className="payment-fallback"
-                      style={{
-                        display: 'none',
-                        width: '48px',
-                        height: '48px',
-                        background: method.color,
-                        borderRadius: '10px',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        fontFamily: 'Cairo',
-                      }}
-                    >
-                      {method.name[0]}
+                  {/* Logo with custom design */}
+                  {method.id === 'bankily' && (
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      background: '#004B9B',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.8, letterSpacing: '1px' }}>BPM</span>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '1px', fontFamily: 'Cairo' }}>بنكيلي</span>
                     </div>
-                  </div>
+                  )}
+                  {method.id === 'masrvi' && (
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      background: '#00A651',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.8, letterSpacing: '1px' }}>BVCI</span>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '1px', fontFamily: 'Cairo' }}>مصرفي</span>
+                    </div>
+                  )}
+                  {method.id === 'sedad' && (
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      background: 'linear-gradient(135deg,#1B3F7B,#2E5FA3)',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.8, letterSpacing: '1px' }}>BMI</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', marginTop: '1px', fontFamily: 'Cairo' }}>السداد</span>
+                    </div>
+                  )}
                   
                   {/* Text */}
                   <div style={{ flex: 1 }}>
