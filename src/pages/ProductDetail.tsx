@@ -72,13 +72,29 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   useEffect(() => {
     if (product) {
       if (product.variants && product.variants.length > 0) {
-        setSelectedVariant(product.variants[0]);
+        // Sort by price and select cheapest
+        const sorted = [...product.variants].sort((a, b) => a.price - b.price);
+        setSelectedVariant(sorted[0]);
       }
       if (product.colors && product.colors.length > 0) {
         setSelectedColor(product.colors[0]);
       }
     }
   }, [product]);
+
+  const handleVariantChange = (variant: any) => {
+    setSelectedVariant(variant);
+    
+    const priceEl = document.getElementById('productPrice');
+    if (priceEl) {
+      priceEl.style.transform = 'scale(1.1)';
+      priceEl.style.color = '#E53935';
+      setTimeout(() => {
+        priceEl.style.transform = 'scale(1)';
+        priceEl.style.color = '#1A237E';
+      }, 300);
+    }
+  };
 
   async function fetchProduct() {
     if (!id) return;
@@ -280,7 +296,11 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               </div>
             )}
             <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-               <span style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}>
+               <span 
+                id="productPrice"
+                className="product-price"
+                style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}
+               >
                 {currentPrice.toLocaleString()} أوقية
               </span>
               {product.discount > 0 && !selectedVariant && (
@@ -299,35 +319,53 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           </div>
 
           {/* Variants Selector */}
-          {product.variants && product.variants.length > 0 && (
-            <div style={{marginTop:20, direction:'rtl'}}>
-              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>💾 السعة:</p>
-              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                {product.variants.map(v => (
-                  <button
-                    key={v.id}
-                    onClick={() => setSelectedVariant(v)}
-                    style={{
-                      padding:'10px 18px',
-                      border: selectedVariant?.id === v.id ? '2px solid #1A237E' : '1px solid #ddd',
-                      borderRadius:10,
-                      background: selectedVariant?.id === v.id ? '#E8EAF6' : 'white',
-                      color: selectedVariant?.id === v.id ? '#1A237E' : '#333',
-                      fontWeight: selectedVariant?.id === v.id ? 'bold' : 'normal',
-                      cursor:'pointer',
-                      transition:'all 0.2s',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <div style={{fontSize:14}}>{v.storage}</div>
-                    <div style={{fontSize:13, color:'#1A237E', fontWeight:'bold'}}>
-                      {v.price.toLocaleString()} أوقية
-                    </div>
-                  </button>
-                ))}
+          {product.variants && product.variants.length > 0 && (() => {
+            const basePrice = Math.min(...product.variants.map(v => v.price));
+            return (
+              <div style={{marginTop:20, direction:'rtl'}}>
+                <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>💾 السعة:</p>
+                <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                  {product.variants.map(v => {
+                    const diff = v.price - basePrice;
+                    const isSelected = selectedVariant?.id === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => handleVariantChange(v)}
+                        style={{
+                          padding:'10px 18px',
+                          border: isSelected ? '2px solid #1A237E' : '1px solid #ddd',
+                          borderRadius:10,
+                          background: isSelected ? '#E8EAF6' : 'white',
+                          color: isSelected ? '#1A237E' : '#333',
+                          fontWeight: isSelected ? 'bold' : 'normal',
+                          cursor:'pointer',
+                          transition:'all 0.2s',
+                          textAlign: 'center',
+                          minWidth: '100px'
+                        }}
+                      >
+                        <div style={{fontSize:14, fontWeight: 'bold'}}>{v.storage}</div>
+                        <div style={{fontSize:13, color:'#1A237E', fontWeight:'bold'}}>
+                          {v.price.toLocaleString()} أوقية
+                        </div>
+                        {diff > 0 && (
+                          <div style={{ fontSize: 11, color: '#E53935' }}>
+                            +{diff.toLocaleString()}
+                          </div>
+                        )}
+                        {diff === 0 && (
+                          <div style={{ fontSize: 11, color: '#2E7D32' }}>
+                            الأرخص
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Colors Selector */}
           {product.colors && product.colors.length > 0 && (

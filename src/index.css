@@ -373,3 +373,7 @@ body, #app, #root, main {
   margin: 0 !important;
   padding: 0 !important;
 }
+
+.product-price {
+  transition: all 0.3s ease;
+}

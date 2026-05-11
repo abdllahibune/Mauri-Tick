@@ -45,11 +45,18 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     };
   }, []);
 
-  const minPrice = product.variants && product.variants.length > 0
-    ? Math.min(...product.variants.map(v => v.price))
-    : product.price;
-
-  const discountedPrice = minPrice * (1 - (product.discount || 0) / 100);
+  const { price: displayPrice, hasVariants } = (() => {
+    if (product.variants && product.variants.length > 0) {
+      const prices = product.variants.map(v => v.price).filter(p => p > 0);
+      if (prices.length > 0) {
+        return { price: Math.min(...prices), hasVariants: true };
+      }
+    }
+    const finalPrice = product.discount > 0
+      ? Math.round(product.price * (1 - product.discount / 100))
+      : (product.usedPrice || product.price);
+    return { price: finalPrice, hasVariants: false };
+  })();
 
   return (
     <motion.div 
@@ -222,26 +229,12 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
-            {product.isUsed ? (
-              <>
-                {product.originalPrice && (
-                  <span className="text-[10px] text-gray-400 line-through mb--1">الجديد: {formatPrice(product.originalPrice)}</span>
-                )}
-                <span className="text-lg font-black text-green-600 leading-none price">{formatPrice(product.usedPrice || product.price)}</span>
-              </>
-            ) : (
-              <>
-                {product.discount > 0 && (
-                  <span className="text-xs text-gray-400 line-through mb--1">{formatPrice(minPrice)}</span>
-                )}
-                <div className="flex flex-col">
-                  {product.variants && product.variants.length > 0 && (
-                    <span className="text-[9px] font-bold text-gray-400 leading-none mb-1">يبدأ من</span>
-                  )}
-                  <span className="text-lg font-black text-primary leading-none price">{formatPrice(discountedPrice)}</span>
-                </div>
-              </>
-            )}
+            <div className="flex flex-col">
+              {hasVariants && (
+                <span className="text-[11px] text-gray-500 font-bold mb-1 leading-none">يبدأ من</span>
+              )}
+              <span className="text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
+            </div>
           </div>
 
           {/* Color Dots */}
