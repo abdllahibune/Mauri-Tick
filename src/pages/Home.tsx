@@ -102,37 +102,31 @@ export function Home({ products }: { products: Product[] }) {
       </div>
 
       {/* Hero Banner */}
-      <section 
-        className="relative flex items-center transition-colors duration-1000 hero"
-        style={{ 
-          backgroundColor: config?.heroBackgroundColor || 'var(--primary)', 
-          backgroundImage: `url(${config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'})`, 
-        }}
-      >
-        <div className="hero-bg" />
+      <section className="hero">
         <img 
           src={config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'} 
           alt="Hero" 
-          className="hero-image" 
+          className="hero-bg-image" 
         />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex flex-col items-start gap-12 hero-content">
+        <div className="max-w-7xl mx-auto px-4 w-full hero-content">
           <motion.div 
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col gap-6 text-white max-w-2xl"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="hero-content-glass"
           >
-            <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-4 py-2 rounded-full w-fit tracking-widest uppercase">موريتانيا - نواكشوط</span>
-            <h1 className="text-6xl sm:text-8xl font-black tracking-tighter leading-none">
-              {config?.heroTitle || (
-                <>موري تيك <br /><span className="text-accent underline decoration-8 decoration-accent/30 underline-offset-8">Mauri Tick</span></>
-              )}
-            </h1>
-            <p className="text-xl text-gray-300 font-medium">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>
-            <div className="flex gap-4 mt-4">
-              <Link to="/products" className="bg-accent text-primary px-10 py-5 rounded-2xl font-black text-xl hover:scale-105 transition-transform flex items-center gap-3 btn">
-                تسوق الآن <ShoppingBag />
-              </Link>
-            </div>
+            <span className="hero-badge">موريتانيا - نواكشوط</span>
+            {config?.heroTitle ? (
+               <h1 className="hero-title-ar">{config.heroTitle}</h1>
+            ) : (
+              <>
+                <h1 className="hero-title-ar">موري تيك</h1>
+                <h2 className="hero-title-en">Mauri Tick</h2>
+              </>
+            )}
+            <p className="hero-desc">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>
+            <Link to="/products" className="hero-btn">
+              تسوق الآن <ShoppingBag className="w-5 h-5" />
+            </Link>
           </motion.div>
         </div>
       </section>

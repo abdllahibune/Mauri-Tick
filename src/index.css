@@ -281,45 +281,6 @@
 }
 
 
-/* Desktop Hero Overlay */
-@media (min-width: 769px) {
-  .hero {
-    min-height: 500px !important;
-  }
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background-image: inherit;
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-  }
-  .hero-image {
-    position: absolute !important;
-    right: 0 !important;
-    top: 0 !important;
-    height: 100% !important;
-    width: 50% !important;
-    object-fit: cover !important;
-    z-index: 1 !important;
-  }
-  .hero-content {
-    position: relative !important;
-    z-index: 2 !important;
-    background: linear-gradient(
-      to left,
-      transparent 0%,
-      rgba(10, 20, 80, 0.75) 40%,
-      rgba(10, 20, 80, 0.85) 100%
-    ) !important;
-    padding: 60px 48px !important;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-width: 60% !important;
-  }
-}
 
 /* ===== LAYOUT ALIGNMENT FIXES ===== */
 section, .section, .container, 
@@ -348,22 +309,6 @@ section, .section, .container,
     padding: 0 12px !important;
   }
 
-  .hero, [class*="hero"], 
-  [class*="banner"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-    width: 100% !important;
-  }
-  
-  .hero-content {
-    max-width: 100% !important;
-    padding: 40px 20px !important;
-    align-items: center !important;
-    text-align: center !important;
-    background: rgba(10, 20, 80, 0.8) !important;
-  }
 }
 
 body, #app, #root, main {
@@ -376,4 +321,181 @@ body, #app, #root, main {
 
 .product-price {
   transition: all 0.3s ease;
+}
+
+/* Glassmorphism effect for hero */
+.hero-content-glass {
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 20px !important;
+  padding: 36px 40px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Location badge */
+.hero-badge {
+  background: rgba(255,255,255,0.2) !important;
+  border: 1px solid rgba(255,255,255,0.4) !important;
+  color: white !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-family: Cairo !important;
+  display: inline-block !important;
+  margin-bottom: 16px !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Main Arabic title */
+.hero h1, .hero-title-ar {
+  color: white !important;
+  font-size: 52px !important;
+  font-weight: 900 !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+
+/* English subtitle */
+.hero h2, .hero-title-en {
+  color: #FFD700 !important;
+  font-size: 40px !important;
+  font-weight: 900 !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+  margin: 4px 0 16px !important;
+}
+
+/* Description text */
+.hero p, .hero-desc {
+  color: rgba(255,255,255,0.9) !important;
+  font-size: 16px !important;
+  font-family: Cairo !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
+  margin-bottom: 24px !important;
+}
+
+/* Shop now button */
+.hero-btn {
+  background: #FFD700 !important;
+  color: #1A237E !important;
+  border: none !important;
+  padding: 14px 32px !important;
+  border-radius: 12px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  font-family: Cairo !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 16px rgba(255,215,0,0.4) !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+.hero-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(255,215,0,0.5) !important;
+}
+
+.hero {
+  position: relative !important;
+  min-height: 500px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important; /* Reset padding for hero specifically */
+}
+
+.hero-bg-image {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  z-index: 0 !important;
+}
+
+/* Very subtle dark overlay for text readability */
+.hero::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(
+    135deg,
+    rgba(0,0,0,0.35) 0%,
+    rgba(0,0,0,0.1) 50%,
+    rgba(0,0,0,0.05) 100%
+  ) !important;
+  z-index: 1 !important;
+}
+
+.hero-content, .hero [class*="content"] {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  width: 480px !important;
+  max-width: 90% !important;
+  text-align: center !important;
+  z-index: 2 !important;
+  padding: 0 !important;
+  background: none !important;
+}
+
+/* Center all text inside */
+.hero-content h1,
+.hero-content h2,
+.hero-content p,
+.hero-content .hero-badge {
+  text-align: center !important;
+}
+
+/* Center the button */
+.hero-content .hero-btn,
+.hero-content button,
+.hero-content a[class*="btn"] {
+  display: inline-flex !important;
+  margin: 0 auto !important;
+}
+
+/* Button wrapper if needed */
+.hero-content .btn-wrapper {
+  text-align: center !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    min-height: 320px !important;
+    align-items: flex-end !important;
+  }
+  
+  .hero-content {
+    width: 88% !important;
+    padding: 20px !important;
+    margin: 0 !important;
+  }
+  
+  .hero-content-glass {
+    padding: 20px !important;
+    border-radius: 16px !important;
+  }
+  
+  .hero h1, .hero-title-ar {
+    font-size: 32px !important;
+  }
+  
+  .hero h2, .hero-title-en {
+    font-size: 26px !important;
+  }
+  
+  .hero p, .hero-desc {
+    font-size: 13px !important;
+  }
 }
