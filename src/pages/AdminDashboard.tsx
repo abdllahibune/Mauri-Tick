@@ -1790,6 +1790,185 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
   );
 }
 
+function TradeInGallery({ photos }: { photos: string[] }) {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-400 font-bold font-cairo">
+        لا توجد صور
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 w-full md:w-56" dir="rtl">
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">📸 صور الجهاز ({photos.length})</p>
+      
+      <div className="relative group">
+        <div 
+          onClick={() => setIsOpen(true)}
+          className="aspect-square rounded-2xl overflow-hidden bg-gray-50 border-2 border-indigo-50 cursor-zoom-in relative"
+        >
+          <img 
+            src={photos[currentIdx]} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/400x400/f5f5f5/999?text=Error';
+            }}
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+             <div className="bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                <Eye className="w-5 h-5" />
+             </div>
+          </div>
+        </div>
+        
+        {photos.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm">
+            {photos.length} صور
+          </div>
+        )}
+      </div>
+
+      {photos.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+           {photos.map((img, i) => (
+             <button 
+               key={i}
+               onClick={() => setCurrentIdx(i)}
+               className={cn(
+                 "w-12 h-12 rounded-lg overflow-hidden border-2 transition-all shrink-0",
+                 currentIdx === i ? "border-primary scale-105 shadow-md" : "border-gray-100 opacity-60 hover:opacity-100"
+               )}
+             >
+               <img src={img} className="w-full h-full object-cover" />
+             </button>
+           ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {isOpen && (
+          <TradeInLightbox 
+            photos={photos} 
+            initialIndex={currentIdx} 
+            onClose={() => setIsOpen(false)} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function TradeInLightbox({ photos, initialIndex, onClose }: { photos: string[], initialIndex: number, onClose: () => void }) {
+  const [index, setIndex] = useState(initialIndex);
+
+  const next = () => setIndex((index + 1) % photos.length);
+  const prev = () => setIndex((index - 1 + photos.length) % photos.length);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') prev();
+      if (e.key === 'ArrowLeft') next();
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [index]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/95 z-[999999] flex flex-col items-center justify-center p-4 backdrop-blur-md"
+      onClick={(e) => (e.target as HTMLElement).classList.contains('lightbox-backdrop') && onClose()}
+    >
+      <div className="absolute inset-0 lightbox-backdrop" onClick={onClose} />
+      
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 pointer-events-none">
+         <button 
+           onClick={onClose}
+           className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all hover:rotate-90 pointer-events-auto"
+         >
+           <XCircle className="w-8 h-8" />
+         </button>
+         
+         <div className="bg-black/40 text-white px-6 py-2 rounded-full font-black text-sm tracking-widest backdrop-blur-md">
+            {index + 1} / {photos.length}
+         </div>
+
+         <div className="w-14" /> {/* Spacer */}
+      </div>
+
+      {/* Main Image View */}
+      <div className="relative w-full max-w-5xl flex items-center justify-center px-12 z-0">
+        {photos.length > 1 && (
+          <>
+            <button 
+              onClick={prev}
+              className="absolute -right-4 lg:right-0 p-4 text-white hover:scale-125 transition-transform hover:text-accent z-10"
+            >
+              <Smartphone className="w-10 h-10 md:w-12 md:h-12 rotate-90" />
+            </button>
+            <button 
+              onClick={next}
+              className="absolute -left-4 lg:left-0 p-4 text-white hover:scale-125 transition-transform hover:text-accent z-10"
+            >
+              <Smartphone className="w-10 h-10 md:w-12 md:h-12 -rotate-90" />
+            </button>
+          </>
+        )}
+
+        <motion.img 
+          key={index}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          src={photos[index]} 
+          className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-0" 
+        />
+      </div>
+
+      {/* Thumbnails */}
+      {photos.length > 1 && (
+        <div className="mt-8 flex gap-3 overflow-x-auto max-w-full p-4 bg-white/5 rounded-[32px] backdrop-blur-sm relative z-10">
+          {photos.map((img, i) => (
+            <button 
+              key={i}
+              onClick={() => setIndex(i)}
+              className={cn(
+                "w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0",
+                index === i ? "border-white scale-110 shadow-xl opacity-100" : "border-transparent opacity-40 hover:opacity-100"
+              )}
+            >
+              <img src={img} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Footer/Download */}
+      <div className="mt-8 relative z-10">
+         <a 
+          href={photos[index]} 
+          download={`trade-in-${index}.jpg`}
+          target="_blank"
+          className="bg-white text-primary px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"
+         >
+           <Download className="w-5 h-5" /> تحميل الصورة
+         </a>
+      </div>
+    </motion.div>
+  );
+}
+
 function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products: Product[] }) {
   const updateStatus = async (id: string, status: string) => {
     await safeWrite(async () => {
@@ -1804,9 +1983,7 @@ function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products
       <div className="grid grid-cols-1 gap-6">
         {tradeIns.map((t) => (
           <div key={t.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col md:flex-row gap-8">
-            <div className="w-full md:w-48 aspect-square rounded-2xl overflow-hidden bg-gray-50">
-              <img src={t.photos[0]} className="w-full h-full object-cover" />
-            </div>
+            <TradeInGallery photos={t.photos} />
             <div className="flex-1 flex flex-col gap-4">
               <div className="flex justify-between items-start">
                 <div>
