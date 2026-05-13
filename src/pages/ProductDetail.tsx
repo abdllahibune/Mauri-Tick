@@ -442,7 +442,12 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           {/* Add to cart */}
           <button
             onClick={() => {
-                addToCart(product, 1);
+                const cartVariant = selectedVariant ? {
+                  storage: selectedVariant.storage,
+                  color: selectedColor || undefined,
+                  price: currentPrice
+                } : undefined;
+                addToCart(product, 1, cartVariant);
                 toast.success('✅ تمت الإضافة للسلة');
             }}
             disabled={product.stock === 0}

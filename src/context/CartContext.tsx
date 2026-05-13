@@ -33,20 +33,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = (product: Product, quantity = 1, variant?: { storage: string; color?: string; price: number }) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const cartItemId = variant ? `${product.id}-${variant.storage}-${variant.color || ''}` : product.id;
+      const existing = prev.find(item => item.id === cartItemId);
+
       if (existing) {
         return prev.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
+
+      const price = variant 
+        ? variant.price 
+        : (product.discount > 0 ? Math.round(product.price * (1 - product.discount/100)) : product.price);
+
       return [...prev, { 
-        id: product.id, 
+        id: cartItemId,
+        productId: product.id,
         name: product.name, 
-        price: product.price * (1 - (product.discount || 0) / 100), 
+        price: price, 
         quantity, 
-        image: product.images[0] 
+        image: product.images[0],
+        variant: variant ? { storage: variant.storage, color: variant.color } : undefined
       }];
     });
   };

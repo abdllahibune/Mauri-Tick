@@ -1,6 +1,7 @@
 export interface ProductVariant {
   id: number;
   storage: string;
+  color?: string;
   price: number;
 }
 
@@ -114,12 +115,17 @@ export interface Order {
 }
 
 export interface CartItem {
-  id: string;
+  id: string; // Composite ID for cart (product.id + variants)
+  productId: string; // Original product ID
   name: string;
   price: number;
   quantity: number;
   image: string;
   isBuyNow?: boolean; // To identify temporary buy now items
+  variant?: {
+    storage: string;
+    color?: string;
+  };
 }
 
 export interface Review {

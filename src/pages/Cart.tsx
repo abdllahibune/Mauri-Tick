@@ -38,6 +38,11 @@ export function Cart() {
               <img src={item.image} alt={item.name} className="w-24 h-24 object-contain" />
               <div className="flex-1 text-center sm:text-right">
                 <h3 className="font-black text-lg text-primary">{item.name}</h3>
+                {item.variant && (
+                  <p className="text-xs font-bold text-gray-400">
+                    {item.variant.storage} {item.variant.color && ` — ${item.variant.color}`}
+                  </p>
+                )}
                 <p className="text-accent font-bold">{formatPrice(item.price)}</p>
               </div>
               <div className="flex items-center bg-gray-50 rounded-xl p-1 gap-2">

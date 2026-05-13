@@ -373,7 +373,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     specifications: {},
     variants: [],
     colors: [],
-    tier: ''
+    tier: '',
+    isFeatured: false,
+    isBestSeller: false,
+    isNewArrival: false
   });
 
   const [colorInput, setColorInput] = useState('');
@@ -382,15 +385,19 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     const id = Date.now();
     setForm(prev => ({
       ...prev,
-      variants: [...(prev.variants || []), { id, storage: '', price: 0 }]
+      variants: [...(prev.variants || []), { id, storage: '', color: '', price: 0 }]
     }));
   };
 
   const updateVariant = (id: number, field: string, value: any) => {
-    setForm(prev => ({
-      ...prev,
-      variants: prev.variants?.map(v => v.id === id ? { ...v, [field]: value } : v)
-    }));
+    setForm(prev => {
+      const newVariants = prev.variants?.map(v => v.id === id ? { ...v, [field]: value } : v) || [];
+      return {
+        ...prev,
+        variants: newVariants,
+        // Optional: auto-update price if it's the first variant or cheapest
+      };
+    });
   };
 
   const removeVariant = (id: number) => {
@@ -842,8 +849,22 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                </div>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-gray-500 mr-2">السعر</label>
-                    <input type="number" value={form.price} onChange={e => setForm({...form, price: parseFloat(e.target.value)})} required className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]" />
+                    <label className="text-xs font-bold text-gray-500 mr-2 flex justify-between items-center">
+                       <span>السعر (أرخص نسخة)</span>
+                       {form.variants && form.variants.length > 0 && (
+                          <span className="text-[10px] text-green-600 font-black">يُحسب من الخيارات 👇</span>
+                       )}
+                    </label>
+                    <input 
+                      type="number" 
+                      value={form.variants && form.variants.length > 0 
+                        ? Math.min(...form.variants.map(v => v.price || 0)) 
+                        : form.price} 
+                      onChange={e => setForm({...form, price: parseFloat(e.target.value)})} 
+                      required 
+                      disabled={form.variants && form.variants.length > 0}
+                      className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px] disabled:bg-gray-100 disabled:text-gray-400" 
+                    />
                  </div>
                  <div className="flex flex-col gap-2">
                     <label className="text-xs font-bold text-gray-500 mr-2">الخصم %</label>
@@ -877,50 +898,79 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                {/* Variants & Colors */}
                <div className="bg-gray-50 p-6 rounded-[32px] flex flex-col gap-6">
                  <div className="flex flex-col gap-4">
-                   <h4 className="font-black text-gray-700 text-sm italic">💾 خيارات التخزين والسعر</h4>
-                   <div className="flex flex-col gap-3">
-                     {form.variants?.map((v) => (
-                       <div key={v.id} className="flex gap-2 items-center">
-                         <select 
-                           value={v.storage} 
-                           onChange={e => updateVariant(v.id, 'storage', e.target.value)}
-                           className="flex-1 bg-white rounded-xl p-3 text-xs font-bold border border-gray-100"
-                         >
-                           <option value="">اختر السعة</option>
-                           <option value="64GB">64GB</option>
-                           <option value="128GB">128GB</option>
-                           <option value="256GB">256GB</option>
-                           <option value="512GB">512GB</option>
-                           <option value="1TB">1TB</option>
-                         </select>
-                         <input 
-                           type="number" 
-                           placeholder="السعر بالأوقية"
-                           value={v.price || ''}
-                           onChange={e => updateVariant(v.id, 'price', parseFloat(e.target.value))}
-                           className="flex-1 bg-white rounded-xl p-3 text-xs font-bold border border-gray-100"
-                         />
-                         <button 
-                           type="button" 
-                           onClick={() => removeVariant(v.id)}
-                           className="p-3 bg-red-50 text-red-500 rounded-xl"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
-                       </div>
-                     ))}
-                     <button 
-                       type="button" 
-                       onClick={addVariant}
-                       className="bg-primary/5 text-primary py-3 rounded-xl text-xs font-black border border-dashed border-primary/20"
-                     >
-                       + إضافة خيار تخزين
-                     </button>
+                   <div className="flex justify-between items-center mr-2">
+                     <h4 className="font-black text-gray-700 text-sm italic">💾 نسخ وخيارات المنتج (الأنواع)</h4>
+                     <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm">
+                       <span className="text-[10px] font-black text-gray-400 uppercase">تفعيل الأنواع</span>
+                       <input 
+                         type="checkbox" 
+                         checked={(form.variants?.length || 0) > 0} 
+                         onChange={e => {
+                           if (e.target.checked && (form.variants?.length || 0) === 0) addVariant();
+                           if (!e.target.checked) setForm({...form, variants: []});
+                         }}
+                         className="w-4 h-4 accent-primary"
+                       />
+                     </label>
                    </div>
+
+                   {form.variants && form.variants.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      {form.variants.map((v) => (
+                        <div key={v.id} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative group">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black text-gray-400 mr-1">السعة / الموديل</span>
+                            <input 
+                              value={v.storage} 
+                              onChange={e => updateVariant(v.id, 'storage', e.target.value)}
+                              placeholder="مثال: 128GB"
+                              className="w-full bg-gray-50 rounded-xl p-3 text-xs font-bold border border-gray-100 outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black text-gray-400 mr-1">اللون (اختياري)</span>
+                            <input 
+                              value={v.color || ''} 
+                              onChange={e => updateVariant(v.id, 'color', e.target.value)}
+                              placeholder="مثال: أسود"
+                              className="w-full bg-gray-50 rounded-xl p-3 text-xs font-bold border border-gray-100 outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black text-gray-400 mr-1">السعر</span>
+                            <div className="flex gap-2 items-center">
+                              <input 
+                                type="number" 
+                                placeholder="0"
+                                value={v.price || ''}
+                                onChange={e => updateVariant(v.id, 'price', parseFloat(e.target.value))}
+                                className="w-full bg-gray-50 rounded-xl p-3 text-xs font-black border border-gray-100 outline-none focus:border-primary"
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => removeVariant(v.id)}
+                                className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        type="button" 
+                        onClick={addVariant}
+                        className="bg-primary/5 text-primary py-4 rounded-xl text-xs font-black border border-dashed border-primary/20 hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" /> إضافة نسخة أو خيار جديد
+                      </button>
+                    </div>
+                   )}
                  </div>
 
                  <div className="flex flex-col gap-4">
-                   <h4 className="font-black text-gray-700 text-sm italic">🎨 الألوان المتوفرة</h4>
+                   <h4 className="font-black text-gray-700 text-sm italic">🎨 الألوان العامة المتوفرة</h4>
+                   <p className="text-[9px] text-gray-400 -mt-2">استخدم هذه القائمة إذا كانت الألوان لا تؤثر على السعر</p>
                    <div className="flex flex-wrap gap-2">
                       {form.colors?.map((color, i) => (
                         <span key={i} className="bg-white px-3 py-1.5 rounded-full text-xs font-bold border border-gray-100 flex items-center gap-2">
