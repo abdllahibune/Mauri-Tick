@@ -19,6 +19,197 @@ import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
 import { UserProfile } from '../types';
 
+// Global helper for admin image viewing (requested fix)
+if (typeof window !== 'undefined') {
+  (window as any).openAdminImageViewer = function(images: string[], startIndex: number) {
+    // Remove any existing viewer
+    document.getElementById('adminImgViewer')?.remove();
+    
+    let currentIndex = startIndex || 0;
+    const imgs = Array.isArray(images) ? images : [images];
+    
+    const viewer = document.createElement('div');
+    viewer.id = 'adminImgViewer';
+    viewer.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Cairo, sans-serif;
+    `;
+    
+    function getViewerHTML(index: number) {
+      return `
+        <!-- Close -->
+        <button onclick="
+          document.getElementById('adminImgViewer').remove();
+          document.body.style.overflow='';"
+          style="position:absolute; top:16px; right:16px;
+          background:rgba(255,255,255,0.2); border:none;
+          color:white; width:44px; height:44px;
+          border-radius:50%; font-size:18px; cursor:pointer;
+          z-index:2;">✕</button>
+        
+        <!-- Counter -->
+        <div style="position:absolute; top:20px; left:50%;
+          transform:translateX(-50%); color:white;
+          background:rgba(0,0,0,0.5); padding:4px 16px;
+          border-radius:20px; font-size:14px;">
+          ${index + 1} / ${imgs.length}
+        </div>
+        
+        ${imgs.length > 1 ? `
+          <!-- Prev -->
+          <button onclick="adminImgNav(-1)"
+            style="position:absolute; left:16px; top:50%;
+            transform:translateY(-50%);
+            background:rgba(255,255,255,0.2); border:none;
+            color:white; width:50px; height:50px;
+            border-radius:50%; font-size:28px; cursor:pointer;
+            display:flex; align-items:center;
+            justify-content:center;">‹</button>
+          
+          <!-- Next -->
+          <button onclick="adminImgNav(1)"
+            style="position:absolute; right:16px; top:50%;
+            transform:translateY(-50%);
+            background:rgba(255,255,255,0.2); border:none;
+            color:white; width:50px; height:50px;
+            border-radius:50%; font-size:28px; cursor:pointer;
+            display:flex; align-items:center;
+            justify-content:center;">›</button>
+        ` : ''}
+        
+        <!-- Main image -->
+        <img id="adminViewerMainImg"
+          src="${imgs[index]}"
+          style="max-width:88vw; max-height:78vh;
+          object-fit:contain; border-radius:10px;
+          transition:opacity 0.2s;"
+          onerror="this.src='https://via.placeholder.com/400x400/1A237E/white?text=error'">
+        
+        <!-- Thumbnails -->
+        ${imgs.length > 1 ? `
+          <div style="display:flex; gap:8px; margin-top:16px;
+            padding:10px 14px;
+            background:rgba(255,255,255,0.1);
+            border-radius:14px; overflow-x:auto;
+            max-width:90vw;">
+            ${imgs.map((img, i) => `
+              <img src="${img}"
+                onclick="adminImgGoTo(${i})"
+                id="adminThumb_${i}"
+                style="width:58px; height:58px;
+                object-fit:cover; border-radius:8px;
+                cursor:pointer; flex-shrink:0;
+                border:2px solid ${i===index
+                  ?'white':'transparent'};
+                opacity:${i===index?'1':'0.5'};
+                transition:all 0.2s;">
+            `).join('')}
+          </div>
+        ` : ''}
+        
+        <!-- Download -->
+        <a href="${imgs[index]}" 
+          id="adminViewerDownload"
+          target="_blank" download
+          style="position:absolute; bottom:20px;
+          left:50%; transform:translateX(-50%);
+          background:rgba(255,255,255,0.15); color:white;
+          padding:8px 20px; border-radius:20px;
+          text-decoration:none; font-size:13px;
+          display:flex; align-items:center; gap:6px;">
+          ⬇️ تحميل الصورة
+        </a>
+      `;
+    }
+    
+    viewer.innerHTML = getViewerHTML(currentIndex);
+    document.body.appendChild(viewer);
+    document.body.style.overflow = 'hidden';
+    
+    // Navigation functions
+    (window as any).adminImgNav = function(dir: number) {
+      currentIndex = 
+        (currentIndex + dir + imgs.length) % imgs.length;
+      (window as any).adminImgGoTo(currentIndex);
+    };
+    
+    (window as any).adminImgGoTo = function(index: number) {
+      currentIndex = index;
+      
+      // Update main image
+      const mainImg = document.getElementById(
+        'adminViewerMainImg') as HTMLImageElement;
+      if (mainImg) {
+        mainImg.style.opacity = '0';
+        setTimeout(() => {
+          mainImg.src = imgs[index];
+          mainImg.style.opacity = '1';
+        }, 150);
+      }
+      
+      // Update download link
+      const dl = document.getElementById(
+        'adminViewerDownload') as HTMLAnchorElement;
+      if (dl) dl.href = imgs[index];
+      
+      // Update thumbnails
+      imgs.forEach((_, i) => {
+        const th = document.getElementById(
+          `adminThumb_${i}`);
+        if (th) {
+          th.style.border = i === index
+            ? '2px solid white' : '2px solid transparent';
+          th.style.opacity = i === index ? '1' : '0.5';
+        }
+      });
+    };
+    
+    // Keyboard support
+    const keyHandler = (e: KeyboardEvent) => {
+      if (!document.getElementById('adminImgViewer')) {
+        document.removeEventListener('keydown', keyHandler);
+        return;
+      }
+      if (e.key === 'ArrowLeft') (window as any).adminImgNav(1);
+      if (e.key === 'ArrowRight') (window as any).adminImgNav(-1);
+      if (e.key === 'Escape') {
+        viewer.remove();
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', keyHandler);
+      }
+    }
+    document.addEventListener('keydown', keyHandler);
+    
+    // Close on background click
+    viewer.addEventListener('click', e => {
+      if (e.target === viewer) {
+        viewer.remove();
+        document.body.style.overflow = '';
+      }
+    });
+    
+    // Swipe support
+    let touchStartX = 0;
+    viewer.addEventListener('touchstart', e => {
+      touchStartX = (e as TouchEvent).touches[0].clientX;
+    });
+    viewer.addEventListener('touchend', e => {
+      const diff = touchStartX - 
+        (e as TouchEvent).changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) {
+        (window as any).adminImgNav(diff > 0 ? 1 : -1);
+      }
+    });
+  }
+}
+
 export function AdminDashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [password, setPassword] = useState('');
@@ -1842,12 +2033,11 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
 
 function TradeInGallery({ photos }: { photos: string[] }) {
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
 
   if (!photos || photos.length === 0) {
     return (
-      <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-400 font-bold font-cairo">
-        لا توجد صور
+      <div className="bg-gray-100 rounded-2xl p-8 text-center text-gray-400 font-bold border-2 border-dashed border-gray-200">
+        لا توجد صور للجهاز
       </div>
     );
   }
@@ -1856,168 +2046,80 @@ function TradeInGallery({ photos }: { photos: string[] }) {
     <div className="flex flex-col gap-3 w-full md:w-56" dir="rtl">
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">📸 صور الجهاز ({photos.length})</p>
       
-      <div className="relative group">
-        <div 
-          onClick={() => setIsOpen(true)}
-          className="aspect-square rounded-2xl overflow-hidden bg-gray-50 border-2 border-indigo-50 cursor-zoom-in relative"
-        >
+      <div className="relative group overflow-hidden rounded-2xl">
+        <div className="relative">
           <img 
             src={photos[currentIdx]} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/400x400/f5f5f5/999?text=Error';
+            onClick={() => (window as any).openAdminImageViewer(photos, currentIdx)}
+            style={{
+              width: '100%',
+              aspectRatio: '1/1',
+              objectFit: 'cover',
+              borderRadius: '10px',
+              cursor: 'zoom-in',
+              border: '2px solid #E8EAF6',
+              transition: 'transform 0.2s',
             }}
+            onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
+            onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            alt="Product"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-             <div className="bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <Eye className="w-5 h-5" />
-             </div>
-          </div>
+
+          {photos.length > 1 && (
+            <div style={{
+              position: 'absolute',
+              bottom: '8px',
+              right: '8px',
+              background: 'rgba(0,0,0,0.65)',
+              color: 'white',
+              padding: '2px 10px',
+              borderRadius: '12px',
+              fontSize: '12px',
+              fontFamily: 'Cairo',
+              pointerEvents: 'none',
+            }}>
+              📸 {photos.length} صور
+            </div>
+          )}
+
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            background: 'rgba(0,0,0,0.5)',
+            color: 'white',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            pointerEvents: 'none',
+          }}>🔍</div>
         </div>
         
         {photos.length > 1 && (
-          <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm">
-            {photos.length} صور
+          <div className="flex gap-2 overflow-x-auto pb-1 mt-2 no-scrollbar">
+             {photos.map((img, i) => (
+               <button 
+                 key={i}
+                 onClick={() => setCurrentIdx(i)}
+                 className={cn(
+                   "w-12 h-12 rounded-lg overflow-hidden border-2 transition-all shrink-0",
+                   currentIdx === i ? "border-primary scale-105 shadow-md" : "border-gray-100 opacity-60 hover:opacity-100"
+                 )}
+               >
+                 <img src={img} className="w-full h-full object-cover" />
+               </button>
+             ))}
           </div>
         )}
       </div>
-
-      {photos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-           {photos.map((img, i) => (
-             <button 
-               key={i}
-               onClick={() => setCurrentIdx(i)}
-               className={cn(
-                 "w-12 h-12 rounded-lg overflow-hidden border-2 transition-all shrink-0",
-                 currentIdx === i ? "border-primary scale-105 shadow-md" : "border-gray-100 opacity-60 hover:opacity-100"
-               )}
-             >
-               <img src={img} className="w-full h-full object-cover" />
-             </button>
-           ))}
-        </div>
-      )}
-
-      <AnimatePresence>
-        {isOpen && (
-          <TradeInLightbox 
-            photos={photos} 
-            initialIndex={currentIdx} 
-            onClose={() => setIsOpen(false)} 
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
-function TradeInLightbox({ photos, initialIndex, onClose }: { photos: string[], initialIndex: number, onClose: () => void }) {
-  const [index, setIndex] = useState(initialIndex);
-
-  const next = () => setIndex((index + 1) % photos.length);
-  const prev = () => setIndex((index - 1 + photos.length) % photos.length);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') prev();
-      if (e.key === 'ArrowLeft') next();
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', handleKey);
-      document.body.style.overflow = '';
-    };
-  }, [index]);
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/95 z-[999999] flex flex-col items-center justify-center p-4 backdrop-blur-md"
-      onClick={(e) => (e.target as HTMLElement).classList.contains('lightbox-backdrop') && onClose()}
-    >
-      <div className="absolute inset-0 lightbox-backdrop" onClick={onClose} />
-      
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 pointer-events-none">
-         <button 
-           onClick={onClose}
-           className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all hover:rotate-90 pointer-events-auto"
-         >
-           <XCircle className="w-8 h-8" />
-         </button>
-         
-         <div className="bg-black/40 text-white px-6 py-2 rounded-full font-black text-sm tracking-widest backdrop-blur-md">
-            {index + 1} / {photos.length}
-         </div>
-
-         <div className="w-14" /> {/* Spacer */}
-      </div>
-
-      {/* Main Image View */}
-      <div className="relative w-full max-w-5xl flex items-center justify-center px-12 z-0">
-        {photos.length > 1 && (
-          <>
-            <button 
-              onClick={prev}
-              className="absolute -right-4 lg:right-0 p-4 text-white hover:scale-125 transition-transform hover:text-accent z-10"
-            >
-              <Smartphone className="w-10 h-10 md:w-12 md:h-12 rotate-90" />
-            </button>
-            <button 
-              onClick={next}
-              className="absolute -left-4 lg:left-0 p-4 text-white hover:scale-125 transition-transform hover:text-accent z-10"
-            >
-              <Smartphone className="w-10 h-10 md:w-12 md:h-12 -rotate-90" />
-            </button>
-          </>
-        )}
-
-        <motion.img 
-          key={index}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          src={photos[index]} 
-          className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-0" 
-        />
-      </div>
-
-      {/* Thumbnails */}
-      {photos.length > 1 && (
-        <div className="mt-8 flex gap-3 overflow-x-auto max-w-full p-4 bg-white/5 rounded-[32px] backdrop-blur-sm relative z-10">
-          {photos.map((img, i) => (
-            <button 
-              key={i}
-              onClick={() => setIndex(i)}
-              className={cn(
-                "w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0",
-                index === i ? "border-white scale-110 shadow-xl opacity-100" : "border-transparent opacity-40 hover:opacity-100"
-              )}
-            >
-              <img src={img} className="w-full h-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Footer/Download */}
-      <div className="mt-8 relative z-10">
-         <a 
-          href={photos[index]} 
-          download={`trade-in-${index}.jpg`}
-          target="_blank"
-          className="bg-white text-primary px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"
-         >
-           <Download className="w-5 h-5" /> تحميل الصورة
-         </a>
-      </div>
-    </motion.div>
-  );
-}
 
 function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products: Product[] }) {
   const updateStatus = async (id: string, status: string) => {
