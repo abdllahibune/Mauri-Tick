@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer, MessageCircle, Smartphone } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, TrendingUp, Timer, MessageCircle, Smartphone, ArrowLeftRight } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
 import { formatPrice, cn, contactWhatsApp, getProductTier } from '../lib/utils';
 import { motion } from 'motion/react';
+import toast from 'react-hot-toast';
 
 const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -71,6 +72,17 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       clearInterval(viewerInterval);
     };
   }, []);
+
+  const handleCompare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isCompared) {
+      removeFromCompare(product.id);
+      toast.success('تمت الإزالة من المقارنة');
+    } else {
+      addToCompare(product);
+    }
+  };
 
   const { price: displayPrice, hasVariants } = (() => {
     if (product.variants && product.variants.length > 0) {
@@ -150,29 +162,29 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         )}
       </div>
 
-      <button 
-        onClick={() => toggleWishlist(product.id)}
-        className={cn(
-          "absolute top-3 left-3 z-10 p-2 rounded-full shadow-md transition-all wishlist-trigger",
-          isWishlisted ? "bg-red-50 text-red-500" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500"
-        )}
-      >
-        <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
-      </button>
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
+        <button 
+          onClick={() => toggleWishlist(product.id)}
+          className={cn(
+            "p-2 rounded-full shadow-md transition-all wishlist-trigger",
+            isWishlisted ? "bg-red-50 text-red-500" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500"
+          )}
+          title={isWishlisted ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+        >
+          <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
+        </button>
 
-      <button 
-        onClick={(e) => {
-          e.preventDefault();
-          isCompared ? removeFromCompare(product.id) : addToCompare(product);
-        }}
-        className={cn(
-          "absolute top-3 left-14 z-10 p-2 rounded-full shadow-md transition-all compare-trigger",
-          isCompared ? "bg-blue-50 text-blue-500 ring-2 ring-blue-500/20" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-blue-500"
-        )}
-        title="أضف للمقارنة"
-      >
-        <LayoutGrid className={cn("w-5 h-5", isCompared && "fill-current")} />
-      </button>
+        <button 
+          onClick={handleCompare}
+          className={cn(
+            "p-2 rounded-full shadow-md transition-all compare-trigger",
+            isCompared ? "bg-blue-50 text-blue-500 ring-2 ring-blue-500/20" : "bg-white/80 backdrop-blur-md text-gray-400 hover:text-blue-500"
+          )}
+          title={isCompared ? "إزالة من المقارنة" : "إضافة للمقارنة"}
+        >
+          <ArrowLeftRight className={cn("w-5 h-5", isCompared && "fill-current")} />
+        </button>
+      </div>
 
       {/* Image Overlay on Hover */}
       <div className="relative aspect-[4/5] sm:aspect-square overflow-hidden bg-gray-50 flex-shrink-0">
@@ -241,6 +253,16 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
            <div className="flex gap-1">
               <button 
+                onClick={handleCompare}
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm flex-shrink-0",
+                  isCompared ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                )}
+                title={isCompared ? "إزالة من المقارنة" : "إضافة للمقارنة"}
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+              </button>
+              <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }}
                 className="w-8 h-8 rounded-full bg-indigo-50 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-sm flex-shrink-0"
               >
@@ -265,4 +287,4 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       </Link>
     </motion.div>
   );
-}
+};
