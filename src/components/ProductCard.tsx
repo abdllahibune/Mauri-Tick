@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Eye, TrendingUp, Timer, MessageCircle, Smartphone, ArrowLeftRight } from 'lucide-react';
 import { Product } from '../types';
@@ -11,26 +11,48 @@ import toast from 'react-hot-toast';
 const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="relative w-full h-full">
-      {!isLoaded && !error && (
+    <div ref={containerRef} className="relative w-full h-full">
+      {(!isLoaded || !isInView) && !error && (
         <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
           <Smartphone className="w-10 h-10 text-gray-200" />
         </div>
       )}
-      <img
-        src={error ? 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱' : src}
-        alt={alt}
-        loading="lazy"
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setError(true)}
-        className={cn(
-          className,
-          "transition-opacity duration-300",
-          isLoaded ? "opacity-100" : "opacity-0"
-        )}
-      />
+      {isInView && (
+        <img
+          src={error ? 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱' : src}
+          alt={alt}
+          loading="lazy"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setError(true)}
+          className={cn(
+            className,
+            "transition-opacity duration-300",
+            isLoaded ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
     </div>
   );
 };
