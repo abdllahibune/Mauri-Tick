@@ -5,13 +5,17 @@ import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft } fr
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db, ensureAuth } from '../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
+import { AnimatePresence } from 'motion/react';
+import { X } from 'lucide-react';
 
 import { DEMO_PRODUCTS } from '../constants';
 
 export function Home({ products }: { products: Product[] }) {
   const [config, setConfig] = useState<StoreConfig | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
+  const [flashDeal, setFlashDeal] = useState<any>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -20,8 +24,29 @@ export function Home({ products }: { products: Product[] }) {
     const unsubscribe = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
+
+    const checkFlashDeal = async () => {
+      const lastSeen = localStorage.getItem('mt_flash_seen');
+      if (lastSeen && Date.now() - parseInt(lastSeen) < 3 * 60 * 60 * 1000) return;
+
+      const snap = await getDoc(doc(db, 'mt_settings', 'flash_deal'));
+      if (snap.exists()) {
+        const deal = snap.data();
+        if (deal.active) {
+          setFlashDeal(deal);
+          setTimeout(() => setShowFlash(true), 2000);
+        }
+      }
+    };
+
+    checkFlashDeal();
     return () => unsubscribe();
   }, []);
+
+  const closeFlashPopup = () => {
+    setShowFlash(false);
+    localStorage.setItem('mt_flash_seen', Date.now().toString());
+  };
 
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 
@@ -82,6 +107,63 @@ export function Home({ products }: { products: Product[] }) {
 
   return (
     <div className="flex flex-col gap-16 pb-20">
+      <AnimatePresence>
+        {showFlash && flashDeal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[32px] overflow-hidden max-w-sm w-full shadow-2xl relative"
+              dir="rtl"
+            >
+              <button 
+                onClick={closeFlashPopup}
+                className="absolute top-4 left-4 z-10 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="bg-gradient-to-br from-red-600 to-red-800 p-8 text-center text-white relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl">⚡</div>
+                <div className="text-4xl mb-2">⚡</div>
+                <h3 className="text-xl font-black mb-1">عرض محدود الوقت!</h3>
+                <p className="text-white/80 text-xs font-bold font-cairo">لا تفوّت هذه الفرصة الذهبية</p>
+              </div>
+
+              {flashDeal.image && (
+                <div className="h-48 bg-gray-50 flex items-center justify-center p-6">
+                  <img src={flashDeal.image} alt={flashDeal.title} className="max-h-full object-contain" />
+                </div>
+              )}
+
+              <div className="p-8 text-center">
+                <h4 className="text-lg font-black text-primary mb-2 font-cairo">{flashDeal.title}</h4>
+                <p className="text-gray-500 text-sm font-bold mb-6 font-cairo leading-relaxed">
+                  {flashDeal.description || 'احصل على أفضل الأجهزة بأقل الأسعار لفترة محدودة جداً.'}
+                </p>
+                
+                <Link 
+                  to={flashDeal.link || '/products'} 
+                  onClick={closeFlashPopup}
+                  className="block w-full bg-red-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
+                >
+                  استفد من العرض الآن 🛍️
+                </Link>
+                
+                <p className="mt-4 text-[10px] font-black text-red-500 animate-pulse">
+                  * العرض ساري حتى نفاد الكمية!
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Scrolling Categories (Facebook Stories Style) */}
       <div className="md:hidden categories-row">
         <button 

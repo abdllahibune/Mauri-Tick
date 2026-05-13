@@ -1,11 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer, MessageCircle } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, TrendingUp, LayoutGrid, Timer, MessageCircle, Smartphone } from 'lucide-react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
 import { formatPrice, cn, contactWhatsApp, getProductTier } from '../lib/utils';
 import { motion } from 'motion/react';
+
+const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <div className="relative w-full h-full">
+      {!isLoaded && !error && (
+        <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
+          <Smartphone className="w-10 h-10 text-gray-200" />
+        </div>
+      )}
+      <img
+        src={error ? 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱' : src}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setError(true)}
+        className={cn(
+          className,
+          "transition-opacity duration-300",
+          isLoaded ? "opacity-100" : "opacity-0"
+        )}
+      />
+    </div>
+  );
+};
 
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addToCart, wishlist, toggleWishlist } = useCart();
@@ -151,14 +178,10 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
       {/* Image Overlay on Hover */}
       <div className="relative aspect-square overflow-hidden bg-gray-50 flex-shrink-0">
-        <img 
+        <ImageWithPlaceholder 
           src={product.images[0] || 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱'} 
           alt={product.name}
           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 p-6 product-image"
-          loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱';
-          }}
         />
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Go to Firebase Console > Authentication > 
 // Sign-in method > Anonymous > Enable
 // Then go to Firestore > Rules > Publish rules above
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
@@ -146,6 +146,7 @@ export function AdminDashboard() {
                 { id: 'notifications', name: 'إشعارات', icon: MessageSquare },
                 { id: 'trade-ins', name: 'استبدال', icon: Smartphone },
                 { id: 'used', name: 'مستعمل', icon: Package },
+                { id: 'flash-deal', name: 'عروض فلاش', icon: Gift },
                 { id: 'reviews', name: 'تقييمات', icon: Star },
                 { id: 'support', name: 'دعم', icon: MessageCircle },
                 { id: 'investors', name: 'مستثمرون', icon: BarChart3 },
@@ -195,6 +196,7 @@ export function AdminDashboard() {
                 {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
                 {activeTab === 'support' && <SupportSection requests={supportRequests} />}
                 {activeTab === 'investors' && <InvestorsSection investors={investors} />}
+                {activeTab === 'flash-deal' && <FlashDealSettingsSection />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
            </AnimatePresence>
@@ -1950,6 +1952,155 @@ function InvestorsSection({ investors }: { investors: Investor[] }) {
              </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function FlashDealSettingsSection() {
+  const [deal, setDeal] = useState<any>({
+    active: false,
+    title: '',
+    description: '',
+    image: '',
+    link: ''
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchDeal = async () => {
+      const snap = await getDoc(doc(db, 'mt_settings', 'flash_deal'));
+      if (snap.exists()) setDeal(snap.data());
+      setLoading(false);
+    };
+    fetchDeal();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'mt_settings', 'flash_deal'), deal);
+      toast.success('تم حفظ العرض بنجاح! ⚡');
+    } catch (e) {
+      toast.error('فشل حفظ العرض');
+    }
+    setSaving(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const url = await uploadToCloudinary(file);
+      setDeal((prev: any) => ({ ...prev, image: url }));
+      toast.success('تم رفع الصورة بنجاح ✅');
+    } catch (e) {
+      toast.error('فشل رفع الصورة');
+    }
+  };
+
+  if (loading) return <div className="p-20 text-center"><Loader2 className="w-10 h-10 animate-spin mx-auto text-primary" /></div>;
+
+  return (
+    <div className="flex flex-col gap-12 max-w-4xl">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-black text-primary">إدارة عرض الفلاش ⚡</h2>
+        <button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="bg-red-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:scale-105 transition-transform disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} حفظ وتفعيل
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 bg-red-50/30 p-8 md:p-12 rounded-[40px] border border-red-100">
+        <div className="flex flex-col gap-8">
+           <div className="flex items-center justify-between p-6 bg-white rounded-3xl shadow-sm border border-red-100">
+              <div className="flex flex-col">
+                <span className="font-black text-primary">حالة العرض</span>
+                <span className="text-xs font-bold text-gray-400">تفعيل أو تعطيل النافذة المنبثقة</span>
+              </div>
+              <button 
+                onClick={() => setDeal({...deal, active: !deal.active})}
+                className={cn(
+                  "w-14 h-7 rounded-full relative transition-all duration-300",
+                  deal.active ? "bg-green-500" : "bg-gray-300"
+                )}
+              >
+                <div className={cn(
+                  "absolute top-1 w-5 h-5 rounded-full bg-white transition-all shadow-md",
+                  deal.active ? "right-1" : "right-8"
+                )} />
+              </button>
+           </div>
+
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-400 mr-2 uppercase">عنوان العرض</label>
+              <input 
+                value={deal.title} 
+                onChange={e => setDeal({...deal, title: e.target.value})}
+                placeholder="مثال: خصم 50% على آيفون 15"
+                className="bg-white rounded-2xl p-4 outline-none border border-red-50 font-black text-lg shadow-sm" 
+              />
+           </div>
+
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-400 mr-2 uppercase">وصف العرض</label>
+              <textarea 
+                value={deal.description} 
+                onChange={e => setDeal({...deal, description: e.target.value})}
+                placeholder="اكتب تفاصيل العرض هنا باختصار..."
+                className="bg-white rounded-2xl p-4 outline-none border border-red-50 h-32 resize-none font-bold text-sm shadow-sm" 
+              />
+           </div>
+
+           <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-400 mr-2 uppercase">رابط العرض (Redirect Link)</label>
+              <input 
+                value={deal.link} 
+                onChange={e => setDeal({...deal, link: e.target.value})}
+                placeholder="مثال: /category/phones"
+                className="bg-white rounded-2xl p-4 outline-none border border-red-50 font-bold text-sm shadow-sm" 
+              />
+           </div>
+        </div>
+
+        <div className="flex flex-col gap-8">
+           <div className="flex flex-col gap-4">
+              <label className="text-xs font-bold text-gray-400 mr-2 uppercase">صورة العرض</label>
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-red-100 flex flex-col gap-4">
+                 <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center p-4">
+                    {deal.image ? (
+                      <img src={deal.image} alt="Flash Deal" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gray-300">
+                        <ImageIcon className="w-12 h-12" />
+                        <span className="text-[10px] font-black uppercase">لا توجد صورة</span>
+                      </div>
+                    )}
+                 </div>
+                 <label className="w-full">
+                    <div className="bg-primary/5 text-primary p-4 rounded-xl font-black text-center cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-center gap-2 text-xs">
+                       <ImageIcon className="w-4 h-4" /> رفع صورة العرض
+                    </div>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                 </label>
+              </div>
+           </div>
+
+           <div className="bg-white p-6 rounded-3xl shadow-lg border border-red-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl text-red-600">⚡</div>
+              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">معاينة العرض في الصفحة الرئيسية</h4>
+              <div className="flex flex-col items-center text-center">
+                 <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white mb-3">⚡</div>
+                 <h5 className="font-black text-primary mb-1">{deal.title || 'عنوان العرض'}</h5>
+                 <p className="text-[10px] font-bold text-gray-400 mb-4">{deal.description || 'وصف العرض يظهر هنا...'}</p>
+                 <div className="w-full py-3 bg-red-600 text-white rounded-xl text-[10px] font-black">تسوق الآن</div>
+              </div>
+           </div>
+        </div>
       </div>
     </div>
   );
