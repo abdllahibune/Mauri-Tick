@@ -120,29 +120,28 @@
     padding-bottom: 64px !important;
   }
 
-  /* ===== PRODUCT CARDS - FACEBOOK POST STYLE ===== */
+  /* ===== PRODUCT CARDS - APP STYLE ===== */
   .products-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
     padding: 0 !important;
   }
 
   .product-card {
     width: 100% !important;
-    border-radius: 0 !important;
-    border-bottom: 8px solid #f0f2f5 !important;
-    box-shadow: none !important;
+    border-radius: 12px !important;
+    border-bottom: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
     margin: 0 !important;
     background: white;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
-  /* Card header like Facebook post */
+  /* Compact header in grid */
   .product-card-header {
-    display: flex !important;
-    align-items: center !important;
-    padding: 10px 12px !important;
-    gap: 10px !important;
+    padding: 8px !important;
   }
 
   /* Brand logo circle */
@@ -160,22 +159,17 @@
     flex-shrink: 0 !important;
   }
 
-  /* Product image - full width */
-  .product-card img,
-  .product-card [class*="image"] {
-    width: 100% !important;
-    height: 280px !important;
+  /* Product image - consistent aspect */
+  .product-image {
+    height: auto !important;
+    aspect-ratio: 4/5 !important;
     object-fit: contain !important;
-    background: #f8f8f8 !important;
-    padding: 0 !important;
+    background: #fdfdfd !important;
   }
 
-  /* Action bar like Facebook reactions */
+  /* Action bar simplified */
   .product-card-actions {
-    display: flex !important;
-    padding: 4px 12px !important;
-    border-top: 1px solid #e0e0e0 !important;
-    gap: 4px !important;
+    display: none !important; /* Managed by React icons now */
   }
 
   .product-action-btn {
@@ -274,17 +268,28 @@
     color: #1A237E !important;
   }
 
-  .tab-item svg {
-    width: 24px !important;
-    height: 24px !important;
-  }
+/* Sticky Header Fix */
+.navbar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(26, 35, 126, 0.95) !important;
+}
+
+/* Hide scrollbars for categories */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 }
 
 
 
 /* ===== LAYOUT ALIGNMENT FIXES ===== */
 section, .section, .container, 
-.features, .products-grid,
+.features, 
 .hero, .banner, .offers {
   width: 100% !important;
   max-width: 100% !important;

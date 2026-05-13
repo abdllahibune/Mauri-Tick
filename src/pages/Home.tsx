@@ -164,21 +164,31 @@ export function Home({ products }: { products: Product[] }) {
         )}
       </AnimatePresence>
 
-      {/* Mobile Scrolling Categories (Facebook Stories Style) */}
-      <div className="md:hidden categories-row">
+      {/* Mobile Scrolling Categories (Social Stories Style) */}
+      <div className="md:hidden flex overflow-x-auto scrollbar-hide py-4 px-4 gap-3 bg-white border-b-8 border-gray-50 no-scrollbar">
         <button 
           onClick={() => navigate('/products')}
-          className="category-chip active"
+          className="flex-shrink-0 flex flex-col items-center gap-1.5"
         >
-          الكل
+          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-accent to-yellow-300 p-0.5 shadow-md">
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-primary border-2 border-white">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+          </div>
+          <span className="text-[10px] font-black text-primary">الكل</span>
         </button>
         {categories.map(cat => (
           <button 
             key={cat}
             onClick={() => navigate(`/products?category=${cat}`)}
-            className="category-chip"
+            className="flex-shrink-0 flex flex-col items-center gap-1.5"
           >
-            {cat}
+            <div className="w-16 h-16 rounded-full bg-gray-100 p-0.5 shadow-sm border border-gray-200">
+               <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-gray-400 font-black text-lg">
+                  {cat.charAt(0)}
+               </div>
+            </div>
+            <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">{cat}</span>
           </button>
         ))}
       </div>
@@ -317,7 +327,7 @@ export function Home({ products }: { products: Product[] }) {
               عرض الكل <ArrowLeft className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8 products-grid">
             {section.data.length > 0 ? (
               section.data.map(product => <ProductCard key={product.id} product={product} />)
             ) : (

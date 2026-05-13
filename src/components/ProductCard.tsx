@@ -92,16 +92,14 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       viewport={{ once: true }}
       className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 product-card"
     >
-      {/* Mobile Card Header (Facebook Post Style) */}
-      <div className="md:hidden flex items-center p-3 gap-3 product-card-header">
-        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black text-lg brand-avatar">
+      {/* Mobile Card Header (Social App Style) */}
+      <div className="md:hidden flex items-center p-2.5 gap-2 product-card-header">
+        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-primary font-black text-sm border border-indigo-100 flex-shrink-0">
           {product.brand.charAt(0).toUpperCase()}
         </div>
-        <div className="flex flex-col">
-          <span className="text-xs font-black text-gray-900 leading-none">{product.brand} Official</span>
-          <span className="text-[10px] font-bold text-gray-400 mt-1 flex items-center gap-1">
-            <TrendingUp className="w-2 h-2" /> منتج مميز • {timeLeft} متبقي
-          </span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[11px] font-black text-gray-900 leading-tight truncate">{product.brand}</span>
+          <span className="text-[9px] font-bold text-indigo-500/80">مميز • {timeLeft}</span>
         </div>
       </div>
 
@@ -177,152 +175,92 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       </button>
 
       {/* Image Overlay on Hover */}
-      <div className="relative aspect-square overflow-hidden bg-gray-50 flex-shrink-0">
+      <div className="relative aspect-[4/5] sm:aspect-square overflow-hidden bg-gray-50 flex-shrink-0">
         <ImageWithPlaceholder 
           src={product.images[0] || 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱'} 
           alt={product.name}
-          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 p-6 product-image"
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 p-4 sm:p-6 product-image"
         />
         {product.stock === 0 && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-            <span className="bg-white text-black px-4 py-2 rounded-lg font-black text-sm rotate-[-10deg]">نفذ المخزون</span>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-10">
+            <span className="bg-white/90 text-red-600 px-3 py-1.5 rounded-full font-black text-[10px] uppercase tracking-tighter shadow-lg">انتهى 🔥</span>
           </div>
         )}
         
-        {/* Quick Add Overlay */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform bg-gradient-to-t from-black/20 to-transparent add-to-cart-overlay">
+        {/* Quick Add Overlay - Desktop Only */}
+        <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform bg-gradient-to-t from-black/30 to-transparent hidden md:block add-to-cart-overlay">
           <button 
             disabled={product.stock === 0}
             onClick={(e) => {
               e.preventDefault();
               addToCart(product);
             }}
-            className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50 add-to-cart-btn"
+            className="w-full bg-white text-primary font-black py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-accent transition-all shadow-xl disabled:opacity-50"
           >
-            <ShoppingBag className="w-5 h-5" /> <span className="hidden sm:inline">إضافة للسلة</span><span className="sm:hidden">🛒</span>
+            <ShoppingBag className="w-4 h-4" /> إضافة للسلة
           </button>
+        </div>
+        
+        {/* Mobile Price Badge Overlay */}
+        <div className="md:hidden absolute bottom-2 right-2 z-10">
+           <div className="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg font-black text-[11px] shadow-sm">
+              {formatPrice(displayPrice)}
+           </div>
         </div>
       </div>
 
       {/* Info */}
-      <Link to={`/product/${product.id}`} className="p-4 block">
+      <Link to={`/product/${product.id}`} className="p-3 sm:p-5 flex flex-col flex-1">
         <div className="mb-2">
           {product.tier && (() => {
             const tier = getProductTier(product);
             return (
               <span 
+                className="inline-block mb-1.5 px-2 py-0.5 rounded-full text-[9px] font-black font-cairo shadow-sm"
                 style={{ 
                   background: tier.color, 
                   color: tier.textColor, 
                   border: `1px solid ${tier.border}`,
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  fontFamily: 'Cairo',
-                  display: 'inline-block',
-                  marginBottom: '6px'
                 }}
               >
                 {tier.label}
               </span>
             );
           })()}
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand}</span>
-          </div>
-          <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1 name">{product.name}</h3>
+          <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-2 text-xs sm:text-base leading-snug min-h-[2.5rem] name">{product.name}</h3>
         </div>
 
-        {/* Key Specs Row */}
-        {(product.specifications?.RAM || (product.variants && product.variants.length > 0)) && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-             {product.specifications?.RAM && (
-               <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100">
-                 {product.specifications.RAM} RAM
-               </span>
+        {/* Action Buttons Row (Always Visible Icon Style) */}
+        <div className="mt-auto flex items-center justify-between pt-3 gap-2">
+           <div className="flex flex-col">
+             {hasVariants && (
+                <span className="text-[9px] text-gray-400 font-bold leading-none mb-0.5">من</span>
              )}
-             {product.variants?.map((v, i) => (
-               <span key={i} className="bg-gray-50 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-gray-100">
-                 {v.storage}
-               </span>
-             ))}
-          </div>
-        )}
+             <span className="text-sm sm:text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
+           </div>
 
-        <div className="flex items-end justify-between">
-          <div className="flex flex-col">
-            <div className="flex flex-col">
-              {hasVariants && (
-                <span className="text-[11px] text-gray-500 font-bold mb-1 leading-none">يبدأ من</span>
-              )}
-              <span className="text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
-            </div>
-          </div>
-
-          {/* Color Dots */}
-          {product.colors && product.colors.length > 0 && (
-            <div className="flex gap-1">
-               {product.colors.slice(0, 3).map((c, i) => (
-                 <div key={i} className="w-2 h-2 rounded-full border border-gray-100 bg-gray-200" title={c} />
-               ))}
-               {product.colors.length > 3 && <span className="text-[8px] text-gray-400">+{product.colors.length - 3}</span>}
-            </div>
-          )}
+           <div className="flex gap-1">
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }}
+                className="w-8 h-8 rounded-full bg-indigo-50 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-sm flex-shrink-0"
+              >
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); contactWhatsApp(product); }}
+                className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all shadow-sm flex-shrink-0"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </button>
+           </div>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-md viewers mt-3">
-          <Eye className="w-3 h-3 text-blue-500" /> {viewers} يشاهدون الآن
-        </div>
-
-        {product.isUsed && product.problems && (
-          <p className="mt-2 text-[10px] font-bold text-orange-600 bg-orange-50 p-2 rounded-lg line-clamp-1">
-            🔧 {product.problems}
-          </p>
-        )}
-
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            contactWhatsApp(product);
-          }}
-          className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-black text-xs hover:scale-[1.02] transition-transform shadow-sm"
-        >
-          <MessageCircle className="w-4 h-4" /> استفسر عبر واتساب
-        </button>
-
-      {/* Mobile Action Bar (Facebook Like Style) */}
-      <div className="md:hidden flex border-t border-gray-100 product-card-actions">
-        <button 
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(product.id); }}
-          className={cn(
-            "product-action-btn",
-            isWishlisted ? "text-red-500" : "text-gray-500"
-          )}
-        >
-          <Heart className={cn("w-4 h-4", isWishlisted && "fill-current")} />
-          <span>{isWishlisted ? 'أعجبني' : 'إعجاب'}</span>
-        </button>
-        <button 
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product); }}
-          className="product-action-btn"
-        >
-          <ShoppingBag className="w-4 h-4 text-primary" />
-          <span>سلة</span>
-        </button>
-        <button 
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); contactWhatsApp(product); }}
-          className="product-action-btn"
-        >
-          <MessageCircle className="w-4 h-4 text-[#25D366]" />
-          <span>واتساب</span>
-        </button>
-      </div>
-
-      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 sales-count">
-          <span className="flex items-center gap-1">🔥 تم بيع {product.soldCount || 0} جهاز</span>
-          {product.isNewArrival && <span className="text-blue-500">وصل حديثاً ✨</span>}
+        {/* Social Proof Line */}
+        <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between text-[9px] sm:text-[10px] font-bold text-gray-400 sales-count">
+          <span className="flex items-center gap-1">🔥 {product.soldCount || 0} مبيعة</span>
+          <div className="flex items-center gap-1 text-blue-500">
+            <Eye className="w-3 h-3" /> {viewers}
+          </div>
         </div>
       </Link>
     </motion.div>

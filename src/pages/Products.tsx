@@ -86,48 +86,54 @@ export function Products({ products: initialProducts }: { products: Product[] })
   }, [products, search, maxPrice, sortBy]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-black text-primary">تصفح المنتجات</h1>
-          <p className="text-gray-500 font-medium">وجدنا لك {filteredProducts.length} منتج يناسب بحثك</p>
+    <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12 flex flex-col gap-6 sm:gap-8">
+      {/* Search Bar (Persistent Top Style) */}
+      <div className="flex flex-col gap-6 sticky top-0 sm:static bg-[#F5F5F5] z-40 py-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl sm:text-4xl font-black text-primary font-cairo tracking-tight">استكشف الأجهزة</h1>
+            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">
+               {filteredProducts.length} منتج متاح الآن
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+             <button 
+               onClick={() => setShowFilters(true)}
+               className="lg:hidden flex items-center justify-center w-12 h-12 bg-white rounded-2xl border border-gray-100 shadow-sm text-primary"
+             >
+               <SlidersHorizontal className="w-5 h-5" />
+             </button>
+             <div className="relative flex-1 lg:w-80 group">
+                <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="ابحث عن آيفون، سامسونج..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white border border-gray-100 rounded-2xl py-3.5 pr-11 pl-4 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all shadow-sm"
+                />
+             </div>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-           <button 
-             onClick={() => setShowFilters(!showFilters)}
-             className="md:hidden flex items-center gap-2 bg-white px-4 py-3 rounded-xl border border-gray-100 font-bold shadow-sm"
-           >
-             <SlidersHorizontal className="w-5 h-5" /> الفلاتر
-           </button>
-           <div className="relative flex-1 md:w-80">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="ابحث بالاسم أو الماركة..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border border-gray-100 rounded-xl py-3 pr-12 pl-4 outline-none focus:ring-2 ring-primary/20 shadow-sm"
-              />
-           </div>
-        </div>
-      </div>
 
-      {/* Mobile Scrolling Categories (Facebook Style) */}
-      <div className="md:hidden categories-row -mx-4">
-        {categories.map(cat => (
-          <button 
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={cn(
-              "category-chip",
-              selectedCategory === cat && "active"
-            )}
-          >
-            {cat}
-          </button>
-        ))}
+        {/* Categories (Social Stories Style) */}
+        <div className="flex overflow-x-auto scrollbar-hide py-2 gap-3 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+          {categories.map(cat => (
+            <button 
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={cn(
+                "flex-shrink-0 px-5 py-2.5 rounded-2xl text-[11px] font-black transition-all border shadow-sm",
+                selectedCategory === cat 
+                  ? "bg-primary text-white border-primary shadow-indigo-200" 
+                  : "bg-white text-gray-500 border-gray-100 hover:border-primary/20"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12">
@@ -246,16 +252,16 @@ export function Products({ products: initialProducts }: { products: Product[] })
         <div className="flex flex-col gap-8">
            {loading ? (
              <div className="flex justify-center items-center py-40">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary/10 border-t-primary"></div>
              </div>
            ) : filteredProducts.length === 0 ? (
-             <div className="bg-white p-20 rounded-[40px] text-center flex flex-col items-center gap-6 border border-dashed border-gray-300">
-                <Search className="w-16 h-16 text-gray-200" />
-                <h3 className="text-2xl font-black text-gray-400">عذراً، لم نجد ما تبحث عنه</h3>
-                <button onClick={() => { setSearch(''); setSelectedBrand('الكل'); setMaxPrice(500000); }} className="text-primary font-bold underline">إعادة ضبط البحث</button>
+             <div className="bg-white p-12 sm:p-20 rounded-[40px] text-center flex flex-col items-center gap-6 border border-dashed border-gray-200">
+                <Search className="w-12 h-12 text-gray-200" />
+                <h3 className="text-xl font-black text-gray-400 font-cairo">لم نجد أي منتجات تطابق بحثك</h3>
+                <button onClick={() => { setSearch(''); setSelectedBrand('الكل'); setMaxPrice(500000); }} className="text-primary font-black underline text-sm uppercase">مسح البحث</button>
              </div>
            ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 products-grid">
+             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-8 products-grid">
                {filteredProducts.map(product => (
                  <ProductCard key={product.id} product={product} />
                ))}
