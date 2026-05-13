@@ -285,6 +285,37 @@
 }
 }
 
+@media (max-width: 768px) {
+  /* Hide these from top navbar */
+  .navbar [class*="compare"],
+  .navbar [class*="wishlist"],
+  .navbar [class*="notif"],
+  .navbar [class*="lang"],
+  .navbar [class*="EN"],
+  .navbar [class*="language"] {
+    display: none !important;
+  }
+  
+  /* Show only: hamburger + logo + cart + account */
+  .navbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 12px !important;
+    height: 54px !important;
+    background: #1A237E !important;
+  }
+  
+  .navbar-logo, .logo {
+    color: white !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
 
 
 /* ===== LAYOUT ALIGNMENT FIXES ===== */

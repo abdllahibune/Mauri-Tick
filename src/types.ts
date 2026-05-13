@@ -87,6 +87,7 @@ export interface UserProfile {
   name?: string;
   city?: string;
   address?: string;
+  points?: number;
   totalSpent: number;
   ordersCount: number;
   isVerified?: boolean;

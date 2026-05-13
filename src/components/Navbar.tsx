@@ -160,21 +160,21 @@ export function Navbar() {
               {language === 'ar' ? 'EN' : 'العربية'}
             </button>
             
-            {/* User Account / Login (Desktop only via CSS hidden user-btn) */}
+            {/* User Account / Login */}
             {user ? (
-               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-2 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all user-btn hidden md:flex">
+               <Link to="/account" className="flex items-center gap-2 bg-primary/5 px-2 py-2 rounded-xl text-primary hover:bg-primary/10 transition-all user-btn">
                   <User className="w-5 h-5" />
                   <span className="text-xs font-black hidden lg:block">{user.name || user.phone}</span>
                </Link>
             ) : (
-               <Link to="/login" className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm user-btn hidden md:flex">
+               <Link to="/login" className="flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm user-btn">
                  <User className="w-5 h-5" /> <span className="hidden sm:inline">{t('nav.login')}</span>
                </Link>
             )}
 
-            {/* Mobile Menu Trigger (Removed from here, as we have bottom bar now, but keeping for desktop if needed? User said "Search + Cart only" on right top navbar for mobile) */}
+            {/* Mobile Menu Trigger */}
             <button 
-              className="p-2 text-gray-500 burger-btn md:hidden hidden"
+              className="p-2 text-gray-500 burger-btn md:hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
