@@ -71,10 +71,18 @@ export const UsedPage: React.FC<{ products: Product[] }> = ({ products }) => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-[40px] p-20 text-center border-2 border-dashed border-gray-100">
-                  <div className="text-6xl mb-6">📱</div>
-                  <h2 className="text-2xl font-black text-primary mb-2">لا توجد أجهزة مستعملة حالياً</h2>
-                  <p className="text-gray-500 font-bold">تابعنا باستمرار، الأجهزة تضاف بشكل يومي</p>
+                <div className="bg-white rounded-[40px] p-20 text-center border-2 border-dashed border-gray-100 flex flex-col items-center gap-6">
+                  <Smartphone className="w-16 h-16 text-gray-200" />
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-2xl font-black text-primary">لا توجد أجهزة مستعملة حالياً</h2>
+                    <p className="text-gray-500 font-bold">تابعنا باستمرار، الأجهزة تضاف بشكل يومي. يمكنك أيضاً تصفح الأجهزة الجديدة.</p>
+                  </div>
+                  <button 
+                    onClick={() => navigate('/products')}
+                    className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                  >
+                    تصفح الهواتف الجديدة
+                  </button>
                 </div>
               )}
             </motion.div>

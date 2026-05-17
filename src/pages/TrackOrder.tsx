@@ -80,10 +80,21 @@ export function TrackOrder() {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-16 rounded-[40px] text-center flex flex-col items-center gap-6 shadow-sm border border-dashed"
+              className="bg-white p-16 rounded-[40px] text-center flex flex-col items-center gap-8 shadow-sm border border-dashed border-gray-200"
             >
                <Package className="w-16 h-16 text-gray-200" />
-               <h3 className="text-2xl font-black text-gray-400">عذراً، لم نجد أي طلبات مرتبطة بهذا الرقم</h3>
+               <div className="flex flex-col gap-2">
+                 <h3 className="text-2xl font-black text-primary">عذراً، لم نجد أي طلبات مرتبطة بهذا الرقم</h3>
+                 <p className="text-gray-400 font-bold max-w-sm mx-auto">تأكد من إدخال الرقم الصحيح المستخدم أثناء الطلب، أو تواصل مع خدمة العملاء للمساعدة.</p>
+               </div>
+               <a 
+                 href="https://wa.me/22236096100" 
+                 target="_blank" 
+                 rel="noreferrer"
+                 className="bg-green-500 text-white px-10 py-4 rounded-2xl font-black text-sm flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-green-200"
+               >
+                 <Phone className="w-5 h-5" /> تواصل مع الدعم الفني
+               </a>
             </motion.div>
           ) : (
             orders.map((order, idx) => {

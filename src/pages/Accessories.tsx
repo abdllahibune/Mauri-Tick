@@ -144,10 +144,12 @@ export const Accessories: React.FC<{ products: Product[] }> = ({ products }) => 
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-[40px] p-20 text-center border-2 border-dashed border-gray-100">
-                <div className="text-6xl mb-6">🔍</div>
-                <h2 className="text-2xl font-black text-primary mb-2">لا توجد نتائج</h2>
-                <p className="text-gray-500 font-bold">جرب تغيير معايير البحث أو التصفية</p>
+              <div className="bg-white rounded-[40px] p-20 text-center border-2 border-dashed border-gray-100 flex flex-col items-center gap-6">
+                <Search className="w-16 h-16 text-gray-200" />
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-2xl font-black text-primary">لا توجد نتائج</h2>
+                  <p className="text-gray-500 font-bold">عذراً، لم نتمكن من العثور على أي إكسسوار يطابق معاييرك.</p>
+                </div>
                 <button 
                   onClick={() => {
                     setSearchQuery('');
@@ -155,9 +157,9 @@ export const Accessories: React.FC<{ products: Product[] }> = ({ products }) => 
                     setPriceRange([0, 50000]);
                     setSelectedBrand('الكل');
                   }}
-                  className="mt-8 bg-primary/5 text-primary px-8 py-3 rounded-2xl font-black text-sm hover:bg-primary hover:text-white transition-all"
+                  className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20"
                 >
-                  إعادة ضبط الفلاتر
+                  إعادة ضبط جميع الفلاتر
                 </button>
               </div>
             )}

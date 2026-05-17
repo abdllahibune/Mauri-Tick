@@ -11,7 +11,8 @@ import {
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
   Edit3, Eye, Printer, Download, MessageSquare, Tag, Users, CheckCircle2, 
   XCircle, Truck, Clock, Save, Image as ImageIcon, Loader2, User as UserIcon, ShieldAlert, ShieldCheck as ShieldCheckIcon,
-  Search as SearchIcon, Palette, Smartphone, FileText, Star, Send, Gift
+  Search as SearchIcon, Palette, Smartphone, FileText, Star, Send, Gift,
+  ShoppingBag, PackageCheck, RefreshCw
 } from 'lucide-react';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -681,10 +682,21 @@ function ProductsSection({ products }: { products: Product[] }) {
       </div>
 
       <div className="admin-table-container">
-        <table className="w-full text-right min-w-[800px]">
-          <thead>
-            <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-              <th className="pb-4 pr-4">المنتج</th>
+        {products.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <ShoppingBag className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا توجد منتجات</h3>
+              <p className="text-sm font-bold text-gray-400">ابدأ بإضافة أول منتج لمتجرك من خلال الضغط على "إضافة جديد".</p>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-right min-w-[800px]">
+            <thead>
+              <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                <th className="pb-4 pr-4">المنتج</th>
               <th className="pb-4">الماركة</th>
               <th className="pb-4">السعر</th>
               <th className="pb-4">المخزون</th>
@@ -719,6 +731,7 @@ function ProductsSection({ products }: { products: Product[] }) {
             ))}
           </tbody>
         </table>
+       )}
       </div>
 
       {(showAdd || editingProduct) && (
@@ -819,6 +832,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const currentCategory = categories.find(c => c.id === form.category) || categories[0];
 
   useEffect(() => {
+    if (initial && typeof window !== 'undefined') {
+      (window as any)._editingProduct = initial;
+      (window as any)._currentProductImages = initial.images;
+    }
     getDocs(collection(db, 'mt_products')).then(snap => {
       setAllProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
     });
@@ -1080,8 +1097,16 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.price || (form.images?.length || 0) === 0) {
-      toast.error('يرجى ملء جميع الحقول ورفع صورة واحدة على الأقل');
+    
+    const existingImgs = (window as any)._editingProduct?.images 
+      || (window as any)._currentProductImages 
+      || [];
+    const finalImages = (form.images && form.images.length > 0) 
+      ? form.images 
+      : existingImgs;
+
+    if (!form.name || !form.price || finalImages.length === 0) {
+      alert('❌ أضف صورة واحدة على الأقل');
       return;
     }
 
@@ -1089,6 +1114,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     await safeWrite(async () => {
       const productData = {
         ...form,
+        images: finalImages,
         brand: form.brand?.trim().toUpperCase(),
         price: form.variants && form.variants.length > 0
           ? Math.min(...form.variants.map(v => v.price))
@@ -1679,7 +1705,17 @@ function OrdersSection({ orders }: { orders: Order[] }) {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-         {filtered.map((order) => (
+         {filtered.length === 0 ? (
+           <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+             <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+               <PackageCheck className="w-12 h-12" />
+             </div>
+             <div className="flex flex-col gap-1">
+               <h3 className="text-xl font-black text-primary">لا توجد طلبات {filter !== 'الكل' ? `(بانتظار ${filter})` : ''}</h3>
+               <p className="text-sm font-bold text-gray-400">ستظهر الطلبات الجديدة هنا فور قيام العملاء بالشراء.</p>
+             </div>
+           </div>
+         ) : filtered.map((order) => (
            <div key={order.id} className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center">
               <div className="flex flex-col gap-2 min-w-[200px] w-full md:w-auto">
                  <div className="flex items-center gap-3">
@@ -1731,7 +1767,8 @@ function OrdersSection({ orders }: { orders: Order[] }) {
                  </select>
               </div>
            </div>
-         ))}
+         ))
+       }
       </div>
     </div>
   );
@@ -2334,51 +2371,63 @@ function TradeInsSection({ tradeIns, products }: { tradeIns: TradeIn[], products
     <div className="flex flex-col gap-8">
       <h2 className="text-3xl font-black text-primary">طلبات الاستبدال</h2>
       <div className="grid grid-cols-1 gap-6">
-        {tradeIns.map((t) => (
-          <div key={t.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col md:flex-row gap-8">
-            <TradeInGallery photos={t.photos} />
-            <div className="flex-1 flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-xl font-black text-primary">{t.oldPhoneModel}</h3>
-                  <p className="text-xs font-bold text-gray-400">حالة الجهاز: {t.condition}</p>
-                </div>
-                <div className="text-left">
-                  <span className="text-[10px] font-black text-gray-400 uppercase block">القيمة التقديرية</span>
-                  <span className="text-xl font-black text-accent">{formatPrice(t.estimatedValue)}</span>
-                </div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">الهاتف المطلوب</span>
-                <span className="font-bold text-primary">{products.find(p => p.id === t.targetPhoneId)?.name || 'غير متوفر'}</span>
-              </div>
-              <div className="flex items-center gap-4 mt-auto">
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">العميل</span>
-                    <span className="text-sm font-black text-primary">{t.customerName}</span>
-                 </div>
-                 <a href={`https://wa.me/222${t.customerPhone}`} target="_blank" rel="noreferrer" className="text-green-500 font-bold flex items-center gap-1"><MessageSquare className="w-4 h-4" /> تواصل معه</a>
-              </div>
+        {tradeIns.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <RefreshCw className="w-12 h-12" />
             </div>
-            <div className="flex flex-col gap-4 justify-between h-full">
-               <select 
-                 value={t.status}
-                 onChange={(e) => updateStatus(t.id, e.target.value)}
-                 className={cn(
-                   "p-3 rounded-xl text-xs font-black outline-none",
-                   t.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                   t.status === 'contacted' ? 'bg-blue-50 text-blue-600' :
-                   t.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
-                 )}
-               >
-                 <option value="pending">قيد المراجعة</option>
-                 <option value="contacted">تم التواصل</option>
-                 <option value="completed">تم الاستبدال</option>
-                 <option value="rejected">مرفوض</option>
-               </select>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا توجد طلبات استبدال</h3>
+              <p className="text-sm font-bold text-gray-400">ستظهر هنا طلبات العملاء الراغبين في تبديل أجهزتهم القديمة بأخرى جديدة.</p>
             </div>
           </div>
-        ))}
+        ) : (
+          tradeIns.map((t) => (
+            <div key={t.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col md:flex-row gap-8">
+              <TradeInGallery photos={t.photos} />
+              <div className="flex-1 flex flex-col gap-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-black text-primary">{t.oldPhoneModel}</h3>
+                    <p className="text-xs font-bold text-gray-400">حالة الجهاز: {t.condition}</p>
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] font-black text-gray-400 uppercase block">القيمة التقديرية</span>
+                    <span className="text-xl font-black text-accent">{formatPrice(t.estimatedValue)}</span>
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <span className="text-[10px] font-black text-gray-400 uppercase block mb-1">الهاتف المطلوب</span>
+                  <span className="font-bold text-primary">{products.find(p => p.id === t.targetPhoneId)?.name || 'غير متوفر'}</span>
+                </div>
+                <div className="flex items-center gap-4 mt-auto">
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">العميل</span>
+                      <span className="text-sm font-black text-primary">{t.customerName}</span>
+                   </div>
+                   <a href={`https://wa.me/222${t.customerPhone}`} target="_blank" rel="noreferrer" className="text-green-500 font-bold flex items-center gap-1"><MessageSquare className="w-4 h-4" /> تواصل معه</a>
+                </div>
+              </div>
+              <div className="flex flex-col gap-4 justify-between h-full">
+                 <select 
+                   value={t.status}
+                   onChange={(e) => updateStatus(t.id, e.target.value)}
+                   className={cn(
+                     "p-3 rounded-xl text-xs font-black outline-none",
+                     t.status === 'pending' ? 'bg-orange-50 text-orange-600' :
+                     t.status === 'contacted' ? 'bg-blue-50 text-blue-600' :
+                     t.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                   )}
+                 >
+                   <option value="pending">قيد المراجعة</option>
+                   <option value="contacted">تم التواصل</option>
+                   <option value="completed">تم الاستبدال</option>
+                   <option value="rejected">مرفوض</option>
+                 </select>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -2396,10 +2445,21 @@ function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) 
     <div className="flex flex-col gap-8">
       <h2 className="text-3xl font-black text-primary">سوق المستعمل (C2C)</h2>
       <div className="admin-table-container">
-        <table className="w-full text-right min-w-[800px]">
-          <thead>
-            <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-              <th className="pb-4 pr-4">الجهاز</th>
+        {usedProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <Smartphone className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا توجد منتجات مستعملة</h3>
+              <p className="text-sm font-bold text-gray-400">هذا القسم مخصص للأجهزة التي يعرضها المستخدمون للبيع في المتجر.</p>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-right min-w-[800px]">
+            <thead>
+              <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                <th className="pb-4 pr-4">الجهاز</th>
               <th className="pb-4">السعر</th>
               <th className="pb-4">البائع</th>
               <th className="pb-4">الحالة</th>
@@ -2446,6 +2506,7 @@ function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) 
             ))}
           </tbody>
         </table>
+       )}
       </div>
     </div>
   );
@@ -2456,7 +2517,17 @@ function InvestorsSection({ investors }: { investors: Investor[] }) {
     <div className="flex flex-col gap-8">
       <h2 className="text-3xl font-black text-primary">المستثمرون والشركاء</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {investors.map((i) => (
+        {investors.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <Users className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا يوجد مستثمرون حالياً</h3>
+              <p className="text-sm font-bold text-gray-400">طلبات الاستثمار والشراكة التي يرسلها الزوار ستظهر هنا.</p>
+            </div>
+          </div>
+        ) : investors.map((i) => (
           <div key={i.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col gap-6">
             <div className="flex justify-between items-start">
                <div className="flex items-center gap-4">
@@ -2481,7 +2552,8 @@ function InvestorsSection({ investors }: { investors: Investor[] }) {
                 </a>
              </div>
           </div>
-        ))}
+        ))
+       }
       </div>
     </div>
   );
@@ -2664,7 +2736,18 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-right">
+        {users.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <UserIcon className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">قائمة العملاء فارغة</h3>
+              <p className="text-sm font-bold text-gray-400">سيتم إدراج أي مستخدم يقوم بإنشاء حساب في متجرك هنا.</p>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-right">
           <thead>
             <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
               <th className="pb-4 pr-4">العميل</th>
@@ -2711,6 +2794,7 @@ function UsersSection({ users, orders }: { users: UserProfile[], orders: Order[]
             ))}
           </tbody>
         </table>
+       )}
       </div>
 
       {showNotificationModal && (
@@ -2851,7 +2935,17 @@ function ReviewsSection({ reviews, products }: { reviews: Review[], products: Pr
     <div className="flex flex-col gap-8">
       <h2 className="text-3xl font-black text-primary">تقييمات العملاء</h2>
       <div className="flex flex-col gap-4">
-        {reviews.map((r) => (
+        {reviews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <Star className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا توجد تقييمات</h3>
+              <p className="text-sm font-bold text-gray-400">تقييمات العملاء وآرائهم حول المنتجات ستعرض في هذا القسم.</p>
+            </div>
+          </div>
+        ) : reviews.map((r) => (
           <div key={r.id} className={cn("bg-white border rounded-[32px] p-6 shadow-sm flex flex-col md:flex-row justify-between gap-6", r.isHidden && "opacity-50 grayscale")}>
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
@@ -2878,7 +2972,8 @@ function ReviewsSection({ reviews, products }: { reviews: Review[], products: Pr
               </button>
             </div>
           </div>
-        ))}
+        ))
+       }
       </div>
     </div>
   );

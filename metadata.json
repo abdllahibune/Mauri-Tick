@@ -1,6 +1,6 @@
 {
   "name": "Mauri Tick",
-  "description": "Professional Arabic mobile phone store with AI assistant, real-time viewer simulation, and admin dashboard.",
+  "description": "Professional Arabic mobile phone store with real-time analytics and admin dashboard.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
