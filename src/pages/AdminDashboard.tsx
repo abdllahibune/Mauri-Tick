@@ -22,6 +22,10 @@ import { UserProfile } from '../types';
 
 // Global helper for admin image viewing (requested fix)
 if (typeof window !== 'undefined') {
+  (window as any)._editingProduct = null;
+  (window as any)._editingProductId = null;
+  (window as any).uploadedImages = [];
+
   (window as any).openAdminImageViewer = function(images: string[], startIndex: number) {
     // Remove any existing viewer
     document.getElementById('adminImgViewer')?.remove();
@@ -723,7 +727,14 @@ function ProductsSection({ products }: { products: Product[] }) {
                 <td className="py-6 font-bold text-gray-400">{p.soldCount || 0}</td>
                 <td className="py-6 pl-4 text-left">
                   <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => setEditingProduct(p)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-primary"><Edit3 className="w-5 h-5" /></button>
+                    <button onClick={() => {
+                      const product = p;
+                      (window as any)._editingProduct = product;
+                      (window as any)._editingProductId = product.id;
+                      (window as any).uploadedImages = product.images ? [...product.images] : [];
+                      console.log('Edit mode - images loaded:', (window as any).uploadedImages);
+                      setEditingProduct(p);
+                    }} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-primary"><Edit3 className="w-5 h-5" /></button>
                     <button onClick={() => handleDelete(p.id)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </td>
@@ -834,6 +845,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   useEffect(() => {
     if (initial && typeof window !== 'undefined') {
       (window as any)._editingProduct = initial;
+      (window as any)._editingProductId = initial.id;
+      (window as any).uploadedImages = initial.images ? [...initial.images] : [];
       (window as any)._currentProductImages = initial.images;
     }
     getDocs(collection(db, 'mt_products')).then(snap => {
@@ -847,6 +860,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       toast.error('الحد الأقصى هو 5 صور');
       return;
     }
+    (window as any).uploadedImages = [...((window as any).uploadedImages || []), imageUrlInput];
     setForm(prev => ({ ...prev, images: [...(prev.images || []), imageUrlInput] }));
     setImageUrlInput('');
     toast.success('تمت إضافة رابط الصورة بنجاح');
@@ -1098,14 +1112,14 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const existingImgs = (window as any)._editingProduct?.images 
-      || (window as any)._currentProductImages 
-      || [];
-    const finalImages = (form.images && form.images.length > 0) 
-      ? form.images 
-      : existingImgs;
+    // Get images from new uploads OR existing product
+    const imagesToSave = (window as any).uploadedImages.length > 0
+      ? (window as any).uploadedImages
+      : ((window as any)._editingProduct?.images || []);
 
-    if (!form.name || !form.price || finalImages.length === 0) {
+    console.log('Images to save:', imagesToSave);
+
+    if (imagesToSave.length === 0) {
       alert('❌ أضف صورة واحدة على الأقل');
       return;
     }
@@ -1114,7 +1128,8 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     await safeWrite(async () => {
       const productData = {
         ...form,
-        images: finalImages,
+        images: imagesToSave,
+        mainImage: imagesToSave[0],
         brand: form.brand?.trim().toUpperCase(),
         price: form.variants && form.variants.length > 0
           ? Math.min(...form.variants.map(v => v.price))
@@ -1128,7 +1143,13 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
       };
 
       if (initial) {
-        await updateDoc(doc(db, 'mt_products', initial.id), productData);
+        // Use imagesToSave (NOT uploadedImages) when saving:
+        await setDoc(doc(db, 'mt_products', 
+          (window as any)._editingProductId), 
+          { ...productData, images: imagesToSave,
+            mainImage: imagesToSave[0] },
+          { merge: true }
+        );
         toast.success('تم تحديث المنتج بنجاح ✅');
       } else {
         await addDoc(collection(db, 'mt_products'), { 
@@ -1168,6 +1189,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
         try {
             const url = await uploadToCloudinary(file);
             if (url) {
+                (window as any).uploadedImages = [...((window as any).uploadedImages || []), url];
                 setForm(prev => ({ ...prev, images: [...(prev.images || []), url] }));
             }
         } catch (err) {
@@ -1535,7 +1557,10 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                            )}
                            <button 
                             type="button" 
-                            onClick={() => setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}))} 
+                            onClick={() => {
+                              (window as any).uploadedImages = (window as any).uploadedImages?.filter((_: any, idx: number)=>idx!==i);
+                              setForm(prev => ({...prev, images: prev.images?.filter((_, idx)=>idx!==i)}));
+                            }} 
                             className="absolute top-2 left-2 p-2 bg-red-500 text-white rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
                            >
                             <Trash2 className="w-4 h-4" />
