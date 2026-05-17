@@ -9,7 +9,8 @@ import { AIAssistant } from './components/AIAssistant';
 import { useEffect, useState } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CompareProvider } from './context/CompareContext';
-import { doc, getDoc, collection, onSnapshot, query, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot, query, limit, getFirestore, setDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { db, ensureAuth } from './lib/firebase';
 import { Product, StoreConfig } from './types';
 
@@ -57,6 +58,53 @@ function MainApp() {
   const { language } = useLanguage();
 
   useEffect(() => {
+    async function trackVisit() {
+      try {
+        const auth = getAuth();
+        await signInAnonymously(auth);
+        
+        // Don't count admin visits
+        const userStr = localStorage.getItem('mt_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        if (user?.isAdmin) return;
+        
+        // Don't count same session twice
+        const sessionKey = 'mt_visit_' + new Date().toDateString();
+        if (sessionStorage.getItem(sessionKey)) return;
+        sessionStorage.setItem(sessionKey, '1');
+        
+        // Get today's date as key
+        const today = new Date().toISOString().split('T')[0]; // "2026-05-17"
+        
+        // Increment daily visits
+        const ref = doc(db, 'mt_stats', 'visits');
+        const snap = await getDoc(ref);
+        
+        if (snap.exists()) {
+          const data = snap.data();
+          await setDoc(ref, {
+            total: (data.total || 0) + 1,
+            today: today,
+            daily: {
+              ...(data.daily || {}),
+              [today]: ((data.daily?.[today]) || 0) + 1
+            },
+            lastVisit: new Date()
+          }, { merge: true });
+        } else {
+          await setDoc(ref, {
+            total: 1,
+            today: today,
+            daily: { [today]: 1 },
+            lastVisit: new Date()
+          });
+        }
+      } catch(e) {
+        console.error('Track visit error:', e);
+      }
+    }
+    trackVisit();
+
     let unsubProducts: (() => void) | undefined;
     let unsubConfig: (() => void) | undefined;
 

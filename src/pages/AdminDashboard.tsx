@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Go to Firebase Console > Authentication > 
 // Sign-in method > Anonymous > Enable
 // Then go to Firestore > Rules > Publish rules above
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc, where } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
 import { 
@@ -399,49 +399,190 @@ export function AdminDashboard() {
 
 // Sub-sections
 function StatsSection({ orders, products }: { orders: Order[], products: Product[] }) {
-  const stats = useMemo(() => {
-    const totalRevenue = orders.filter(o => o.status !== 'قيد الانتظار').reduce((sum, o) => sum + o.total, 0);
-    const pendingOrders = orders.filter(o => o.status === 'قيد الانتظار').length;
-    const totalVisits = products.reduce((sum, p) => sum + (p.viewCount || 0), 0);
-    return { totalRevenue, pendingOrders, totalVisits };
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    newOrders: 0,
+    totalVisits: 0,
+    todayVisits: 0,
+    totalProducts: 0,
+    totalCustomers: 0,
+    pendingTrades: 0,
+    dailyVisits: {} as Record<string, number>
+  });
+
+  const loadDashboardStats = async () => {
+    try {
+      // 1. Total products
+      const totalProducts = products.length;
+      
+      // 2. Total orders + revenue
+      const totalOrders = orders.length;
+      const totalRevenue = orders.reduce(
+        (sum, o) => sum + (o.total || 0), 0
+      );
+      
+      // 3. New orders (last 24 hours)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const newOrders = orders.filter(o => 
+        (o.createdAt as any)?.toDate?.() > yesterday ||
+        new Date((o.createdAt as any)) > yesterday
+      ).length;
+      
+      // 4. Real visits from tracking
+      const visitsSnap = await getDoc(
+        doc(db, 'mt_stats', 'visits')
+      );
+      const visitsData = visitsSnap.data() || {};
+      const totalVisits = visitsData.total || 0;
+      const today = new Date().toISOString().split('T')[0];
+      const todayVisits = visitsData.daily?.[today] || 0;
+      
+      // 5. Total customers
+      const customersSnap = await getDocs(
+        collection(db, 'mt_users')
+      );
+      const totalCustomers = customersSnap.size;
+      
+      // 6. Pending trade-ins
+      const tradeSnap = await getDocs(
+        query(
+          collection(db, 'mt_tradein'),
+          where('status', '==', 'pending')
+        )
+      );
+      const pendingTrades = tradeSnap.size;
+
+      setStats({
+        totalRevenue,
+        totalOrders,
+        newOrders,
+        totalVisits,
+        todayVisits,
+        totalProducts,
+        totalCustomers,
+        pendingTrades,
+        dailyVisits: visitsData.daily || {}
+      });
+    } catch (e) {
+      console.error('Dashboard stats error:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardStats();
+    const interval = setInterval(loadDashboardStats, 30000);
+    return () => clearInterval(interval);
   }, [orders, products]);
 
-  const cards = [
-    { name: 'إجمالي المبيعات', value: formatPrice(stats.totalRevenue), color: 'bg-green-50 text-green-600', icon: BarChart3 },
-    { name: 'طلبات جديدة', value: stats.pendingOrders, color: 'bg-orange-50 text-orange-600', icon: ShoppingCart },
-    { name: 'إجمالي المشاهدات', value: stats.totalVisits, color: 'bg-blue-50 text-blue-600', icon: Eye },
-    { name: 'عدد المنتجات', value: products.length, color: 'bg-purple-50 text-purple-600', icon: Package },
+  const statsConfig = [
+    {
+      id: 'totalRevenue',
+      label: 'إجمالي المبيعات',
+      icon: '💰',
+      color: '#E8F5E9',
+      iconColor: '#2E7D32',
+      value: stats.totalRevenue.toLocaleString() + ' أوقية'
+    },
+    {
+      id: 'totalOrders', 
+      label: 'إجمالي الطلبات',
+      icon: '🛒',
+      color: '#E3F2FD',
+      iconColor: '#1565C0',
+      value: stats.totalOrders.toString()
+    },
+    {
+      id: 'todayVisits',
+      label: 'زيارات اليوم',
+      icon: '👁️',
+      color: '#F3E5F5',
+      iconColor: '#6A1B9A',
+      value: stats.todayVisits.toString()
+    },
+    {
+      id: 'totalVisits',
+      label: 'إجمالي الزيارات',
+      icon: '📊',
+      color: '#FFF8E1',
+      iconColor: '#F57F17',
+      value: stats.totalVisits.toString()
+    },
+    {
+      id: 'totalProducts',
+      label: 'عدد المنتجات',
+      icon: '📦',
+      color: '#E8EAF6',
+      iconColor: '#283593',
+      value: stats.totalProducts.toString()
+    },
+    {
+      id: 'totalCustomers',
+      label: 'العملاء المسجلون',
+      icon: '👥',
+      color: '#FCE4EC',
+      iconColor: '#880E4F',
+      value: stats.totalCustomers.toString()
+    },
+    {
+      id: 'newOrders',
+      label: 'طلبات جديدة (24س)',
+      icon: '🔔',
+      color: '#E0F7FA',
+      iconColor: '#00695C',
+      value: stats.newOrders.toString()
+    },
+    {
+      id: 'pendingTrades',
+      label: 'طلبات استبدال',
+      icon: '🔄',
+      color: '#FFF3E0',
+      iconColor: '#E65100',
+      value: stats.pendingTrades.toString()
+    }
   ];
 
   return (
     <div className="flex flex-col gap-12">
       <h2 className="text-3xl font-black text-primary">نظرة عامة على الإحصائيات</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-         {cards.map((card, idx) => (
-           <div key={idx} className="bg-white p-8 rounded-3xl border border-gray-100 flex flex-col gap-4 shadow-sm">
-             <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", card.color)}>
-                <card.icon className="w-6 h-6" />
-             </div>
-             <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-400">{card.name}</span>
-                <span className="text-2xl font-black text-primary">{card.value}</span>
-             </div>
-           </div>
-         ))}
-      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-         <div className="bg-gray-50 p-8 rounded-[32px] flex flex-col gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statsConfig.map(s => (
+          <div key={s.id} className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm flex flex-col gap-4">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: s.color }}>
+               {s.icon}
+            </div>
+            <div className="flex flex-col">
+               <span className="text-xs font-bold text-gray-400">{s.label}</span>
+               <span className="text-2xl font-black text-primary transition-all duration-300">{s.value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         <div className="lg:col-span-2 bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm flex flex-col gap-8">
+            <div className="flex justify-between items-center">
+               <h3 className="font-black text-primary text-xl">تحليل الزيارات (آخر 7 أيام)</h3>
+            </div>
+            <VisitsChart dailyData={stats.dailyVisits} />
+         </div>
+
+         <div className="bg-gray-50 p-8 rounded-[40px] flex flex-col gap-6">
             <h3 className="font-black text-gray-700">الأكثر مبيعاً</h3>
             <div className="flex flex-col gap-4">
                {products.sort((a,b) => (b.soldCount||0) - (a.soldCount||0)).slice(0, 5).map(p => (
                  <div key={p.id} className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
-                    <span className="font-bold text-sm">{p.name}</span>
-                    <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-black">{p.soldCount || 0} مبيع</span>
+                    <span className="font-bold text-sm truncate flex-1">{p.name}</span>
+                    <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-black shrink-0">{p.soldCount || 0} مبيع</span>
                  </div>
                ))}
             </div>
          </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
          <div className="bg-gray-50 p-8 rounded-[32px] flex flex-col gap-6">
             <h3 className="font-black text-gray-700">أحدث الطلبات</h3>
             <div className="flex flex-col gap-4">
@@ -454,6 +595,73 @@ function StatsSection({ orders, products }: { orders: Order[], products: Product
             </div>
          </div>
       </div>
+    </div>
+  );
+}
+
+function VisitsChart({ dailyData }: { dailyData: Record<string, number> }) {
+  const last7Days = useMemo(() => {
+    const labels = [];
+    const values = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = date.toISOString().split('T')[0];
+      const dayName = date.toLocaleDateString('ar', { weekday: 'short' });
+      
+      labels.push(dayName);
+      values.push(dailyData[key] || 0);
+    }
+    return { labels, values };
+  }, [dailyData]);
+
+  const maxVal = Math.max(...last7Days.values, 1);
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: '12px',
+      height: '240px',
+      paddingBottom: '24px',
+      direction: 'ltr'
+    }}>
+      {last7Days.values.map((val, i) => (
+        <div key={i} style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          height: '100%',
+          justifyContent: 'flex-end'
+        }}>
+          <span style={{
+            fontSize: '12px',
+            fontWeight: 'bold',
+            color: '#1A237E',
+            fontFamily: 'Cairo'
+          }}>{val}</span>
+          <motion.div 
+            initial={{ height: 0 }}
+            animate={{ height: `${Math.max((val / maxVal) * 160, val > 0 ? 12 : 4)}px` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            style={{
+              width: '100%',
+              background: i === 6 ? '#1A237E' : '#90CAF9',
+              borderRadius: '8px 8px 4px 4px',
+              boxShadow: i === 6 ? '0 4px 12px rgba(26, 35, 126, 0.2)' : 'none'
+            }}
+          />
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: '#999',
+            fontFamily: 'Cairo'
+          }}>{last7Days.labels[i]}</span>
+        </div>
+      ))}
     </div>
   );
 }
