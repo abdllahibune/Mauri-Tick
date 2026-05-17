@@ -255,10 +255,25 @@ export function Products({ products: initialProducts }: { products: Product[] })
                 <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary/10 border-t-primary"></div>
              </div>
            ) : filteredProducts.length === 0 ? (
-             <div className="bg-white p-12 sm:p-20 rounded-[40px] text-center flex flex-col items-center gap-6 border border-dashed border-gray-200">
-                <Search className="w-12 h-12 text-gray-200" />
-                <h3 className="text-xl font-black text-gray-400 font-cairo">لم نجد أي منتجات تطابق بحثك</h3>
-                <button onClick={() => { setSearch(''); setSelectedBrand('الكل'); setMaxPrice(500000); }} className="text-primary font-black underline text-sm uppercase">مسح البحث</button>
+             <div className="bg-white p-12 sm:p-20 rounded-[40px] text-center flex flex-col items-center gap-8 border border-dashed border-gray-200 font-cairo">
+                <motion.div 
+                  initial={{ rotate: -10 }}
+                  animate={{ rotate: 10 }}
+                  transition={{ repeat: Infinity, duration: 1, repeatType: 'reverse' }}
+                  className="bg-gray-50 p-10 rounded-full"
+                >
+                  <Search className="w-16 h-16 text-gray-200" />
+                </motion.div>
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-2xl font-black text-primary">لم نجد أي نتائج</h3>
+                  <p className="text-gray-400 font-bold max-w-xs mx-auto">عذراً، لم نتمكن من العثور على أي منتج يطابق معايير البحث الحالية.</p>
+                </div>
+                <button 
+                  onClick={() => { setSearch(''); setSelectedBrand('الكل'); setSelectedCategory('الكل'); setMaxPrice(500000); }} 
+                  className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                >
+                  إعادة ضبط البحث
+                </button>
              </div>
            ) : (
              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-8 products-grid">

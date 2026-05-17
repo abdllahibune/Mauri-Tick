@@ -1,7 +1,7 @@
 import { Product, StoreConfig } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { motion } from 'motion/react';
-import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft, Package } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db, ensureAuth } from '../lib/firebase';
@@ -331,8 +331,15 @@ export function Home({ products }: { products: Product[] }) {
             {section.data.length > 0 ? (
               section.data.map(product => <ProductCard key={product.id} product={product} />)
             ) : (
-              <div className="col-span-full py-20 text-center bg-gray-50 rounded-[40px]">
-                <p className="text-gray-400 font-bold">لا توجد منتجات متوفرة حالياً</p>
+              <div className="col-span-full py-16 text-center bg-white rounded-[40px] border border-dashed border-gray-100 flex flex-col items-center gap-4">
+                <div className="bg-gray-50 p-6 rounded-full">
+                   <Package className="w-10 h-10 text-gray-200" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-primary font-black text-lg">قريباً في هذا القسم</p>
+                  <p className="text-gray-400 font-bold text-sm">نحن نقوم بتحديث مخزوننا باستمرار، ترقبوا العروض القادمة!</p>
+                </div>
+                <Link to="/products" className="text-primary font-black underline text-xs">تصفح المنتجات المتوفرة</Link>
               </div>
             )}
           </div>

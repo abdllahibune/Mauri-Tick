@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Then go to Firestore > Rules > Publish rules above
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc, where } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
-import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review, SupportRequest } from '../types';
+import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review } from '../types';
 import { 
   Facebook, Instagram, Twitter, Youtube, MessageCircle, Music, Globe,
   BarChart3, Package, ShoppingCart, Settings, LogOut, Plus, Trash2, 
@@ -226,7 +226,6 @@ export function AdminDashboard() {
   const [usedProducts, setUsedProducts] = useState<UsedProduct[]>([]);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
 
   useEffect(() => {
     ensureAuth();
@@ -259,9 +258,6 @@ export function AdminDashboard() {
     const unsubReviews = onSnapshot(query(collection(db, 'mt_reviews'), orderBy('createdAt', 'desc')), (snap) => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
     });
-    const unsubSupport = onSnapshot(query(collection(db, 'mt_support_requests'), orderBy('createdAt', 'desc')), (snap) => {
-      setSupportRequests(snap.docs.map(d => ({ id: d.id, ...d.data() } as SupportRequest)));
-    });
 
     return () => {
       unsubProducts();
@@ -273,7 +269,6 @@ export function AdminDashboard() {
       unsubUsedProducts();
       unsubInvestors();
       unsubReviews();
-      unsubSupport();
     };
   }, [isLoggedIn]);
 
@@ -339,7 +334,6 @@ export function AdminDashboard() {
                 { id: 'used', name: 'مستعمل', icon: Package },
                 { id: 'flash-deal', name: 'عروض فلاش', icon: Gift },
                 { id: 'reviews', name: 'تقييمات', icon: Star },
-                { id: 'support', name: 'دعم', icon: MessageCircle },
                 { id: 'investors', name: 'مستثمرون', icon: BarChart3 },
                 { id: 'settings', name: 'إعدادات', icon: Settings },
               ].map((item) => (
@@ -385,7 +379,6 @@ export function AdminDashboard() {
                 {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
                 {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
                 {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
-                {activeTab === 'support' && <SupportSection requests={supportRequests} />}
                 {activeTab === 'investors' && <InvestorsSection investors={investors} />}
                 {activeTab === 'flash-deal' && <FlashDealSettingsSection />}
                 {activeTab === 'visitors' && <VisitorsSection />}
@@ -2834,72 +2827,6 @@ function NotificationsSection({ users }: { users: UserProfile[] }) {
           ))}
           {notifications.length === 0 && <div className="text-center py-20 text-gray-400 font-bold">لا توجد إشعارات مرسلة بعد</div>}
        </div>
-    </div>
-  );
-}
-
-function SupportSection({ requests }: { requests: SupportRequest[] }) {
-  const updateStatus = async (id: string, status: string) => {
-    await safeWrite(async () => {
-      await updateDoc(doc(db, 'mt_support_requests', id), { status });
-      toast.success('تم تحديث الحالة');
-    });
-  };
-
-  const deleteRequest = async (id: string) => {
-    if (!window.confirm('حذف الطلب؟')) return;
-    await safeWrite(async () => {
-      await deleteDoc(doc(db, 'mt_support_requests', id));
-      toast.success('تم الحذف');
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-8">
-      <h2 className="text-3xl font-black text-primary">طلبات الدعم الفني</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {requests.map((r) => (
-          <div key={r.id} className="bg-white border-2 border-gray-100 p-6 rounded-[40px] flex flex-col gap-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">رقم الهاتف</span>
-                <span className="text-xl font-black text-primary" dir="ltr">{r.phone}</span>
-              </div>
-              <div className={cn(
-                "px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase",
-                r.status === 'completed' ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"
-              )}>
-                {r.status === 'completed' ? 'تم التواصل' : 'قيد الانتظار'}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">تاريخ الطلب</span>
-              <span className="text-xs font-bold text-gray-500">{r.createdAt?.toDate().toLocaleString('ar-MA')}</span>
-            </div>
-
-            <div className="flex gap-2">
-              <button 
-                onClick={() => updateStatus(r.id, r.status === 'completed' ? 'pending' : 'completed')}
-                className="flex-1 bg-gray-50 p-4 rounded-2xl font-black text-xs hover:bg-gray-100 transition-colors"
-              >
-                {r.status === 'completed' ? 'إعادة انتظار' : 'تعيين كمكتمل'}
-              </button>
-              <a 
-                href={`https://wa.me/222${r.phone}?text=مرحباً، تم استلام طلبك للدعم الفني من Mauri Tick`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center bg-green-500 text-white p-4 rounded-2xl flex-1 hover:brightness-110 transition-all shadow-lg shadow-green-100"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </a>
-              <button onClick={() => deleteRequest(r.id)} className="p-4 bg-red-50 text-red-400 rounded-2xl hover:bg-red-500 hover:text-white transition-all">
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

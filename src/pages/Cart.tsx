@@ -9,13 +9,29 @@ export function Cart() {
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-8">
-        <div className="bg-gray-100 p-12 rounded-full">
-           <ShoppingBag className="w-20 h-20 text-gray-300" />
+      <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-10 font-cairo" dir="rtl">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-gray-100 p-16 rounded-full relative"
+        >
+           <ShoppingBag className="w-24 h-24 text-gray-300" />
+           <motion.div 
+             animate={{ y: [0, -10, 0] }}
+             transition={{ duration: 2, repeat: Infinity }}
+             className="absolute -top-4 -right-4 bg-accent text-primary w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+           >
+             🛒
+           </motion.div>
+        </motion.div>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-4xl font-black text-primary">سلة التسوق فارغة</h2>
+          <p className="text-gray-500 max-w-sm mx-auto font-bold">يبدو أنك لم تضف أي منتج بعد. استكشف أحدث الهواتف والإكسسوارات المميزة لدينا وابدأ التسوق الآن.</p>
         </div>
-        <h2 className="text-4xl font-black text-primary">سلة التسوق فارغة</h2>
-        <p className="text-gray-500 max-w-sm">يبدو أنك لم تضف أي منتج بعد. استكشف أحدث الهواتف وابدأ التسوق الآن.</p>
-        <Link to="/products" className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-xl hover:scale-105 transition-transform">تصفح المنتجات</Link>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link to="/products" className="bg-primary text-white px-10 py-5 rounded-3xl font-black text-xl hover:scale-105 transition-all shadow-xl shadow-primary/20">تصفح المتجر</Link>
+          <Link to="/" className="bg-gray-100 text-primary px-10 py-5 rounded-3xl font-black text-xl hover:bg-gray-200 transition-all">العودة للرئيسية</Link>
+        </div>
       </div>
     );
   }

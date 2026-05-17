@@ -3,6 +3,7 @@ import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { Heart, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -51,13 +52,29 @@ export function Wishlist({ products }: { products: Product[] }) {
 
   if (resolvedProducts.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-8">
-        <div className="bg-red-50 p-12 rounded-full">
-           <Heart className="w-20 h-20 text-red-200" />
+      <div className="max-w-7xl mx-auto px-4 py-40 text-center flex flex-col items-center gap-10 font-cairo" dir="rtl">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-red-50 p-16 rounded-full relative"
+        >
+           <Heart className="w-24 h-24 text-red-200" />
+           <motion.div 
+             animate={{ scale: [1, 1.2, 1] }}
+             transition={{ duration: 1.5, repeat: Infinity }}
+             className="absolute -top-4 -right-4 bg-red-500 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+           >
+             ❤️
+           </motion.div>
+        </motion.div>
+        <div className="flex flex-col gap-4">
+          <h2 className="text-4xl font-black text-primary">قائمة الأمنيات فارغة</h2>
+          <p className="text-gray-500 max-w-sm mx-auto font-bold">أضف المنتجات التي تود شرائها لاحقاً لتتمكن من الوصول إليها بسهولة في أي وقت.</p>
         </div>
-        <h2 className="text-4xl font-black text-primary">قائمة الأمنيات فارغة</h2>
-        <p className="text-gray-500 max-w-sm">أضف المنتجات التي تعجبك لتجدها هنا لاحقاً.</p>
-        <Link to="/products" className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-xl hover:scale-105 transition-transform">تصفح المنتجات</Link>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link to="/products" className="bg-primary text-white px-10 py-5 rounded-3xl font-black text-xl hover:scale-105 transition-all shadow-xl shadow-primary/20">ابدأ باختيار منتجاتك</Link>
+          <Link to="/" className="bg-gray-100 text-primary px-10 py-5 rounded-3xl font-black text-xl hover:bg-gray-200 transition-all">العودة للرئيسية</Link>
+        </div>
       </div>
     );
   }

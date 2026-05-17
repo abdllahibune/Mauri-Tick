@@ -141,13 +141,6 @@ export interface Review {
   createdAt: any;
 }
 
-export interface SupportRequest {
-  id: string;
-  phone: string;
-  status: 'pending' | 'completed';
-  createdAt: any;
-}
-
 export interface WheelPrize {
   text: string;
   type: 'percent' | 'fixed' | 'shipping' | 'gift';

@@ -5,7 +5,6 @@ import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LiveNotifications } from './components/LiveNotifications';
-import { AIAssistant } from './components/AIAssistant';
 import { useEffect, useState } from 'react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { CompareProvider } from './context/CompareContext';
@@ -23,6 +22,7 @@ import { Checkout } from './pages/Checkout';
 import { Confirmation } from './pages/Confirmation';
 import { Wishlist } from './pages/Wishlist';
 import { TrackOrder } from './pages/TrackOrder';
+import { Orders } from './pages/Orders';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -157,10 +157,11 @@ function MainApp() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/confirmation" element={<Confirmation />} />
           <Route path="/wishlist" element={<Wishlist products={products} />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="/track" element={<TrackOrder />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/account" element={<Account products={products} />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/tradein" element={<TradeInPage />} />
           <Route path="/sell" element={<Sell />} />
@@ -193,7 +194,6 @@ function MainApp() {
       </a>
 
       <LiveNotifications />
-      <AIAssistant products={products} />
       <Toaster position="top-center" />
     </div>
   );
