@@ -76,6 +76,7 @@ export function Navbar() {
     { name: 'إكسسوارات', path: '/accessories' },
     { name: 'هواتف مستعملة', path: '/used' },
     { name: 'تتبع الطلب', path: '/track' },
+    { name: '🤝 انضم كشريك', path: '/partners' },
   ];
 
   return (

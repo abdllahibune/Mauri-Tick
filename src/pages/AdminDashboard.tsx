@@ -231,6 +231,7 @@ export function AdminDashboard() {
   const [usedProducts, setUsedProducts] = useState<UsedProduct[]>([]);
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [partnerRequests, setPartnerRequests] = useState<any[]>([]);
 
   useEffect(() => {
     ensureAuth();
@@ -263,6 +264,9 @@ export function AdminDashboard() {
     const unsubReviews = onSnapshot(query(collection(db, 'mt_reviews'), orderBy('createdAt', 'desc')), (snap) => {
       setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
     });
+    const unsubPartners = onSnapshot(query(collection(db, 'mt_partner_requests'), orderBy('createdAt', 'desc')), (snap) => {
+      setPartnerRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("Partner requests fetch error:", err));
 
     return () => {
       unsubProducts();
@@ -274,6 +278,7 @@ export function AdminDashboard() {
       unsubUsedProducts();
       unsubInvestors();
       unsubReviews();
+      unsubPartners();
     };
   }, [isLoggedIn]);
 
@@ -340,6 +345,7 @@ export function AdminDashboard() {
                 { id: 'flash-deal', name: 'عروض فلاش', icon: Gift },
                 { id: 'reviews', name: 'تقييمات', icon: Star },
                 { id: 'investors', name: 'مستثمرون', icon: BarChart3 },
+                { id: 'partners', name: 'طلبات الشراكة', icon: Users },
                 { id: 'settings', name: 'إعدادات', icon: Settings },
               ].map((item) => (
                 <button
@@ -385,6 +391,7 @@ export function AdminDashboard() {
                 {activeTab === 'used' && <UsedProductsSection usedProducts={usedProducts} />}
                 {activeTab === 'reviews' && <ReviewsSection reviews={reviews} products={products} />}
                 {activeTab === 'investors' && <InvestorsSection investors={investors} />}
+                {activeTab === 'partners' && <PartnerRequestsSection partnerRequests={partnerRequests} />}
                 {activeTab === 'flash-deal' && <FlashDealSettingsSection />}
                 {activeTab === 'visitors' && <VisitorsSection />}
              </motion.div>
@@ -2999,6 +3006,184 @@ function ReviewsSection({ reviews, products }: { reviews: Review[], products: Pr
           </div>
         ))
        }
+      </div>
+    </div>
+  );
+}
+
+function PartnerRequestsSection({ partnerRequests }: { partnerRequests: any[] }) {
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const updateStatus = async (id: string, newStatus: string) => {
+    await safeWrite(async () => {
+      await updateDoc(doc(db, 'mt_partner_requests', id), { status: newStatus });
+      toast.success('تم تحديث حالة طلب الشراكة بنجاح ✅');
+    });
+  };
+
+  const deleteRequest = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الطلب نهائياً؟')) return;
+    await safeWrite(async () => {
+      await deleteDoc(doc(db, 'mt_partner_requests', id));
+      toast.success('تم حذف طلب الشراكة 🗑️');
+    });
+  };
+
+  const filteredRequests = partnerRequests.filter(req => {
+    const matchesStatus = filterStatus === 'all' || req.status === filterStatus;
+    const matchesSearch = 
+      (req.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (req.phone || '').includes(searchQuery) ||
+      (req.business || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (req.city || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+
+  return (
+    <div className="flex flex-col gap-8" dir="rtl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-primary">طلبات الشراكة التجارية</h2>
+          <p className="text-sm font-bold text-gray-400 mt-1">إدارة واعتماد طلبات الموردين والشركاء الجدد.</p>
+        </div>
+        <div className="bg-primary/5 px-4 py-2 rounded-2xl text-primary font-black text-sm">
+          إجمالي الطلبات: {partnerRequests.length}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-50/50 p-4 rounded-[32px] border border-gray-100">
+        {/* Status Filter */}
+        <div className="flex gap-2 bg-white p-1 rounded-2xl shadow-sm border border-gray-100 w-full md:w-auto">
+          {[
+            { id: 'all', label: 'الكل' },
+            { id: 'pending', label: 'قيد الانتظار ⏳' },
+            { id: 'approved', label: 'المقبولة  ✅' },
+            { id: 'rejected', label: 'المرفوضة ❌' }
+          ].map(status => (
+            <button
+              key={status.id}
+              onClick={() => setFilterStatus(status.id as any)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-black transition-all flex-1 md:flex-none",
+                filterStatus === status.id ? "bg-primary text-white shadow-md" : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {status.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative w-full md:w-80">
+          <input
+            type="text"
+            placeholder="بحث بالاسم، الهاتف، النشاط..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2.5 pr-10 text-sm font-bold bg-white border border-gray-100 rounded-2xl outline-none focus:border-accent shadow-sm"
+          />
+          <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+        </div>
+      </div>
+
+      {/* Requests List */}
+      <div className="flex flex-col gap-4">
+        {filteredRequests.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
+            <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
+              <Users className="w-12 h-12" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-black text-primary">لا توجد طلبات شراكة</h3>
+              <p className="text-sm font-bold text-gray-400">أي طلبات شراكة يتم إرسالها من صفحة الانضمام ستظهر هنا.</p>
+            </div>
+          </div>
+        ) : filteredRequests.map((req) => (
+          <div key={req.id} className="bg-white border hover:border-accent rounded-[32px] p-6 md:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all">
+            <div className="flex-1 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-black text-xl text-primary">{req.name}</span>
+                {req.city && (
+                  <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">
+                    📍 {req.city}
+                  </span>
+                )}
+                <span className={cn(
+                  "px-3 py-1 rounded-full text-xs font-black",
+                  req.status === 'approved' ? "bg-green-50 text-green-600" :
+                  req.status === 'rejected' ? "bg-red-50 text-red-600" : "bg-yellow-50 text-yellow-600"
+                )}>
+                  {req.status === 'approved' ? 'مقبول ✅' :
+                   req.status === 'rejected' ? 'مرفوض ❌' : 'قيد المراجعة ⏳'}
+                </span>
+              </div>
+
+              {/* Grid detail */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 mt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400 font-bold">نوع النشاط:</span>
+                  <span className="font-extrabold text-primary">{req.business}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400 font-bold">رقم الهاتف:</span>
+                  <a href={`https://wa.me/${req.phone}`} target="_blank" rel="noreferrer" className="font-mono text-primary font-black hover:underline flex items-center gap-1.5 text-accent-light bg-primary/5 px-2.5 py-1 rounded-lg">
+                    {req.phone} 💬
+                  </a>
+                </div>
+                {req.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 font-bold">البريد:</span>
+                    <span className="font-bold text-gray-600">{req.email}</span>
+                  </div>
+                )}
+                {req.createdAt && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 font-bold">تاريخ التقديم:</span>
+                    <span className="font-bold text-gray-500 text-xs">
+                      {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleString('ar-MA') : new Date(req.createdAt).toLocaleString('ar-MA')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {req.message && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
+                  <div className="text-[10px] font-black text-gray-400 mb-1">الرسالة:</div>
+                  <p className="font-bold text-gray-600 leading-relaxed italic">"{req.message}"</p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 self-stretch md:self-auto justify-end border-t md:border-none pt-4 md:pt-0">
+              {req.status !== 'approved' && (
+                <button 
+                  onClick={() => updateStatus(req.id, 'approved')} 
+                  className="px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white font-black text-xs rounded-xl shadow-md hover:scale-105 transition-transform"
+                >
+                  قبول الطلب
+                </button>
+              )}
+              {req.status !== 'rejected' && (
+                <button 
+                  onClick={() => updateStatus(req.id, 'rejected')} 
+                  className="px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-primary font-black text-xs rounded-xl shadow-md hover:scale-105 transition-transform"
+                >
+                  رفض
+                </button>
+              )}
+              <button 
+                onClick={() => deleteRequest(req.id)} 
+                className="p-2.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white transition-all rounded-xl shadow-sm"
+                title="حذف الطلب نهائياً"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

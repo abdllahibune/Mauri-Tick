@@ -5,16 +5,24 @@
   --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "Cairo", sans-serif;
   
-  --color-primary: var(--primary, #1A237E);
-  --color-accent: var(--accent, #FFD700);
+  --color-primary: var(--primary, #0A1628);
+  --color-accent: var(--accent, #C9A84C);
 }
 
 :root {
-  --primary: #1A237E;
-  --accent: #FFD700;
-  --bg-main: #F5F5F5;
-  --nav-bg: #FFFFFF;
-  --btn-bg: #1A237E;
+  --primary: #0A1628;      /* Deep navy - more premium */
+  --primary-light: #1A2F5E;
+  --accent: #C9A84C;       /* Gold - premium feel */
+  --accent-light: #E8C96A;
+  --bg-light: #F8F9FC;
+  --text-dark: #0A1628;
+  --text-gray: #6B7280;
+  --white: #FFFFFF;
+  --border: #E5E7EB;
+  --card-shadow: 0 4px 24px rgba(10,22,40,0.08);
+  --bg-main: #F8F9FC;
+  --nav-bg: #0A1628;
+  --btn-bg: #0A1628;
 }
 
 @layer base {
@@ -512,4 +520,213 @@ body, #app, #root, main {
   .hero p, .hero-desc {
     font-size: 13px !important;
   }
+}
+
+/* ==========================================================================
+   PREMIUM CUSTOM DESIGN OVERRIDES
+   ========================================================================== */
+
+/* Navbar premium styles */
+nav, header, .navbar {
+  background: rgba(10, 22, 40, 0.97) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(201,168,76,0.2) !important;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.15) !important;
+}
+
+@media (max-width: 768px) {
+  .navbar, header, nav:not(.mobile-bottom-bar) {
+    background: rgba(10, 22, 40, 0.97) !important;
+  }
+}
+
+/* Logo - more premium */
+.logo, .navbar-brand, .navbar-logo {
+  font-size: 22px !important;
+  letter-spacing: 2px !important;
+  color: white !important;
+  font-weight: 800 !important;
+}
+
+/* Gold accent on logo */
+.logo span, .logo em, .logo-badge, .logo span {
+  color: #C9A84C !important;
+}
+
+/* Nav links */
+nav a, .nav-link {
+  color: rgba(255,255,255,0.85) !important;
+  font-size: 14px !important;
+  letter-spacing: 0.5px !important;
+  transition: color 0.18s !important;
+}
+
+nav a:hover, .nav-link:hover {
+  color: #C9A84C !important;
+}
+
+/* Premium Hero styling */
+.hero {
+  min-height: 580px !important;
+  position: relative !important;
+}
+
+/* Glass card more refined */
+.hero-glass {
+  background: rgba(10, 22, 40, 0.55) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(201,168,76,0.3) !important;
+  border-radius: 20px !important;
+  padding: 44px 52px !important;
+}
+
+/* Hero titles */
+.hero h1 {
+  font-size: 56px !important;
+  font-weight: 900 !important;
+  letter-spacing: -1px !important;
+  color: white !important;
+}
+
+.hero h2 {
+  color: #C9A84C !important;
+  font-size: 42px !important;
+  font-weight: 900 !important;
+}
+
+/* Gold divider line */
+.hero h1::after {
+  content: '' !important;
+  display: block !important;
+  width: 60px !important;
+  height: 3px !important;
+  background: #C9A84C !important;
+  margin: 12px auto !important;
+  border-radius: 2px !important;
+}
+
+/* CTA button */
+.hero-btn, .hero button, 
+.hero a[class*="btn"] {
+  background: linear-gradient(
+    135deg, #C9A84C, #E8C96A) !important;
+  color: #0A1628 !important;
+  font-weight: 800 !important;
+  padding: 16px 36px !important;
+  border-radius: 50px !important;
+  font-size: 16px !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 8px 24px rgba(201,168,76,0.4) !important;
+  border: none !important;
+  transition: all 0.3s !important;
+}
+
+.hero-btn:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 32px rgba(201,168,76,0.5) !important;
+}
+
+/* Premium Product Cards style */
+.product-card, [class*="product-card"] {
+  border-radius: 16px !important;
+  border: 1px solid #F0F0F0 !important;
+  box-shadow: 0 4px 24px rgba(10,22,40,0.06) !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+  background: white !important;
+}
+
+.product-card:hover {
+  transform: translateY(-6px) !important;
+  box-shadow: 0 12px 40px rgba(10,22,40,0.12) !important;
+  border-color: #C9A84C !important;
+}
+
+/* Price in gold */
+.product-card [class*="price"],
+.product-card .price {
+  color: #0A1628 !important;
+  font-weight: 800 !important;
+}
+
+/* Add to cart button */
+.product-card button,
+.product-card [class*="cart"] {
+  background: #0A1628 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  transition: background 0.2s !important;
+}
+
+.product-card button:hover {
+  background: #C9A84C !important;
+  color: #0A1628 !important;
+}
+
+/* Premium Sections titles */
+.section-title, h2[class*="title"],
+[class*="section"] h2 {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  color: #0A1628 !important;
+  position: relative !important;
+  display: inline-block !important;
+}
+
+.section-title::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -8px !important;
+  right: 0 !important;
+  width: 40px !important;
+  height: 3px !important;
+  background: #C9A84C !important;
+  border-radius: 2px !important;
+}
+
+/* Category banners */
+[class*="banner"], [class*="category-card"] {
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  transition: transform 0.3s !important;
+}
+
+[class*="banner"]:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.15) !important;
+}
+
+/* Trust badges */
+[class*="trust"], [class*="feature-card"] {
+  border: 1px solid #F0F0F0 !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  text-align: center !important;
+  background: white !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04) !important;
+}
+
+/* Primary buttons */
+button[class*="primary"],
+.btn-primary, [class*="btn-main"] {
+  background: linear-gradient(
+    135deg, #0A1628, #1A2F5E) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 14px 28px !important;
+  font-weight: 700 !important;
+  border: none !important;
+  transition: all 0.3s !important;
+  box-shadow: 0 4px 16px rgba(10,22,40,0.2) !important;
+}
+
+/* Gold accent buttons */
+button[class*="accent"],
+.btn-accent {
+  background: linear-gradient(
+    135deg, #C9A84C, #E8C96A) !important;
+  color: #0A1628 !important;
+  font-weight: 700 !important;
 }
