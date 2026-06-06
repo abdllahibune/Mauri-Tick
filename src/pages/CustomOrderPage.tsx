@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db, ensureAuth } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { motion } from 'motion/react';
-import { Link2, FileText, Phone, MapPin, Hash, Clipboard, CheckCircle2, Loader2, MessageSquare } from 'lucide-react';
+import { Link2, FileText, Phone, MapPin, Hash, Clipboard, CheckCircle2, Loader2, MessageSquare, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+function extractPriceFromUrl(url: string): number | null {
+  try {
+    // AliExpress embeds price in URL params like:
+    // pdp_npi=6%40dis%21USD%2115.58%218.26%21
+    const decoded = decodeURIComponent(url);
+    const match = decoded.match(/USD[^!]*![^!]*!([\d.]+)!/);
+    if (match) return parseFloat(match[1]);
+    
+    // Try price param directly
+    const urlObj = new URL(url);
+    const price = urlObj.searchParams.get('price');
+    if (price) return parseFloat(price);
+    
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 export default function CustomOrderPage() {
   const [url, setUrl] = useState('');
@@ -14,6 +33,96 @@ export default function CustomOrderPage() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // Price & Rate States
+  const [urlStatus, setUrlStatus] = useState('');
+  const [platform, setPlatform] = useState('');
+  const [priceUSD, setPriceUSD] = useState<number | null>(null);
+  const [priceMru, setPriceMru] = useState<number | null>(null);
+  const [totalMru, setTotalMru] = useState<number | null>(null);
+
+  // Financial system configuration (defaults matched with admin dashboard)
+  const [financialSettings, setFinancialSettings] = useState({
+    usdToMru: 37,
+    shippingCostPerItem: 5000,
+    profitMargin: 1.3,
+  });
+
+  // Fetch exchange and fee rates from Firebase on load
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settingsSnap = await getDoc(doc(db, 'panda_settings', 'general'));
+        if (settingsSnap.exists()) {
+          const settings = settingsSnap.data();
+          setFinancialSettings({
+            usdToMru: Number(settings.usdToMru) || 37,
+            shippingCostPerItem: Number(settings.shippingCostPerItem) || 5000,
+            profitMargin: Number(settings.profitMargin) || 1.3,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load financial configurations:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const calculateRates = (usdPrice: number) => {
+    const { usdToMru, shippingCostPerItem, profitMargin } = financialSettings;
+    const priceInMru = Math.round(usdPrice * usdToMru * profitMargin);
+    const totalWithShipping = priceInMru + shippingCostPerItem;
+
+    setPriceUSD(usdPrice);
+    setPriceMru(priceInMru);
+    setTotalMru(totalWithShipping);
+  };
+
+  const handleUrlChange = async (newUrl: string) => {
+    setUrl(newUrl);
+    if (!newUrl.trim()) {
+      setUrlStatus('');
+      setPriceUSD(null);
+      setPriceMru(null);
+      setTotalMru(null);
+      return;
+    }
+
+    setUrlStatus('جاري تحليل الرابط...');
+
+    const extractedUsd = extractPriceFromUrl(newUrl);
+
+    // Detect platform
+    if (newUrl.includes('aliexpress.com')) {
+      setPlatform('AliExpress');
+    } else if (newUrl.includes('temu.com')) {
+      setPlatform('Temu');
+    } else if (newUrl.includes('amazon.com')) {
+      setPlatform('Amazon');
+    } else {
+      setPlatform('');
+    }
+
+    if (extractedUsd) {
+      calculateRates(extractedUsd);
+      setUrlStatus('✅ تم تحليل الرابط');
+    } else {
+      setUrlStatus('⚠️ لم نجد السعر تلقائياً — أدخل السعر يدوياً في الحقل أدناه');
+      setPriceUSD(null);
+      setPriceMru(null);
+      setTotalMru(null);
+    }
+  };
+
+  const handleManualPrice = (usd: number) => {
+    if (isNaN(usd) || usd <= 0) {
+      setPriceUSD(null);
+      setPriceMru(null);
+      setTotalMru(null);
+      return;
+    }
+    calculateRates(usd);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +144,10 @@ export default function CustomOrderPage() {
         phone,
         city,
         notes,
+        priceUSD: priceUSD || null,
+        priceMru: priceMru || null,
+        shippingCost: financialSettings.shippingCostPerItem,
+        totalMru: totalMru || null,
         status: 'pending',
         createdAt: new Date()
       };
@@ -42,12 +155,24 @@ export default function CustomOrderPage() {
       await addDoc(collection(db, 'panda_custom_orders'), docData);
 
       // 2. Format and open WhatsApp message
-      const msg = `طلب مخصص جديد 📦\nالرابط: ${url}\nالمنتج: ${desc}\nالكمية: ${qty}\nالهاتف: ${phone}\nالمدينة: ${city}${notes ? `\nملاحظات: ${notes}` : ''}`;
-      
+      const msg = 
+        `🛍️ طلب مخصص جديد - Panda Store\n\n` +
+        `🔗 رابط المنتج:\n${url}\n\n` +
+        `💰 السعر بالدولار: ${priceUSD !== null ? `$${priceUSD}` : 'غير محدد'}\n` +
+        `💵 السعر بالأوقية: ${priceMru !== null ? `${priceMru.toLocaleString()} MRU` : 'غير محدد'}\n` +
+        `🚚 تكلفة الشحن: ${financialSettings.shippingCostPerItem.toLocaleString()} MRU\n` +
+        `📦 الإجمالي التقديري: ${totalMru !== null ? `${totalMru.toLocaleString()} MRU` : 'غير محدد'}\n\n` +
+        `📋 تفاصيل الطلب:\n` +
+        `   المواصفات: ${desc}\n` +
+        `   الكمية: ${qty}\n` +
+        `   المدينة: ${city}\n` +
+        `   الهاتف: ${phone}\n` +
+        `   ملاحظات: ${notes || 'لا يوجد'}\n\n` +
+        `⏰ وقت الطلب: ${new Date().toLocaleString('ar')}`;
+
       toast.success('تم تسجيل طلبك بنجاح ✅ جاري توجيهك إلى واتساب...');
       setSuccess(true);
 
-      // Timeout key operation to allow user to see success state
       setTimeout(() => {
         window.open(`https://wa.me/22236096100?text=${encodeURIComponent(msg)}`, '_blank');
       }, 1500);
@@ -67,6 +192,10 @@ export default function CustomOrderPage() {
     setPhone('');
     setCity('نواكشوط');
     setNotes('');
+    setPriceUSD(null);
+    setPriceMru(null);
+    setTotalMru(null);
+    setUrlStatus('');
     setSuccess(false);
   };
 
@@ -88,7 +217,20 @@ export default function CustomOrderPage() {
           <div className="flex flex-col gap-3 w-full mt-4">
             <button
               onClick={() => {
-                const msg = `طلب مخصص جديد 📦\nالرابط: ${url}\nالمنتج: ${desc}\nالكمية: ${qty}\nالهاتف: ${phone}\nالمدينة: ${city}${notes ? `\nملاحظات: ${notes}` : ''}`;
+                const msg = 
+                  `🛍️ طلب مخصص جديد - Panda Store\n\n` +
+                  `🔗 رابط المنتج:\n${url}\n\n` +
+                  `💰 السعر بالدولار: ${priceUSD !== null ? `$${priceUSD}` : 'غير محدد'}\n` +
+                  `💵 السعر بالأوقية: ${priceMru !== null ? `${priceMru.toLocaleString()} MRU` : 'غير محدد'}\n` +
+                  `🚚 تكلفة الشحن: ${financialSettings.shippingCostPerItem.toLocaleString()} MRU\n` +
+                  `📦 الإجمالي التقديري: ${totalMru !== null ? `${totalMru.toLocaleString()} MRU` : 'غير محدد'}\n\n` +
+                  `📋 تفاصيل الطلب:\n` +
+                  `   المواصفات: ${desc}\n` +
+                  `   الكمية: ${qty}\n` +
+                  `   المدينة: ${city}\n` +
+                  `   الهاتف: ${phone}\n` +
+                  `   ملاحظات: ${notes || 'لا يوجد'}\n\n` +
+                  `⏰ وقت الطلب: ${new Date().toLocaleString('ar')}`;
                 window.open(`https://wa.me/22236096100?text=${encodeURIComponent(msg)}`, '_blank');
               }}
               className="w-full bg-[#25D366] text-white py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
@@ -113,17 +255,51 @@ export default function CustomOrderPage() {
       <motion.div 
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-12 text-right"
+        className="flex flex-col gap-8 text-right"
       >
         {/* Header */}
         <div className="text-center flex flex-col gap-4">
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-1.5 rounded-full text-xs font-black inline-block mx-auto">
+          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-1.5 rounded-full text-xs font-black inline-block mx-auto animate-pulse">
             خدمة الاستيراد بالطلب ✈️
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-primary tracking-tighter leading-tight">طلب منتج مخصص</h1>
           <p className="text-base md:text-lg font-bold text-gray-500 max-w-2xl mx-auto leading-relaxed">
             هل أعجبك منتج على Amazon أو AliExpress أو Temu؟ الصقه هنا وسنتولى استيراده وشحنه حتى باب منزلك في موريتانيا بأقل تكلفة ممكنة!
           </p>
+        </div>
+
+        {/* FIX 1: STEP-BY-STEP PROGRESS GUIDE */}
+        <div 
+          className="bg-white border-2 border-gray-100 rounded-[32px] p-6 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-center relative overflow-hidden" 
+          dir="rtl"
+        >
+          {[
+            { num: 1, text: 'ابحث عن منتجك', sub: 'على AliExpress أو Temu' },
+            { num: 2, text: 'انسخ الرابط', sub: 'رابط صفحة المنتج' },
+            { num: 3, text: 'أرسل طلبك', sub: 'أملأ النموذج' },
+            { num: 4, text: 'استلم بالباب', sub: 'نشحنه لموريتانيا' },
+          ].map((step, i) => (
+            <div key={i} className="flex-1 text-center relative w-full flex flex-col items-center">
+              <div style={{
+                width: 40, height: 40,
+                borderRadius: '50%',
+                background: '#0A1628',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 8px',
+                fontWeight: 'bold',
+                fontSize: 16,
+              }}>{step.num}</div>
+              <p style={{ fontWeight: 'bold', fontSize: 13, margin: '0 0 2px' }}>
+                {step.text}
+              </p>
+              <p style={{ color: '#666', fontSize: 11, margin: 0 }}>
+                {step.sub}
+              </p>
+            </div>
+          ))}
         </div>
 
         {/* Form */}
@@ -139,7 +315,7 @@ export default function CustomOrderPage() {
               <input
                 type="url"
                 value={url}
-                onChange={e => setUrl(e.target.value)}
+                onChange={e => handleUrlChange(e.target.value)}
                 placeholder="https://www.temu.com/..."
                 required
                 className="bg-gray-50/50 rounded-2xl p-4 md:p-5 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm focus:bg-white transition-all text-left"
@@ -147,6 +323,107 @@ export default function CustomOrderPage() {
               />
               <span className="text-xs text-gray-400 font-bold mr-1">الصق الرابط الكامل للمنتج لتسهيل الوصول إليه وحساب التكلفة بدقة.</span>
             </div>
+
+            {/* URL processing feedback */}
+            {urlStatus && (
+              <div className={`p-3.5 rounded-2xl font-bold text-sm text-center border mr-1 ${
+                urlStatus.includes('✅') 
+                  ? 'bg-green-50/70 text-green-600 border-green-100' 
+                  : urlStatus.includes('⏳') || urlStatus.includes('جاري') 
+                  ? 'bg-blue-50/70 text-blue-600 border-blue-100 animate-pulse' 
+                  : 'bg-yellow-50/70 text-yellow-600 border-yellow-100'
+              }`}>
+                {urlStatus}
+              </div>
+            )}
+
+            {/* Manual price input */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-black text-gray-700 flex items-center gap-2 mr-1">
+                <DollarSign className="w-4 h-4 text-primary" />
+                <span>سعر المنتج بالدولار (اختياري، يملأ تلقائياً إذا أمكن)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="مثال: 15.99"
+                  value={priceUSD !== null ? priceUSD : ''}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value);
+                    handleManualPrice(val);
+                  }}
+                  className="flex-1 bg-gray-50/50 rounded-2xl p-4 md:p-5 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm focus:bg-white transition-all"
+                />
+                <span className="p-4 md:p-5 bg-gray-100 rounded-2xl text-gray-500 font-black text-xs md:text-sm flex items-center justify-center">USD $</span>
+              </div>
+            </div>
+
+            {/* Estimated Pricing Breakdown Display */}
+            {priceUSD !== null && priceUSD > 0 && priceMru !== null && totalMru !== null && (
+              <div className="animate-fade-in">
+                <div style={{
+                  background: '#F0F7FF',
+                  border: '1px solid #C7E0FF',
+                  borderRadius: 12,
+                  padding: 16,
+                  margin: '12px 0',
+                  direction: 'rtl',
+                  fontFamily: 'Cairo',
+                }}>
+                  <h4 style={{ 
+                    margin: '0 0 12px', 
+                    color: '#0A1628',
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                  }}>
+                    💰 تفاصيل التسعير التقديري {platform && `(${platform})`}
+                  </h4>
+                  
+                  {[
+                    { label: 'سعر المنتج', value: `$${priceUSD}` },
+                    { label: 'سعر الصرف المصرفي', value: `1$ = ${financialSettings.usdToMru} أوقية` },
+                    { label: 'سعر المنتج بالأوقية', value: `${priceMru.toLocaleString()} MRU` },
+                    { label: 'تكلفة الشحن التقديرية التراكمية', value: `${financialSettings.shippingCostPerItem.toLocaleString()} MRU` },
+                  ].map((row, i) => (
+                    <div key={i} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '6px 0',
+                      borderBottom: '1px solid #E0EDFF',
+                      fontSize: 13,
+                    }}>
+                      <span style={{ color: '#555' }}>{row.label}</span>
+                      <span style={{ fontWeight: 'bold' }}>{row.value}</span>
+                    </div>
+                  ))}
+                  
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '10px 0 0',
+                    fontSize: 15,
+                    fontWeight: 'bold',
+                    color: '#0A1628',
+                  }}>
+                    <span>الإجمالي التقديري للتوصيل</span>
+                    <span style={{ color: '#C9A84C' }}>
+                      {totalMru.toLocaleString()} أوقية
+                    </span>
+                  </div>
+                  
+                  <p style={{
+                    color: '#888',
+                    fontSize: 11,
+                    margin: '8px 0 0',
+                    textAlign: 'center',
+                  }}>
+                    * السعر تقديري — سيتم تأكيده بعد مراجعة الطلب مع المناديب
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Description Input */}
             <div className="flex flex-col gap-2">
@@ -266,3 +543,4 @@ export default function CustomOrderPage() {
     </div>
   );
 }
+

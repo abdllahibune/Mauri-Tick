@@ -387,7 +387,12 @@ export function AdminDashboard() {
                 {activeTab === 'categories' && <CategoriesSection />}
                 {activeTab === 'orders' && <OrdersSection orders={orders} />}
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
-                {activeTab === 'settings' && <SettingsSection config={config} />}
+                {activeTab === 'settings' && (
+                    <div className="flex flex-col gap-12">
+                       <SettingsSection config={config} />
+                       <FinancialSettingsAdmin />
+                    </div>
+                 )}
                 {activeTab === 'customers' && <UsersSection users={users} orders={orders} />}
                 {activeTab === 'notifications' && <NotificationsSection users={users} />}
                 {activeTab === 'trade-ins' && <TradeInsSection tradeIns={tradeIns} products={products} />}
@@ -2633,6 +2638,152 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
           </section>
        </div>
     </div>
+  );
+}
+
+function FinancialSettingsAdmin() {
+  const [financials, setFinancials] = useState({
+    usdToMru: 37,
+    shippingCostPerItem: 5000,
+    profitMarginPercent: 30,
+    minOrderMru: 3000,
+    lastUpdated: ''
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFinancialSettings = async () => {
+      try {
+        const docRef = doc(db, 'panda_settings', 'general');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const pMarginPercent = data.profitMargin ? Math.round((data.profitMargin - 1) * 100) : 30;
+          setFinancials({
+            usdToMru: data.usdToMru ?? 37,
+            shippingCostPerItem: data.shippingCostPerItem ?? 5000,
+            profitMarginPercent: pMarginPercent,
+            minOrderMru: data.minOrderMru ?? 3000,
+            lastUpdated: data.updatedAt ? data.updatedAt.toDate().toLocaleString('ar') : ''
+          });
+        }
+      } catch (err) {
+        console.error("Error loading financial settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFinancialSettings();
+  }, []);
+
+  const saveFinancialSettings = async () => {
+    try {
+      const docRef = doc(db, 'panda_settings', 'general');
+      const now = new Date();
+      await setDoc(docRef, {
+        usdToMru: Number(financials.usdToMru),
+        shippingCostPerItem: Number(financials.shippingCostPerItem),
+        profitMargin: 1 + Number(financials.profitMarginPercent) / 100,
+        minOrderMru: Number(financials.minOrderMru),
+        updatedAt: now
+      }, { merge: true });
+      
+      setFinancials(prev => ({
+        ...prev,
+        lastUpdated: now.toLocaleString('ar')
+      }));
+      toast.success('✅ تم حفظ الإعدادات المالية بنجاح!');
+    } catch (err) {
+      console.error(err);
+      toast.error('❌ حدث خطأ أثناء حفظ الإعدادات المالية');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white border-2 border-gray-100 p-8 rounded-[48px] shadow-sm text-center font-bold text-gray-400">
+        جاري تحميل الإعدادات المالية...
+      </div>
+    );
+  }
+
+  return (
+    <section className="bg-white border-2 border-gray-100 p-8 md:p-12 rounded-[48px] shadow-sm flex flex-col gap-8 animate-fade-in text-right" dir="rtl">
+       <div className="flex items-center gap-3 border-b border-gray-100 pb-4 justify-between">
+          <div className="flex items-center gap-3">
+             <div className="bg-amber-50 p-2 rounded-xl text-amber-600"><Icons.Coins className="w-5 h-5" /></div>
+             <h3 className="font-black text-gray-700 text-lg">💱 الإعدادات المالية للطلبات المخصصة</h3>
+          </div>
+       </div>
+       
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-8 rounded-[32px]">
+          <div className="flex flex-col gap-2">
+             <label className="text-xs font-bold text-gray-500 mr-1 block text-right">سعر الصرف (1 USD = ؟ MRU)</label>
+             <div className="flex gap-2">
+                <input 
+                   type="number" 
+                   step="0.1"
+                   value={financials.usdToMru} 
+                   onChange={e => setFinancials({...financials, usdToMru: parseFloat(e.target.value) || 0})} 
+                   className="bg-white border border-gray-200 rounded-2xl p-4 outline-none focus:ring-2 ring-amber-500/20 font-black flex-1 text-right" 
+                />
+                <span className="p-4 bg-gray-100 rounded-2xl text-xs font-black text-gray-500 flex items-center justify-center border border-gray-150 min-w-[70px]">أوقية</span>
+             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+             <label className="text-xs font-bold text-gray-500 mr-1 block text-right">تكلفة الشحن للطلب الواحد</label>
+             <div className="flex gap-2">
+                <input 
+                   type="number" 
+                   value={financials.shippingCostPerItem} 
+                   onChange={e => setFinancials({...financials, shippingCostPerItem: parseFloat(e.target.value) || 0})} 
+                   className="bg-white border border-gray-200 rounded-2xl p-4 outline-none focus:ring-2 ring-amber-500/20 font-black flex-1 text-right" 
+                />
+                <span className="p-4 bg-gray-100 rounded-2xl text-xs font-black text-gray-500 flex items-center justify-center border border-gray-150 min-w-[70px]">أوقية</span>
+             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+             <label className="text-xs font-bold text-gray-500 mr-1 block text-right">هامش الربح (%)</label>
+             <div className="flex gap-2">
+                <input 
+                   type="number" 
+                   value={financials.profitMarginPercent} 
+                   onChange={e => setFinancials({...financials, profitMarginPercent: parseFloat(e.target.value) || 0})} 
+                   className="bg-white border border-gray-200 rounded-2xl p-4 outline-none focus:ring-2 ring-amber-500/20 font-black flex-1 text-right" 
+                />
+                <span className="p-4 bg-gray-100 rounded-2xl text-xs font-black text-gray-500 flex items-center justify-center border border-gray-150 min-w-[70px]">%</span>
+             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+             <label className="text-xs font-bold text-gray-500 mr-1 block text-right">الحد الأدنى للطلب</label>
+             <div className="flex gap-2">
+                <input 
+                   type="number" 
+                   value={financials.minOrderMru} 
+                   onChange={e => setFinancials({...financials, minOrderMru: parseFloat(e.target.value) || 0})} 
+                   className="bg-white border border-gray-200 rounded-2xl p-4 outline-none focus:ring-2 ring-amber-500/20 font-black flex-1 text-right" 
+                />
+                <span className="p-4 bg-gray-100 rounded-2xl text-xs font-black text-gray-500 flex items-center justify-center border border-gray-150 min-w-[70px]">أوقية</span>
+             </div>
+          </div>
+       </div>
+
+       <div className="flex flex-col gap-3 mt-2">
+          <button
+             onClick={saveFinancialSettings}
+             className="w-full bg-primary text-white p-5 rounded-2xl font-black text-base hover:scale-[1.01] active:scale-[0.99] transition-all shadow-lg hover:shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+          >
+             <Save className="w-5 h-5" />
+             <span>💾 حفظ الإعدادات المالية</span>
+          </button>
+          <p className="text-xs text-gray-400 font-bold mr-2 text-right">
+             آخر تحديث: {financials.lastUpdated || 'لم يحدَّث بعد'}
+          </p>
+       </div>
+    </section>
   );
 }
 
