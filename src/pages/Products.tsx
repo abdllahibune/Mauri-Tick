@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { cn } from '../lib/utils';
@@ -13,8 +14,19 @@ export function Products({ products: initialProducts }: { products: Product[] })
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const categoryParam = searchParams.get('category');
+  
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [selectedBrand, setSelectedBrand] = useState('الكل');
+  
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    } else {
+      setSelectedCategory('الكل');
+    }
+  }, [categoryParam]);
   const [maxPrice, setMaxPrice] = useState(500000);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
@@ -73,7 +85,9 @@ export function Products({ products: initialProducts }: { products: Product[] })
         const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
                               p.brand.toLowerCase().includes(search.toLowerCase());
         const matchesPrice = p.price * (1 - (p.discount || 0) / 100) <= maxPrice;
-        return matchesSearch && matchesPrice;
+        const isOffersPage = window.location.pathname === '/offers';
+        const matchesOffers = isOffersPage ? (p.discount !== undefined && p.discount > 0) : true;
+        return matchesSearch && matchesPrice && matchesOffers;
       })
       .sort((a, b) => {
         const priceA = a.price * (1 - (a.discount || 0) / 100);
@@ -208,7 +222,7 @@ export function Products({ products: initialProducts }: { products: Product[] })
           <div className="bg-primary p-8 rounded-[32px] text-white overflow-hidden relative group cursor-pointer">
              <div className="absolute top-0 right-0 w-32 h-32 bg-accent/20 blur-[60px] -mr-16 -mt-16" />
              <h4 className="text-xl font-black mb-2 relative z-10">تحتاج مساعدة؟</h4>
-             <p className="text-gray-300 text-xs mb-4 relative z-10">تواصل مع خبير موري تيك لاختيار هاتفك المثالي عبر الواتساب.</p>
+             <p className="text-gray-300 text-xs mb-4 relative z-10">تواصل مع خبير Panda لاختيار هاتفك المثالي عبر الواتساب.</p>
              <a href="https://wa.me/22236096100" className="bg-accent text-primary px-4 py-2 rounded-lg font-bold text-xs inline-block relative z-10">تواصل الآن</a>
           </div>
         </aside>

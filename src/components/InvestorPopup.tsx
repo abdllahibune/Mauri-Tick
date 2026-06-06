@@ -90,7 +90,7 @@ export function InvestorPopup() {
                  <div className="absolute top-0 right-0 p-8 opacity-10">
                     <Briefcase className="w-32 h-32" />
                  </div>
-                 <h2 className="text-3xl font-black mb-2">{config.title || '🚀 انضم لنجاح Mauri Tick'}</h2>
+                 <h2 className="text-3xl font-black mb-2">{config.title || '🚀 انضم لنجاح Panda'}</h2>
                  <p className="font-bold opacity-90">{config.description || 'نحن نبحث عن شركاء استراتيجيين للتوسع في السوق الموريتانية'}</p>
                  <div className="mt-6 bg-white/20 backdrop-blur-md rounded-2xl p-4 inline-block">
                     <p className="text-xs font-black uppercase tracking-widest opacity-80">الحد الأدنى للاستثمار</p>

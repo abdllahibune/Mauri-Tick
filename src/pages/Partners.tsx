@@ -81,7 +81,7 @@ export function Partners() {
           fontWeight: 900,
           margin: '0 0 12px',
         }}>
-          شراكة تجارية مع Mauri Tick
+          شراكة تجارية مع Panda
         </h1>
         <p style={{
           fontSize: '16px',

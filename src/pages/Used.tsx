@@ -100,7 +100,7 @@ export const UsedPage: React.FC<{ products: Product[] }> = ({ products }) => {
                   </div>
                   <h2 className="text-3xl font-black text-primary mb-4">للزبائن فقط 🔒</h2>
                   <p className="text-gray-500 font-bold max-w-md mx-auto mb-10 leading-relaxed">
-                    خدمة البيع والتبديل متاحة فقط لزبائن Mauri Tick الذين يملكون إثبات شراء من معرضنا.
+                    خدمة البيع والتبديل متاحة فقط لزبائن Panda الذين يملكون إثبات شراء من معرضنا.
                   </p>
                   <button 
                     onClick={() => navigate('/login?redirect=/used')}
@@ -181,7 +181,7 @@ const SellForm: React.FC<{ user: any }> = ({ user }) => {
 
       await addDoc(collection(db, 'mt_sell_requests'), requestData);
       
-      const msg = `مرحباً Mauri Tick 👋\nأريد بيع جهازي:\n\n📱 الجهاز: ${form.brand} ${form.model}\n💾 السعة: ${form.storage}\n⭐ الحالة: ${form.condition}\n🔧 المشاكل: ${form.problems || 'لا توجد'}\n📞 رقمي: ${user.phone}`;
+      const msg = `مرحباً Panda 👋\nأريد بيع جهازي:\n\n📱 الجهاز: ${form.brand} ${form.model}\n💾 السعة: ${form.storage}\n⭐ الحالة: ${form.condition}\n🔧 المشاكل: ${form.problems || 'لا توجد'}\n📞 رقمي: ${user.phone}`;
       
       toast.success('تم إرسال طلبك بنجاح ✅');
       window.open(`https://wa.me/22236096100?text=${encodeURIComponent(msg)}`, '_blank');

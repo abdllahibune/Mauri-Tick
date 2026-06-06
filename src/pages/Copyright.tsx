@@ -27,7 +27,7 @@ export default function Copyright() {
               <Scale className="w-10 h-10" />
            </div>
            <h1 className="text-5xl md:text-6xl font-black text-primary tracking-tighter mb-4">الملكية الفكرية</h1>
-           <p className="text-xl font-bold text-gray-400">حماية حقوق Mauri Tick ومحتواها</p>
+           <p className="text-xl font-bold text-gray-400">حماية حقوق Panda ومحتواها</p>
         </div>
 
         <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-sm flex flex-col gap-10">
@@ -39,7 +39,7 @@ export default function Copyright() {
             </div>
             <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100">
                <p className="text-lg font-bold text-gray-700 leading-loose">
-                 {config?.copyrightText || 'جميع المحتويات الموجودة على هذا الموقع، بما في ذلك النصوص، الصور، الشعارات، البرمجيات، والتصاميم، هي ملك خاص لمؤسسة Mauri Tick ومحمية بموجب قوانين الملكية الفكرية المعمول بها في موريتانيا ودولياً.'}
+                 {config?.copyrightText || 'جميع المحتويات الموجودة على هذا الموقع، بما في ذلك النصوص، الصور، الشعارات، البرمجيات، والتصاميم، هي ملك خاص لمؤسسة Panda ومحمية بموجب قوانين الملكية الفكرية المعمول بها في موريتانيا ودولياً.'}
                </p>
             </div>
           </div>
@@ -51,7 +51,7 @@ export default function Copyright() {
                   <h3 className="text-xl font-black">الاستخدام غير المصرح به</h3>
                 </div>
                 <p className="font-bold text-gray-500 text-sm leading-relaxed">
-                  يمنع منعاً باتاً نسخ، إعادة إنتاج، تعديل، أو توزيع أي جزء من محتوى الموقع لأي غرض تجاري دون الحصول على موافقة خطية مسبقة من إدارة Mauri Tick.
+                  يمنع منعاً باتاً نسخ، إعادة إنتاج، تعديل، أو توزيع أي جزء من محتوى الموقع لأي غرض تجاري دون الحصول على موافقة خطية مسبقة من إدارة Panda.
                 </p>
              </div>
              <div className="flex flex-col gap-4">
@@ -60,7 +60,7 @@ export default function Copyright() {
                   <h3 className="text-xl font-black">العلامات التجارية</h3>
                 </div>
                 <p className="font-bold text-gray-500 text-sm leading-relaxed">
-                  "Mauri Tick" هي علامة تجارية مسجلة. يحظر استخدام اسم العلامة أو شعارها بطريقة قد تسبب الالتباس للعملاء أو تسيء للعلامة التجارية.
+                  "Panda" هي علامة تجارية مسجلة. يحظر استخدام اسم العلامة أو شعارها بطريقة قد تسبب الالتباس للعملاء أو تسيء للعلامة التجارية.
                 </p>
              </div>
           </div>
@@ -68,13 +68,13 @@ export default function Copyright() {
           <div className="bg-orange-50 p-8 rounded-[40px] flex flex-col gap-4 border border-orange-100">
              <h3 className="text-lg font-black text-orange-900 uppercase tracking-widest">إخلاء المسؤولية</h3>
              <p className="font-bold text-orange-800 text-sm leading-relaxed">
-               بينما نسعى جاهدين لضمان دقة المحتوى، إلا أن Mauri Tick لا تتحمل المسؤولية عن أي أخطاء مطبعية أو فنية قد ترد في وصف المنتجات أو أسعارها.
+               بينما نسعى جاهدين لضمان دقة المحتوى، إلا أن Panda لا تتحمل المسؤولية عن أي أخطاء مطبعية أو فنية قد ترد في وصف المنتجات أو أسعارها.
              </p>
           </div>
         </div>
 
         <div className="text-center">
-           <p className="text-gray-400 font-bold mb-4">© 2025 Mauri Tick. جميع الحقوق محفوظة.</p>
+           <p className="text-gray-400 font-bold mb-4">© 2025 Panda. جميع الحقوق محفوظة.</p>
            <a href={`https://wa.me/222${config?.whatsappNumber}`} className="text-primary font-black underline decoration-2 underline-offset-8">للاستفسارات القانونية تواصل معنا</a>
         </div>
       </motion.div>

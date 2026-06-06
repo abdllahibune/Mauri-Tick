@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
 import { UserProfile } from '../types';
+import * as Icons from 'lucide-react';
 
 // Global helper for admin image viewing (requested fix)
 if (typeof window !== 'undefined') {
@@ -328,7 +329,7 @@ export function AdminDashboard() {
         {/* Sidebar / Bottom Nav */}
         <aside className="fixed bottom-0 left-0 right-0 bg-primary text-accent lg:relative lg:bottom-auto lg:left-auto lg:right-auto lg:bg-white lg:p-6 lg:rounded-[40px] lg:shadow-lg lg:border lg:border-gray-100 lg:h-fit lg:sticky lg:top-32 z-[1000] lg:z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] lg:shadow-lg">
            <div className="hidden lg:flex flex-col gap-2 mb-12 px-2">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">موري تيك</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Panda</span>
               <h2 className="text-2xl font-black text-primary leading-none">مدير المتجر</h2>
            </div>
 
@@ -336,6 +337,7 @@ export function AdminDashboard() {
               {[
                 { id: 'stats', name: 'إحصائيات', icon: BarChart3 },
                 { id: 'products', name: 'منتجات', icon: Package },
+                { id: 'categories', name: 'الأقسام', icon: Icons.Grid },
                 { id: 'orders', name: 'طلبات', icon: ShoppingCart },
                 { id: 'coupons', name: 'كوبونات', icon: Tag },
                 { id: 'customers', name: 'عملاء', icon: Users },
@@ -382,6 +384,7 @@ export function AdminDashboard() {
              >
                 {activeTab === 'stats' && <StatsSection orders={orders} products={products} />}
                 {activeTab === 'products' && <ProductsSection products={products} />}
+                {activeTab === 'categories' && <CategoriesSection />}
                 {activeTab === 'orders' && <OrdersSection orders={orders} />}
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
                 {activeTab === 'settings' && <SettingsSection config={config} />}
@@ -674,6 +677,8 @@ function VisitsChart({ dailyData }: { dailyData: Record<string, number> }) {
 function ProductsSection({ products }: { products: Product[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [prefilledProduct, setPrefilledProduct] = useState<any | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
@@ -684,12 +689,20 @@ function ProductsSection({ products }: { products: Product[] }) {
     <div className="flex flex-col gap-6 md:gap-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl md:text-3xl font-black text-primary">إدارة المنتجات</h2>
-        <button 
-          onClick={() => setShowAdd(true)}
-          className="w-full md:w-auto bg-primary text-white px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:scale-105 transition-transform"
-        >
-          <Plus className="w-5 h-5" /> إضافة منتج جديد
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button 
+            onClick={() => setShowImportModal(true)}
+            className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Icons.Link className="w-5 h-5" /> استيراد من رابط
+          </button>
+          <button 
+            onClick={() => setShowAdd(true)}
+            className="w-full sm:w-auto bg-primary text-white px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:scale-105 transition-transform cursor-pointer"
+          >
+            <Plus className="w-5 h-5" /> إضافة منتج جديد
+          </button>
+        </div>
       </div>
 
       <div className="admin-table-container">
@@ -752,12 +765,285 @@ function ProductsSection({ products }: { products: Product[] }) {
        )}
       </div>
 
-      {(showAdd || editingProduct) && (
-        <ProductForm 
-          onClose={() => { setShowAdd(false); setEditingProduct(null); }} 
-          initial={editingProduct} 
+      {showImportModal && (
+        <ProductImportModal 
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={(item) => {
+            setShowImportModal(false);
+            setPrefilledProduct(item);
+          }}
         />
       )}
+
+      {(showAdd || editingProduct || prefilledProduct) && (
+        <ProductForm 
+          onClose={() => { 
+            setShowAdd(false); 
+            setEditingProduct(null); 
+            setPrefilledProduct(null); 
+          }} 
+          initial={editingProduct || prefilledProduct} 
+        />
+      )}
+    </div>
+  );
+}
+
+function ProductImportModal({ onClose, onImportSuccess }: { onClose: () => void, onImportSuccess: (product: any) => void }) {
+  const [url, setUrl] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [statusMsg, setStatusMsg] = useState('');
+
+  const extractProductId = (urlStr: string): string => {
+    try {
+      const urlObj = new URL(urlStr);
+      // Amazon dp or gp
+      const amazonMatch = urlStr.match(/\/dp\/([A-Z0-9]{10})/i) || urlStr.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+      if (amazonMatch) return amazonMatch[1];
+
+      // AliExpress item
+      const aliexpressMatch = urlStr.match(/\/item\/(\d+)\.html/i) || urlStr.match(/\/item\/([^\/]+)\.html/);
+      if (aliexpressMatch) return aliexpressMatch[1];
+
+      // Temu
+      const temuMatch = urlStr.match(/g[_-](\d+)\.html/) || urlStr.match(/goods_id=(\d+)/);
+      if (temuMatch) return temuMatch[1];
+
+      // Fallback
+      const queryId = urlObj.searchParams.get('id') || urlObj.searchParams.get('goods_id') || urlObj.searchParams.get('productId');
+      if (queryId) return queryId;
+
+      const pathParts = urlObj.pathname.split('/');
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart) {
+        const idMatch = lastPart.match(/(\d{10,15})/);
+        if (idMatch) return idMatch[1];
+      }
+      return '';
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim()) return;
+
+    setStatus('loading');
+    setStatusMsg('جاري الاستيراد...');
+
+    try {
+      const productId = extractProductId(url.trim());
+      console.log('Extracted Product ID:', productId);
+
+      const proxy = 'https://api.allorigins.win/get?url=';
+      const res = await fetch(proxy + encodeURIComponent(url.trim()));
+      if (!res.ok) throw new Error('Proxy fetch failed');
+
+      const data = await res.json();
+      const html = data?.contents;
+      if (!html) throw new Error('Response did not contain contents');
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // 1. Extract Name
+      let name = '';
+      const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || 
+                      doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
+      if (ogTitle) {
+        name = ogTitle.trim();
+      } else {
+        name = doc.querySelector('h1')?.textContent?.trim() || doc.title || '';
+      }
+      // Remove extraneous store suffix if present
+      if (name.includes(' - ') && name.toLowerCase().includes('temu')) {
+        name = name.split(' - ')[0].trim();
+      } else if (name.includes(' | ') && name.toLowerCase().includes('aliexpress')) {
+        name = name.split(' | ')[0].trim();
+      }
+
+      // 2. Extract Price
+      let price = 0;
+      const ogPrice = doc.querySelector('meta[property="product:price:amount"]')?.getAttribute('content') || 
+                      doc.querySelector('meta[property="og:price:amount"]')?.getAttribute('content');
+      if (ogPrice) {
+        price = parseFloat(ogPrice);
+      } else {
+        // Query some common selectors
+        const priceText = doc.querySelector('[class*="price"], [id*="price"], .price, #price, .a-price-whole')?.textContent;
+        if (priceText) {
+          const cleaned = priceText.replace(/[^\d.]/g, '');
+          if (cleaned) price = parseFloat(cleaned);
+        }
+      }
+
+      // Ensure a reasonable price or fallback
+      if (isNaN(price) || price <= 0) {
+        price = 1500; // Fallback price
+      }
+
+      // 3. Extract Images (URLs only, no download)
+      const images: string[] = [];
+      const ogImg = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+                    doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+      if (ogImg && ogImg.startsWith('http')) {
+        images.push(ogImg);
+      }
+
+      // Collect potential matches
+      const metaImgs = doc.querySelectorAll('meta[property="og:image:secure_url"]');
+      metaImgs.forEach(meta => {
+        const src = meta.getAttribute('content');
+        if (src && src.startsWith('http') && !images.includes(src)) {
+          images.push(src);
+        }
+      });
+
+      // Scan standard img tags for source
+      if (images.length === 0) {
+        const productImgs = doc.querySelectorAll('img[src*="product"], img[src*="item"], img[src*="goods"]');
+        productImgs.forEach(img => {
+          const src = img.getAttribute('src');
+          if (src && src.startsWith('http') && images.length < 5) {
+            images.push(src);
+          }
+        });
+      }
+
+      // If still empty, use a nice seed image fallback
+      if (images.length === 0) {
+        images.push(`https://picsum.photos/seed/${productId || 'placeholder'}/600/600`);
+      }
+
+      // 4. Description
+      let description = '';
+      const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
+                     doc.querySelector('meta[name="description"]')?.getAttribute('content');
+      if (ogDesc) {
+        description = ogDesc.trim();
+      } else {
+        description = doc.querySelector('#productDescription, .product-description, [id*="desc"]')?.textContent?.trim() || '';
+      }
+
+      // 5. Brand/Store name
+      let brand = '';
+      const ogBrand = doc.querySelector('meta[property="product:brand"]')?.getAttribute('content');
+      if (ogBrand) {
+        brand = ogBrand.trim().toUpperCase();
+      } else {
+        // Guess brand based on URL domain
+        if (url.includes('temu.com')) brand = 'TEMU';
+        else if (url.includes('aliexpress.com')) brand = 'ALIEXPRESS';
+        else if (url.includes('amazon.com')) brand = 'AMAZON';
+        else brand = 'IMPORT';
+      }
+
+      const importedProduct = {
+        name: name || 'منتج مستورد',
+        brand: brand,
+        price: price,
+        discount: 0,
+        stock: 10,
+        description: description || 'تم استيراد هذا المنتج تلقائياً من الرابط المرفق.',
+        images: images.slice(0, 5), // Keep max 5 images
+        suggestedAccessories: [],
+        bundleAccessoryIds: [],
+        specifications: {
+          'المصدر': brand,
+          'رقم المنتج': productId || 'غير معروف'
+        },
+        variants: [],
+        colors: [],
+        tier: '',
+        isFeatured: false,
+        isBestSeller: false,
+        isNewArrival: true
+      };
+
+      setStatus('success');
+      setStatusMsg('✅ تم استيراد المعلومات — راجع وأضف');
+      toast.success('تم الاستيراد بنجاح! جاري فتح نموذج المنتج...');
+
+      setTimeout(() => {
+        onImportSuccess(importedProduct);
+      }, 1200);
+
+    } catch (error) {
+      console.error('Import error:', error);
+      setStatus('error');
+      setStatusMsg('⚠️ لم نتمكن من الاستيراد — أدخل يدوياً');
+      toast.error('فشل الاستيراد التلقائي ❌ يرجى الإضافة يدوياً.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 shadow-2xl" dir="rtl">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-[32px] border border-gray-100 max-w-xl w-full p-6 md:p-8 flex flex-col gap-6 text-right relative shadow-2xl"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-5 left-5 p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors text-gray-500 cursor-pointer"
+        >
+          <Icons.X className="w-4 h-4" />
+        </button>
+
+        <div className="flex flex-col gap-1.5 mt-2">
+          <h3 className="text-2xl font-black text-primary">استيراد منتج من رابط</h3>
+          <p className="text-xs font-bold text-gray-400">أدخل رابط منتج من Amazon أو AliExpress أو Temu لجلب التفاصيل تلقائياً.</p>
+        </div>
+
+        <form onSubmit={handleImport} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-black text-gray-500 mr-1">رابط المنتج (URL)</label>
+            <input 
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://www.temu.com/goods-id.html..."
+              required
+              className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm text-left"
+              dir="ltr"
+            />
+          </div>
+
+          {status !== 'idle' && (
+            <div className={`p-4 rounded-2xl font-bold text-sm text-center border ${
+              status === 'loading' 
+                ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                : status === 'success' 
+                ? 'bg-green-50 text-green-600 border-green-100' 
+                : 'bg-red-50 text-red-600 border-red-100'
+            }`}>
+              <div className="flex items-center justify-center gap-2">
+                {status === 'loading' && <Icons.Loader2 className="w-4 h-4 animate-spin" />}
+                <span>{statusMsg}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-2">
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="flex-1 bg-primary text-white py-4 rounded-xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {status === 'loading' ? 'جاري الاستيراد...' : <><Icons.Download className="w-4 h-4" /> استيراد المعلومات</>}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-sm transition-colors cursor-pointer"
+            >
+              إلغاء
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 }
@@ -770,21 +1056,42 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
   
-  const categories = [
-    { id: 'هواتف ذكية', name: 'هواتف ذكية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'] },
-    { id: 'لابتوب وحاسوب', name: 'لابتوب وحاسوب', specs: ['screen size', 'processor', 'RAM', 'storage', 'battery', 'OS', 'GPU', 'ports'] },
-    { id: 'سماعات وصوتيات', name: 'سماعات وصوتيات', specs: ['type', 'connectivity', 'battery life', 'frequency response'] },
-    { id: 'شاشات وتلفزيونات', name: 'شاشات وتلفزيونات', specs: ['size', 'resolution', 'panel type', 'refresh rate', 'ports', 'smart/not'] },
-    { id: 'إكسسوارات', name: 'إكسسوارات', specs: ['compatibility', 'material', 'dimensions'] },
-    { id: 'قطع غيار', name: 'قطع غيار', specs: ['compatibility', 'material', 'dimensions'] },
-    { id: 'أجهزة لوحية', name: 'أجهزة لوحية', specs: ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS'] },
-    { id: 'كاميرات', name: 'كاميرات', specs: ['sensor', 'resolution', 'lens', 'battery', 'weight'] },
-    { id: 'أخرى', name: 'أخرى', specs: ['details'] },
-  ];
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    getDocs(collection(db, 'panda_categories')).then(snap => {
+      const list = snap.docs.map(d => ({ id: d.id, name: d.data().name } as any));
+      if (list.length > 0) {
+        setCategories(list);
+      } else {
+        const fallbacks = [
+          { id: '1', name: 'إلكترونيات' },
+          { id: '2', name: 'ملابس وأزياء' },
+          { id: '3', name: 'منزل ومطبخ' },
+          { id: '4', name: 'جمال وعناية' },
+          { id: '5', name: 'رياضة' },
+          { id: '6', name: 'أطفال' },
+          { id: '7', name: 'ألعاب وترفيه' },
+        ];
+        setCategories(fallbacks);
+      }
+    }).catch(() => {
+      const fallbacks = [
+        { id: '1', name: 'إلكترونيات' },
+        { id: '2', name: 'ملابس وأزياء' },
+        { id: '3', name: 'منزل ومطبخ' },
+        { id: '4', name: 'جمال وعناية' },
+        { id: '5', name: 'رياضة' },
+        { id: '6', name: 'أطفال' },
+        { id: '7', name: 'ألعاب وترفيه' },
+      ];
+      setCategories(fallbacks);
+    });
+  }, []);
 
   const [form, setForm] = useState<Partial<Product>>(initial || {
     name: '',
-    category: 'هواتف ذكية',
+    category: initial?.category || '',
     brand: '',
     price: 0,
     discount: 0,
@@ -801,6 +1108,12 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     isBestSeller: false,
     isNewArrival: false
   });
+
+  useEffect(() => {
+    if (categories.length > 0 && !form.category) {
+      setForm(prev => ({ ...prev, category: categories[0].name }));
+    }
+  }, [categories]);
 
   const [colorInput, setColorInput] = useState('');
 
@@ -847,7 +1160,29 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
     }));
   };
 
-  const currentCategory = categories.find(c => c.id === form.category) || categories[0];
+  const getSpecsForCategory = (catName: string): string[] => {
+    const name = catName || '';
+    if (name.includes('هواتف') || name.includes('إلكترونيات') || name.includes('أجهزة لوحي')) {
+      return ['screen', 'processor', 'RAM', 'storage', 'battery', 'camera', 'OS', 'colors'];
+    }
+    if (name.includes('لابتوب') || name.includes('كمبيوتر') || name.includes('حاسوب')) {
+      return ['screen size', 'processor', 'RAM', 'storage', 'battery', 'OS', 'GPU', 'ports'];
+    }
+    if (name.includes('سماعات') || name.includes('ألعاب') || name.includes('ترفيه') || name.includes('صوت')) {
+      return ['type', 'connectivity', 'battery life', 'frequency response'];
+    }
+    if (name.includes('شاشات') || name.includes('تلفزيون')) {
+      return ['size', 'resolution', 'panel type', 'refresh rate', 'ports', 'smart/not'];
+    }
+    if (name.includes('إكسسوارات') || name.includes('قطع') || name.includes('ملابس') || name.includes('أزياء') || name.includes('منزل') || name.includes('مطبخ') || name.includes('جمال') || name.includes('عناية') || name.includes('رياضة') || name.includes('أطفال')) {
+      return ['compatibility', 'material', 'dimensions'];
+    }
+    return ['details'];
+  };
+
+  const currentCategory = {
+    specs: getSpecsForCategory(form.category || '')
+  };
 
   useEffect(() => {
     if (initial && typeof window !== 'undefined') {
@@ -1271,7 +1606,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                     className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]"
                   >
                     {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                </div>
@@ -1813,7 +2148,7 @@ function CouponsSection({ coupons }: { coupons: Coupon[] }) {
 function SettingsSection({ config }: { config: StoreConfig | null }) {
   const isRTL = document.documentElement.dir === 'rtl';
   const [form, setForm] = useState<StoreConfig>(config || {
-    storeName: 'MAURI TICK', tagline: 'أفضل الهواتف بأفضل الأسعار', whatsappNumber: '36096100', 
+    storeName: 'Panda', tagline: 'أفضل الهواتف بأفضل الأسعار', whatsappNumber: '36096100', 
     logoUrl: '', heroTitle: '', heroSubtitle: '', heroImage: '', mt_heroImage: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200', heroBackgroundColor: '#1A237E',
     themeColors: {
       primary: '#1A237E',
@@ -2018,7 +2353,7 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                      )}
                      <div className="relative z-10 max-w-sm">
                         <span className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full mb-4 inline-block tracking-widest">موريتانيا - نواكشوط</span>
-                        <h4 className="text-4xl font-black text-white mb-4 leading-tight">{form.heroTitle || 'موري تيك Mauri Tick'}</h4>
+                        <h4 className="text-4xl font-black text-white mb-4 leading-tight">{form.heroTitle || 'Panda Store'}</h4>
                         <p className="text-white/80 text-sm font-bold mb-8">{form.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار.'}</p>
                         <div className="flex">
                            <div className="bg-accent text-primary px-8 py-3 rounded-xl font-black text-xs shadow-lg">تسوق الآن</div>
@@ -3184,6 +3519,444 @@ function PartnerRequestsSection({ partnerRequests }: { partnerRequests: any[] })
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function CategoriesSection() {
+  const [cats, setCats] = useState<any[]>([]);
+  const [name, setName] = useState('');
+  const [nameEn, setNameEn] = useState('');
+  const [icon, setIcon] = useState('Smartphone');
+  const [color, setColor] = useState('#1A237E');
+  const [activeStatus, setActiveStatus] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Suggested icons for quick pick
+  const suggestedIcons = [
+    { name: 'Smartphone', label: 'هاتف' },
+    { name: 'Shirt', label: 'قميص' },
+    { name: 'Home', label: 'منزل' },
+    { name: 'Sparkles', label: 'جمال' },
+    { name: 'Trophy', label: 'رياضة' },
+    { name: 'Baby', label: 'أطفال' },
+    { name: 'Gamepad2', label: 'ألعاب' },
+    { name: 'Grid', label: 'قسم عام' },
+    { name: 'ShoppingBag', label: 'حقيبة' },
+    { name: 'Tag', label: 'عرض' },
+    { name: 'Gift', label: 'هدية' },
+    { name: 'Laptop', label: 'حاسوب' }
+  ];
+
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'panda_categories')), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      list.sort((a, b) => (a.order || 0) - (b.order || 0));
+      setCats(list);
+
+      // Seed if empty
+      if (snap.size === 0) {
+        const defaults = [
+          { name: 'إلكترونيات', nameEn: 'Electronics', icon: 'Smartphone', color: '#1A237E', order: 1, active: true },
+          { name: 'ملابس وأزياء', nameEn: 'Fashion', icon: 'Shirt', color: '#E91E63', order: 2, active: true },
+          { name: 'منزل ومطبخ', nameEn: 'Home', icon: 'Home', color: '#4CAF50', order: 3, active: true },
+          { name: 'جمال وعناية', nameEn: 'Beauty', icon: 'Sparkles', color: '#9C27B0', order: 4, active: true },
+          { name: 'رياضة', nameEn: 'Sports', icon: 'Trophy', color: '#FF9800', order: 5, active: true },
+          { name: 'أطفال', nameEn: 'Kids', icon: 'Baby', color: '#03A9F4', order: 6, active: true },
+          { name: 'ألعاب وترفيه', nameEn: 'Gaming', icon: 'Gamepad2', color: '#673AB7', order: 7, active: true },
+        ];
+        
+        defaults.forEach(async (cat) => {
+          await addDoc(collection(db, 'panda_categories'), {
+            ...cat,
+            createdAt: new Date()
+          });
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setLoading(true);
+
+    try {
+      if (editingId) {
+        // Edit existing
+        await updateDoc(doc(db, 'panda_categories', editingId), {
+          name: name.trim(),
+          nameEn: nameEn.trim(),
+          icon,
+          color,
+          active: activeStatus,
+        });
+        toast.success('تم تحديث القسم بنجاح ✅');
+        setEditingId(null);
+      } else {
+        // Add new
+        const nextOrder = cats.length > 0 ? Math.max(...cats.map(c => c.order || 0)) + 1 : 1;
+        await addDoc(collection(db, 'panda_categories'), {
+          name: name.trim(),
+          nameEn: nameEn.trim(),
+          icon,
+          color,
+          order: nextOrder,
+          active: activeStatus,
+          createdAt: new Date()
+        });
+        toast.success('تمت إضافة القسم الجديد بنجاح 🎉');
+      }
+
+      // Reset
+      setName('');
+      setNameEn('');
+      setIcon('Smartphone');
+      setColor('#1A237E');
+      setActiveStatus(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء حفظ القسم ❌');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (cat: any) => {
+    setEditingId(cat.id);
+    setName(cat.name || '');
+    setNameEn(cat.nameEn || '');
+    setIcon(cat.icon || 'Smartphone');
+    setColor(cat.color || '#1A237E');
+    setActiveStatus(cat.active !== false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setName('');
+    setNameEn('');
+    setIcon('Smartphone');
+    setColor('#1A237E');
+    setActiveStatus(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا القسم؟ قد يؤثر ذلك على المنتجات التابعة له.')) return;
+    try {
+      await deleteDoc(doc(db, 'panda_categories', id));
+      toast.success('تم حذف القسم بنجاح 🗑️');
+    } catch (err) {
+      console.error(err);
+      toast.error('خطأ أثناء الحذف');
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === cats.length - 1) return;
+
+    const current = cats[index];
+    const other = direction === 'up' ? cats[index - 1] : cats[index + 1];
+
+    const tempOrder = current.order || 0;
+    const otherOrder = other.order || 0;
+
+    // If order values are same or 0, assign sequence values
+    let orderA = tempOrder;
+    let orderB = otherOrder;
+    if (orderA === orderB) {
+      orderA = index + (direction === 'up' ? 0 : 2);
+      orderB = index + (direction === 'up' ? 2 : 0);
+    } else {
+      // Swap
+      orderA = otherOrder;
+      orderB = tempOrder;
+    }
+
+    try {
+      await updateDoc(doc(db, 'panda_categories', current.id), { order: orderA });
+      await updateDoc(doc(db, 'panda_categories', other.id), { order: orderB });
+      toast.success('تم تغيير الترتيب بنجاح ↕️');
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل تحديث الترتيب');
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8" dir="rtl">
+      <div>
+        <h2 className="text-3xl font-black text-primary">إدارة الأقسام (Categories)</h2>
+        <p className="text-sm font-bold text-gray-400 mt-1">أضف، عدل، رتّب أو احذف فئات المنتجات في المتجر.</p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-8">
+        {/* Form Container */}
+        <div className="bg-gray-50/50 border border-gray-100 p-6 md:p-8 rounded-[32px] text-right flex flex-col gap-6">
+          <h3 className="font-black text-xl text-primary">
+            {editingId ? 'تعديل قسم قائم' : 'إضافة قسم جديد'}
+          </h3>
+
+          <form onSubmit={handleSave} className="flex flex-col gap-5">
+            {/* Arabic Name */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-500 mr-2">اسم القسم (بالعربية)</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="مثال: إلكترونيات"
+                required
+                className="bg-white rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm"
+              />
+            </div>
+
+            {/* English Name */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-500 mr-2">اسم القسم (بالأجنبية/English)</label>
+              <input
+                type="text"
+                value={nameEn}
+                onChange={e => setNameEn(e.target.value)}
+                placeholder="e.g. Electronics"
+                className="bg-white rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm text-left"
+                dir="ltr"
+              />
+            </div>
+
+            {/* Icon Name */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-500 mr-2">رمز الأيقونة (Lucide Icon Name)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={icon}
+                  onChange={e => setIcon(e.target.value)}
+                  placeholder="e.g. Smartphone, Shirt, Home, Gamepad2"
+                  required
+                  className="flex-1 bg-white rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm text-left font-mono text-xs"
+                  dir="ltr"
+                />
+                <div className="bg-white px-4 rounded-2xl flex items-center justify-center border border-gray-100 shadow-sm" style={{ color }}>
+                  {(() => {
+                    const Dyn = (Icons as any)[icon] || (Icons as any)[icon.charAt(0).toUpperCase() + icon.slice(1)] || Icons.HelpCircle;
+                    return <Dyn className="w-6 h-6" />;
+                  })()}
+                </div>
+              </div>
+
+              {/* Suggestions */}
+              <div className="mt-2">
+                <span className="text-[10px] font-bold text-gray-400 block mb-1.5 mr-1">أيقونات مقترحة:</span>
+                <div className="flex flex-wrap gap-1.5 font-sans">
+                  {suggestedIcons.map(item => (
+                    <button
+                      type="button"
+                      key={item.name}
+                      onClick={() => setIcon(item.name)}
+                      className={cn(
+                        "px-2.5 py-1 text-[11px] font-bold rounded-lg border flex items-center gap-1 transition-all",
+                        icon === item.name 
+                          ? "bg-primary text-white border-primary" 
+                          : "bg-white text-gray-600 border-gray-100 hover:bg-gray-50"
+                      )}
+                    >
+                      {(() => {
+                        const Comp = (Icons as any)[item.name] || Icons.HelpCircle;
+                        return <Comp className="w-3.5 h-3.5" />;
+                      })()}
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Color Hex */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-500 mr-2">اللون المميز (Color Hex)</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={color}
+                  onChange={e => setColor(e.target.value)}
+                  placeholder="#1A237E"
+                  required
+                  className="flex-1 bg-white rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary shadow-sm text-left font-mono"
+                  dir="ltr"
+                />
+                <input 
+                  type="color" 
+                  value={color.startsWith('#') && color.length === 7 ? color : '#1A237E'} 
+                  onChange={e => setColor(e.target.value)}
+                  className="w-12 h-12 rounded-2xl cursor-pointer border border-gray-100 overflow-hidden" 
+                />
+              </div>
+            </div>
+
+            {/* Active Switch */}
+            <div className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mt-2">
+              <input
+                type="checkbox"
+                id="activeStatus"
+                checked={activeStatus}
+                onChange={e => setActiveStatus(e.target.checked)}
+                className="w-5 h-5 accent-primary"
+              />
+              <label htmlFor="activeStatus" className="text-sm font-bold text-gray-600">
+                الحالة: نشط ويظهر في القوائم والملاحة
+              </label>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-primary text-white p-4 rounded-xl font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {loading ? 'جاري الحفظ...' : editingId ? 'تحديث القسم' : 'إضافة هذا القسم'}
+              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-300 transition-colors"
+                >
+                  إلغاء
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Categories List */}
+        <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <h3 className="font-black text-xl text-primary">قائمة الأقسام الحالية</h3>
+            <span className="bg-primary/5 text-primary px-3 py-1 rounded-full text-xs font-black">
+              أقسام المتجر: {cats.length}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            {cats.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="font-bold text-gray-400">جاري تحميل الأقسام...</p>
+              </div>
+            ) : (
+              <table className="w-full text-right" dir="rtl">
+                <thead>
+                  <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-3">
+                    <th className="pb-3 pr-4 text-right">الترتيب</th>
+                    <th className="pb-3 text-center">الأيقونة</th>
+                    <th className="pb-3 text-right">الاسم بالعربية</th>
+                    <th className="pb-3 text-right">الاسم بالإنجليزية</th>
+                    <th className="pb-3 text-right">اللون</th>
+                    <th className="pb-3 text-right">الحالة</th>
+                    <th className="pb-3 text-left pl-4">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {cats.map((cat, index) => {
+                    const DynIcon = (Icons as any)[cat.icon] || (Icons as any)[cat.icon?.charAt(0).toUpperCase() + cat.icon?.slice(1)] || Icons.HelpCircle;
+                    return (
+                      <tr key={cat.id} className="group hover:bg-gray-50/50 transition-colors">
+                        {/* Order Buttons */}
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleMove(index, 'up')}
+                              disabled={index === 0}
+                              className={cn(
+                                "p-1.5 rounded-lg border border-gray-100 bg-white text-gray-400 transition-colors",
+                                index === 0 ? "opacity-30 cursor-not-allowed" : "hover:text-primary hover:bg-gray-50"
+                              )}
+                            >
+                              <Icons.ChevronUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleMove(index, 'down')}
+                              disabled={index === cats.length - 1}
+                              className={cn(
+                                "p-1.5 rounded-lg border border-gray-100 bg-white text-gray-400 transition-colors",
+                                index === cats.length - 1 ? "opacity-30 cursor-not-allowed" : "hover:text-primary hover:bg-gray-50"
+                              )}
+                            >
+                              <Icons.ChevronDown className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs font-black text-gray-400 font-mono w-6 text-center">
+                              {cat.order || (index + 1)}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Icon */}
+                        <td className="py-4">
+                          <div className="flex justify-center">
+                            <div 
+                              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+                              style={{ backgroundColor: `${cat.color || '#1A237E'}15`, color: cat.color || '#1A237E' }}
+                            >
+                              <DynIcon className="w-5 h-5" />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Arabic Name */}
+                        <td className="py-4 font-black text-gray-900">{cat.name}</td>
+
+                        {/* English Name */}
+                        <td className="py-4 font-bold text-gray-400 text-right cursor-default select-all" dir="ltr">{cat.nameEn || '-'}</td>
+
+                        {/* Color */}
+                        <td className="py-4 font-sans">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3.5 h-3.5 rounded-full inline-block border border-gray-100" style={{ backgroundColor: cat.color }} />
+                            <span className="text-xs font-mono text-gray-400">{cat.color || '#1A237E'}</span>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-xs font-black",
+                            cat.active !== false ? "bg-green-50 text-green-600 border border-green-100" : "bg-red-50 text-red-600 border border-red-100"
+                          )}>
+                            {cat.active !== false ? 'نشط' : 'معطل'}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-4 pl-4 text-left">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => startEdit(cat)}
+                              className="p-2.5 bg-gray-50 rounded-xl text-gray-400 hover:text-primary transition-colors"
+                              title="تعديل هذا القسم"
+                            >
+                              <Icons.Edit3 className="w-4.5 h-4.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(cat.id)}
+                              className="p-2.5 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                              title="حذف نهائي"
+                            >
+                              <Icons.Trash2 className="w-4.5 h-4.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

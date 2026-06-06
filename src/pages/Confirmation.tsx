@@ -40,7 +40,7 @@ export function Confirmation() {
         <div className="flex flex-col gap-4 text-right">
            <h4 className="font-black text-primary text-lg">شكراً لثقتك بنا 🙏</h4>
            <p className="text-gray-500 leading-relaxed font-bold">
-             سيقوم فريق موري تيك بمراجعة عملية التحويل وتأكيد طلبك خلال مدة لا تتجاوز 24 ساعة. 
+             سيقوم فريق Panda بمراجعة عملية التحويل وتأكيد طلبك خلال مدة لا تتجاوز 24 ساعة. 
              سنقوم بالتواصل معك عبر رقم الواتساب لتنسيق موعد التوصيل.
            </p>
         </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Mauri Tick",
-  "short_name": "Mauri Tick",
+  "name": "Panda",
+  "short_name": "Panda",
   "description": "أفضل الإلكترونيات بأفضل الأسعار في موريتانيا",
   "start_url": "/",
   "id": "/",
@@ -44,7 +44,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Mauri Tick"
+      "label": "Panda"
     }
   ]
 }

@@ -90,7 +90,7 @@ export default function Contact() {
                 <div className="bg-white p-3 rounded-xl text-primary shadow-sm"><Mail className="w-5 h-5" /></div>
                 <div>
                   <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">البريد الإلكتروني</h4>
-                  <p className="font-bold text-primary">contact@mauritick.com</p>
+                  <p className="font-bold text-primary">contact@panda-store.com</p>
                 </div>
               </div>
             </div>

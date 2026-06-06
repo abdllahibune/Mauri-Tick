@@ -241,7 +241,7 @@ export function TradeInPage() {
           : products.find(p => p.id === formData.targetPhoneId)?.name || 'لم يحدد';
 
         const message = encodeURIComponent(
-          `مرحباً Mauri Tick 👋\n` +
+          `مرحباً Panda 👋\n` +
           `طلب استبدال جديد:\n\n` +
           `📱 هاتفي الحالي:\n` +
           `   الماركة: ${formData.brand}\n` +
@@ -553,7 +553,7 @@ export function TradeInPage() {
                     : products.find(p => p.id === formData.targetPhoneId)?.name || 'لم يحدد';
 
                   const message = encodeURIComponent(
-                    `مرحباً Mauri Tick 👋\n` +
+                    `مرحباً Panda 👋\n` +
                     `طلب استبدال جديد:\n\n` +
                     `📱 هاتفي الحالي:\n` +
                     `   الماركة: ${formData.brand}\n` +

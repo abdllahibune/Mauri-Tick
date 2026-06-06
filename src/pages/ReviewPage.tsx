@@ -132,7 +132,7 @@ export default function ReviewPage() {
       >
         <div className="text-center">
           <h1 className="text-5xl font-black text-primary tracking-tight mb-2">كيف كانت تجربتك؟</h1>
-          <p className="text-gray-400 font-bold">نقدر جداً رأيك في Mauri Tick</p>
+          <p className="text-gray-400 font-bold">نقدر جداً رأيك في Panda</p>
         </div>
 
         <div className="bg-white p-10 rounded-[40px] shadow-2xl border-2 border-gray-50">

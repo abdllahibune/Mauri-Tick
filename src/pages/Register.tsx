@@ -198,7 +198,7 @@ export function Register() {
 
         <div className="text-center">
           <h1 className="text-4xl font-black text-primary mb-2">إنشاء حساب</h1>
-          <p className="text-gray-400 font-bold">انضم لعائلة موري تيك اليوم</p>
+          <p className="text-gray-400 font-bold">انضم لعائلة Panda اليوم</p>
         </div>
 
         {error && (

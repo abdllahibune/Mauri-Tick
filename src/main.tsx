@@ -5,7 +5,7 @@ import './index.css';
 
 // Global error handler
 window.onerror = function(msg, src, line) {
-  console.error('MauriTick Error:', msg, src, line);
+  console.error('Panda Error:', msg, src, line);
   return false;
 };
 

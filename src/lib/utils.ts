@@ -18,7 +18,7 @@ export function formatNumber(num: number) {
 }
 
 export function generateOrderNumber() {
-  return 'MT-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+  return 'PD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 }
 
 export function contactWhatsApp(product: any) {
@@ -27,7 +27,7 @@ export function contactWhatsApp(product: any) {
     : (product.usedPrice || product.price);
     
   const msg = 
-    `مرحباً Mauri Tick 👋\n` +
+    `مرحباً Panda 👋\n` +
     `أريد الاستفسار عن هذا المنتج:\n\n` +
     `📱 المنتج: ${product.name}\n` +
     `🏷️ الماركة: ${product.brand}\n` +

@@ -31,7 +31,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="flex flex-col gap-4 text-right" dir="rtl">
-            <Link to="/" className="text-3xl font-black tracking-tighter">{config?.storeName || 'MAURI TICK'}</Link>
+            <Link to="/" className="text-3xl font-black tracking-tighter">{config?.storeName || 'Panda'}</Link>
             <p className="text-gray-300 text-sm leading-relaxed">
               {config?.footerText || 'وجهتكم الأولى لأحدث الهواتف الذكية والإكسسوارات في موريتانيا. جودة مضمونة وأسعار تنافسية.'}
             </p>
@@ -95,12 +95,12 @@ export function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-          <p>{config?.copyrightText || `© ${new Date().getFullYear()} Mauri Tick — جميع الحقوق محفوظة`}</p>
+          <p>{config?.copyrightText || `© ${new Date().getFullYear()} Panda — جميع الحقوق محفوظة`}</p>
           <div className="flex gap-6">
             <Link to="/policy" className="hover:text-white text-[10px]">سياسة الإرجاع</Link>
             <Link to="/copyright" className="hover:text-white text-[10px]">الملكية الفكرية</Link>
           </div>
-          <p>تم التطوير بواسطة Mauri Tick</p>
+          <p>تم التطوير بواسطة Panda</p>
         </div>
       </div>
     </footer>

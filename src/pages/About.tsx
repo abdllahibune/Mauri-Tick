@@ -44,7 +44,7 @@ export default function About() {
           <div className="flex flex-col gap-8">
             <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10">
               <p className="text-lg font-bold text-gray-700 leading-loose whitespace-pre-wrap">
-                {config?.aboutUs || 'نحن في Mauri Tick نسعى لتوفير أفضل الأجهزة الذكية بأفضل الأسعار الممكنة، مع ضمان الجودة وخدمة ما بعد البيع. بدأنا كفكرة بسيطة تهدف إلى تسهيل عملية الشراء لجميع الموريتانيين.'}
+                {config?.aboutUs || 'نحن في Panda نسعى لتوفير أفضل الأجهزة الذكية بأفضل الأسعار الممكنة، مع ضمان الجودة وخدمة ما بعد البيع. بدأنا كفكرة بسيطة تهدف إلى تسهيل عملية الشراء لجميع الموريتانيين.'}
               </p>
             </div>
             

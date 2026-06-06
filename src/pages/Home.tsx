@@ -212,8 +212,8 @@ export function Home({ products }: { products: Product[] }) {
                <h1 className="hero-title-ar">{config.heroTitle}</h1>
             ) : (
               <>
-                <h1 className="hero-title-ar">موري تيك</h1>
-                <h2 className="hero-title-en">Mauri Tick</h2>
+                <h1 className="hero-title-ar">Panda</h1>
+                <h2 className="hero-title-en">Panda Store</h2>
               </>
             )}
             <p className="hero-desc">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>

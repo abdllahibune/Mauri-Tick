@@ -135,7 +135,7 @@ export function LuckyWheel() {
                 <div className="bg-accent/10 w-16 h-16 rounded-3xl flex items-center justify-center text-accent mx-auto mb-4 animate-bounce">
                     <Gift className="w-8 h-8" />
                 </div>
-                <h2 className="text-2xl font-black text-primary mb-2 italic">جرب حظك مع موري تيك! 🎡</h2>
+                <h2 className="text-2xl font-black text-primary mb-2 italic">جرب حظك مع Panda! 🎡</h2>
                 <p className="text-sm font-bold text-gray-400">ادر العجلة للفوز بخصم حصري على مشترياتك القادمة</p>
             </div>
 

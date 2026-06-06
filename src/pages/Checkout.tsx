@@ -167,7 +167,7 @@ export function Checkout() {
 
       // 3. WhatsApp Integration
       const selectedMethod = PAYMENT_METHODS.find(m => m.id === paymentMethod);
-      const message = `طلب جديد موري تيك! 📱%0Aالرقم: ${orderNumber}%0Aالاسم: ${formData.name}%0Aالهاتف: ${formData.phone}%0Aالمبلغ: ${subtotal} أوقية%0Aطريقة الدفع: ${selectedMethod?.name || paymentMethod}`;
+      const message = `طلب جديد Panda! 📱%0Aالرقم: ${orderNumber}%0Aالاسم: ${formData.name}%0Aالهاتف: ${formData.phone}%0Aالمبلغ: ${subtotal} أوقية%0Aطريقة الدفع: ${selectedMethod?.name || paymentMethod}`;
       const waLink = `https://wa.me/22236096100?text=${message}`;
 
       // 4. Clear cart and redirect

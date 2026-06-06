@@ -502,7 +502,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
              <div style={{background: '#fff', border: '1px solid #eee', padding: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px'}}>
                  <span style={{fontSize: '20px'}}>🛡️</span>
                  <div style={{display: 'flex', flexDirection: 'column'}}>
-                    <span style={{fontSize: '12px', fontWeight: 'bold'}}>ضمان موري تيك</span>
+                    <span style={{fontSize: '12px', fontWeight: 'bold'}}>ضمان Panda</span>
                     <span style={{fontSize: '10px', color: '#666'}}>أصلي 100%</span>
                  </div>
              </div>

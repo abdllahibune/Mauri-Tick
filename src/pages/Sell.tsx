@@ -92,7 +92,7 @@ export function Sell() {
           </div>
           <h1 className="text-4xl font-black text-primary mb-4">تم إرسال إعلانك بنجاح!</h1>
           <p className="text-xl text-gray-500 font-bold mb-8">
-            شكراً لثقتك بـ موري تيك. سيقوم فريقنا بمراجعة إعلانك خلال 24 ساعة، وإذا تمت الموافقة سيظهر في قسم المستعمل.
+            شكراً لثقتك بـ Panda. سيقوم فريقنا بمراجعة إعلانك خلال 24 ساعة، وإذا تمت الموافقة سيظهر في قسم المستعمل.
           </p>
           <button onClick={() => window.location.href = '/products'} className="bg-primary text-white px-12 py-4 rounded-2xl font-black text-lg">
             تصفح المنتجات

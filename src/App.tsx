@@ -29,6 +29,7 @@ import { Register } from './pages/Register';
 import { Account } from './pages/Account';
 import { ComparePage } from './pages/ComparePage';
 import { TradeInPage } from './pages/TradeIn';
+import CustomOrderPage from './pages/CustomOrderPage';
 import { Sell } from './pages/Sell';
 import { Accessories } from './pages/Accessories';
 import { UsedPage } from './pages/Used';
@@ -153,6 +154,8 @@ function MainApp() {
         <Routes>
           <Route path="/" element={<Home products={products} />} />
           <Route path="/products" element={<Products products={products} />} />
+          <Route path="/offers" element={<Products products={products} />} />
+          <Route path="/custom-order" element={<CustomOrderPage />} />
           <Route path="/product/:id" element={<ProductDetail allProducts={products} />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
