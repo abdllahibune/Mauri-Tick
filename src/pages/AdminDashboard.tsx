@@ -233,6 +233,18 @@ export function AdminDashboard() {
   const [investors, setInvestors] = useState<Investor[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [partnerRequests, setPartnerRequests] = useState<any[]>([]);
+  const [customOrders, setCustomOrders] = useState<any[]>([]);
+
+  const loadCustomOrders = async () => {
+    const q = query(
+      collection(db, 'panda_custom_orders'),
+      orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setCustomOrders(list);
+    return list;
+  };
 
   useEffect(() => {
     ensureAuth();
@@ -269,6 +281,10 @@ export function AdminDashboard() {
       setPartnerRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => console.error("Partner requests fetch error:", err));
 
+    const unsubCustomOrders = onSnapshot(query(collection(db, 'panda_custom_orders'), orderBy('createdAt', 'desc')), (snap) => {
+      setCustomOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("Custom orders fetch error:", err));
+
     return () => {
       unsubProducts();
       unsubOrders();
@@ -280,6 +296,7 @@ export function AdminDashboard() {
       unsubInvestors();
       unsubReviews();
       unsubPartners();
+      unsubCustomOrders();
     };
   }, [isLoggedIn]);
 
@@ -323,6 +340,8 @@ export function AdminDashboard() {
     );
   }
 
+  const pendingCustomCount = customOrders.filter(o => o.status === 'pending').length;
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 py-8 md:py-12 pb-32 md:pb-12">
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 lg:gap-12">
@@ -339,6 +358,7 @@ export function AdminDashboard() {
                 { id: 'products', name: 'منتجات', icon: Package },
                 { id: 'categories', name: 'الأقسام', icon: Icons.Grid },
                 { id: 'orders', name: 'طلبات', icon: ShoppingCart },
+                { id: 'custom-orders', name: 'طلبات مخصصة', icon: Icons.Inbox },
                 { id: 'coupons', name: 'كوبونات', icon: Tag },
                 { id: 'customers', name: 'عملاء', icon: Users },
                 { id: 'notifications', name: 'إشعارات', icon: MessageSquare },
@@ -354,7 +374,7 @@ export function AdminDashboard() {
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
                   className={cn(
-                    "flex flex-col lg:flex-row items-center gap-1 lg:gap-4 p-3 lg:p-4 rounded-xl lg:rounded-2xl font-bold transition-all min-w-[70px] lg:min-w-0 transition-all",
+                    "relative flex flex-col lg:flex-row items-center gap-1 lg:gap-4 p-3 lg:p-4 rounded-xl lg:rounded-2xl font-bold transition-all min-w-[70px] lg:min-w-0 transition-all",
                     activeTab === item.id 
                       ? "bg-accent text-primary lg:bg-primary lg:text-accent shadow-lg" 
                       : "text-white/60 lg:text-gray-500 hover:bg-white/10 lg:hover:bg-gray-50"
@@ -362,6 +382,11 @@ export function AdminDashboard() {
                 >
                   <item.icon className="w-5 h-5" /> 
                   <span className="text-[10px] lg:text-sm whitespace-nowrap">{item.name}</span>
+                  {item.id === 'custom-orders' && pendingCustomCount > 0 && (
+                    <span className="absolute -top-1 -right-1 lg:top-3 lg:left-3 bg-red-600 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md border border-white">
+                      {pendingCustomCount}
+                    </span>
+                  )}
                 </button>
               ))}
               <button 
@@ -386,6 +411,7 @@ export function AdminDashboard() {
                 {activeTab === 'products' && <ProductsSection products={products} />}
                 {activeTab === 'categories' && <CategoriesSection />}
                 {activeTab === 'orders' && <OrdersSection orders={orders} />}
+                {activeTab === 'custom-orders' && <CustomOrdersSection customOrders={customOrders} loadCustomOrders={loadCustomOrders} />}
                 {activeTab === 'coupons' && <CouponsSection coupons={coupons} />}
                 {activeTab === 'settings' && (
                     <div className="flex flex-col gap-12">
@@ -2784,6 +2810,271 @@ function FinancialSettingsAdmin() {
           </p>
        </div>
     </section>
+  );
+}
+
+interface CustomOrdersSectionProps {
+  customOrders: any[];
+  loadCustomOrders: () => Promise<any[]>;
+}
+
+function CustomOrdersSection({ customOrders, loadCustomOrders }: CustomOrdersSectionProps) {
+  async function updateOrderStatus(id: string, status: string) {
+    try {
+      await setDoc(
+        doc(db, 'panda_custom_orders', id),
+        { status, updatedAt: new Date() },
+        { merge: true }
+      );
+      toast.success('تم تحديث حالة الطلب بنجاح! ✅');
+      loadCustomOrders(); // refresh list
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء تحديث حالة الطلب ❌');
+    }
+  }
+
+  async function deleteOrder(id: string) {
+    if (!confirm('هل تريد حذف هذا الطلب؟')) return;
+    try {
+      await deleteDoc(
+        doc(db, 'panda_custom_orders', id)
+      );
+      toast.success('تم حذف الطلب بنجاح! 🗑️');
+      loadCustomOrders();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء حذف الطلب ❌');
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6" dir="rtl">
+      <div>
+        <h2 className="text-2xl font-black text-gray-800 mb-2">📥 الطلبات المخصصة ({customOrders.length})</h2>
+        <p className="text-gray-500 font-bold text-sm">إدارة مبيعات الطلبات الخاصة والروابط الخارجية من AliExpress أو Temu</p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {customOrders.length === 0 ? (
+          <div className="bg-white border-2 border-gray-100 p-16 rounded-[40px] text-center font-bold text-gray-400">
+            لا توجد طلبات مخصصة حالياً
+          </div>
+        ) : (
+          customOrders.map((order) => {
+            const dateStr = (() => {
+              if (!order.createdAt) return '';
+              if (order.createdAt.toDate) return order.createdAt.toDate().toLocaleString('ar');
+              return new Date(order.createdAt).toLocaleString('ar');
+            })();
+
+            return (
+              <div 
+                key={order.id}
+                style={{
+                  background: 'white',
+                  borderRadius: 14,
+                  padding: 20,
+                  marginBottom: 12,
+                  border: '1px solid #eee',
+                  direction: 'rtl',
+                  fontFamily: 'Cairo',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                }}
+              >
+                {/* Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}>
+                  <span style={{
+                    background: order.status === 'pending' 
+                      ? '#FFF3E0' : '#E8F5E9',
+                    color: order.status === 'pending' 
+                      ? '#E65100' : '#2E7D32',
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                  }}>
+                    {order.status === 'pending' 
+                      ? '⏳ قيد المراجعة' : '✅ تم التأكيد'}
+                  </span>
+                  <span style={{ color: '#999', fontSize: 12 }}>
+                    {dateStr}
+                  </span>
+                </div>
+
+                {/* Customer Info */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 8,
+                  marginBottom: 12,
+                  background: '#f8f9fc',
+                  borderRadius: 10,
+                  padding: 12,
+                }}>
+                  <div>
+                    <span style={{ color: '#666', fontSize: 12 }}>
+                      📞 الهاتف
+                    </span>
+                    <p style={{ margin: '2px 0', fontWeight: 'bold' }}>
+                      {order.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ color: '#666', fontSize: 12 }}>
+                      📍 المدينة
+                    </span>
+                    <p style={{ margin: '2px 0', fontWeight: 'bold' }}>
+                      {order.city}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ color: '#666', fontSize: 12 }}>
+                      📦 الكمية
+                    </span>
+                    <p style={{ margin: '2px 0', fontWeight: 'bold' }}>
+                      {order.quantity || 1}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ color: '#666', fontSize: 12 }}>
+                      💰 السعر التقديري
+                    </span>
+                    <p style={{ 
+                      margin: '2px 0', 
+                      fontWeight: 'bold',
+                      color: '#C9A84C',
+                    }}>
+                      {order.totalMru 
+                        ? `${order.totalMru.toLocaleString()} أوقية`
+                        : 'غير محدد'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Product description */}
+                <div style={{ marginBottom: 12 }}>
+                  <span style={{ color: '#666', fontSize: 12 }}>
+                    📝 وصف المنتج
+                  </span>
+                  <p style={{ 
+                    margin: '4px 0',
+                    fontSize: 14,
+                    lineHeight: 1.6,
+                  }}>
+                    {order.description || order.notes || 'لا يوجد'}
+                  </p>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                }}>
+                  
+                  {/* Open product URL */}
+                  {order.productUrl && (
+                    <a
+                      href={order.productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 16px',
+                        background: '#FF6600',
+                        color: 'white',
+                        borderRadius: 8,
+                        textDecoration: 'none',
+                        fontSize: 13,
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      🔗 فتح المنتج على AliExpress
+                    </a>
+                  )}
+
+                  {/* Contact on WhatsApp */}
+                  <a
+                    href={`https://wa.me/${order.phone?.replace(/\D/g,'')}?text=${
+                      encodeURIComponent(
+                        `مرحباً، بخصوص طلبك على Panda Store 🐼\n` +
+                        `المنتج: ${order.description || ''}\n` +
+                        `السعر التقديري: ${
+                          order.totalMru?.toLocaleString() || 'سيتم التحديد'
+                        } أوقية\n` +
+                        `هل تريد تأكيد الطلب؟`
+                      )
+                    }`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      background: '#25D366',
+                      color: 'white',
+                      borderRadius: 8,
+                      textDecoration: 'none',
+                      fontSize: 13,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    💬 تواصل مع الزبون
+                  </a>
+
+                  {/* Mark as confirmed */}
+                  <button
+                    onClick={() => updateOrderStatus(order.id, 'confirmed')}
+                    style={{
+                      padding: '8px 16px',
+                      background: order.status === 'confirmed' 
+                        ? '#E8F5E9' : '#0A1628',
+                      color: order.status === 'confirmed' 
+                        ? '#2E7D32' : 'white',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontFamily: 'Cairo',
+                    }}
+                  >
+                    {order.status === 'confirmed' 
+                      ? '✅ مؤكد' : 'تأكيد الطلب'}
+                  </button>
+
+                  {/* Delete order */}
+                  <button
+                    onClick={() => deleteOrder(order.id)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#ffebee',
+                      color: '#c62828',
+                      border: 'none',
+                      borderRadius: 8,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      fontFamily: 'Cairo',
+                    }}
+                  >
+                    🗑️ حذف
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }
 

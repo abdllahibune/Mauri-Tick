@@ -469,26 +469,38 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               ? 'نفذ المخزون' : '🛒 أضف للسلة'}
           </button>
 
-          <button
-            onClick={() => contactWhatsApp(product)}
+          <a
+            href={`https://wa.me/22236096100?text=${
+              encodeURIComponent(
+                `🛍️ أريد طلب هذا المنتج من Panda Store\n\n` +
+                `📦 المنتج: ${product.name}\n` +
+                `💰 السعر: ${product.price?.toLocaleString()} أوقية\n` +
+                `🔗 الرابط الأصلي: ${product.sourceUrl || ''}\n\n` +
+                `يرجى تأكيد التوفر والشحن.`
+              )
+            }`}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              width:'100%', padding:'16px',
-              background: '#25D366',
-              color:'white', border:'none',
-              borderRadius:'16px', fontSize:'18px',
-              fontWeight: '900',
-              cursor: 'pointer',
-              marginTop:'12px', fontFamily:'Cairo',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
-              transition: 'all 0.2s',
-              boxShadow: '0 5px 15px rgba(37, 211, 102, 0.2)'
+              gap: 10,
+              width: '100%',
+              padding: '16px',
+              background: '#25D366',
+              color: 'white',
+              borderRadius: 14,
+              textDecoration: 'none',
+              fontFamily: 'Cairo',
+              fontSize: 16,
+              fontWeight: 'bold',
+              marginTop: 12,
+              boxShadow: '0 4px 16px rgba(37,211,102,0.3)',
             }}
           >
-            <MessageCircle className="w-6 h-6" /> استفسر عبر واتساب
-          </button>
+            اطلب الآن عبر واتساب 💬
+          </a>
 
           {/* Features */}
           <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '30px'}}>
