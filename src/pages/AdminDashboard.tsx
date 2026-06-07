@@ -4627,6 +4627,191 @@ function CategoriesSection() {
   );
 }
 
+function SubcategoriesPanel({ category, onRefresh }: { category: any, onRefresh: () => void }) {
+  const [subImages, setSubImages] = useState<Record<string, string>>({});
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingImageSubId, setEditingImageSubId] = useState<string | null>(null);
+  const [editingImageVal, setEditingImageVal] = useState('');
+
+  const subs = category.subcategories || [];
+
+  useEffect(() => {
+    async function loadImages() {
+      const images: Record<string, string> = {};
+      for (const sub of subs) {
+        if (sub.useAutoImage) {
+          const img = await getFirstProductImage(category.name, sub.name);
+          images[sub.id] = img || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
+        } else {
+          images[sub.id] = sub.image || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
+        }
+      }
+      setSubImages(images);
+    }
+    loadImages();
+  }, [category, subs]);
+
+  const handleAddSub = async (name: string, image: string, useAutoImage: boolean) => {
+    try {
+      const ref = doc(db, 'panda_categories', category.id);
+      const nextOrder = subs.length > 0 ? Math.max(...subs.map((s: any) => s.order || 0)) + 1 : 1;
+      const newSub = {
+        id: 'sub_' + Math.random().toString(36).substring(2, 9),
+        name,
+        image,
+        useAutoImage,
+        order: nextOrder,
+        active: true
+      };
+      await updateDoc(ref, {
+        subcategories: [...subs, newSub]
+      });
+      toast.success('تمت إضافة الفرع بنجاح 🎉');
+      setShowAddModal(false);
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast.error('فشل في إضافة الفرع');
+    }
+  };
+
+  const handleDeleteSub = async (subId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الفرع؟')) return;
+    try {
+      const ref = doc(db, 'panda_categories', category.id);
+      const updated = subs.filter((s: any) => s.id !== subId);
+      await updateDoc(ref, { subcategories: updated });
+      toast.success('تم حذف الفرع بنجاح');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء حذف الفرع');
+    }
+  };
+
+  const handleToggleActive = async (subId: string) => {
+    try {
+      const ref = doc(db, 'panda_categories', category.id);
+      const updated = subs.map((s: any) => {
+        if (s.id === subId) {
+          return { ...s, active: s.active === false ? true : false };
+        }
+        return s;
+      });
+      await updateDoc(ref, { subcategories: updated });
+      toast.success('تم تحديث حالة الفرع بنجاح');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء تحديث حالة الفرع');
+    }
+  };
+
+  const handleUpdateImage = async (subId: string, imgUrl: string) => {
+    try {
+      const ref = doc(db, 'panda_categories', category.id);
+      const updated = subs.map((s: any) => {
+        if (s.id === subId) {
+          return { ...s, image: imgUrl, useAutoImage: false };
+        }
+        return s;
+      });
+      await updateDoc(ref, { subcategories: updated });
+      toast.success('تم تحديث صورة الفرع');
+      setEditingImageSubId(null);
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء تحديث صورة الفرع');
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 border border-gray-150 p-6 md:p-8 rounded-[36px] mt-6 flex flex-col gap-6" dir="rtl">
+      <div className="flex justify-between items-center border-b pb-4">
+        <h4 className="font-black text-lg text-primary">فروع قسم: {category.name}</h4>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-primary text-white px-4 py-2 rounded-xl text-xs font-black hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1"
+        >
+          <Icons.Plus className="w-4 h-4" />
+          <span>إضافة فرع جديد</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {subs.length === 0 ? (
+          <p className="col-span-full text-center text-gray-400 font-bold py-6">لا توجد فروع مضافة بعد لهذا القسم.</p>
+        ) : (
+          subs.map((sub: any) => (
+            <div key={sub.id} className="bg-white border rounded-2xl p-4 flex flex-col gap-3 relative shadow-sm hover:shadow-md transition-shadow">
+              <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 border">
+                <img 
+                  src={subImages[sub.id] || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60'} 
+                  alt={sub.name} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                <span className="font-black text-xs text-gray-800">{sub.name}</span>
+                <div className="flex items-center gap-1.5 justify-between">
+                  <span className="font-bold text-[10px] text-gray-400">الحالة:</span>
+                  <button 
+                    onClick={() => handleToggleActive(sub.id)}
+                    className={`px-2 py-1 rounded font-black text-[10px] ${sub.active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
+                  >
+                    {sub.active !== false ? 'نشط ومظهر' : 'معطل ومخفي'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end mt-auto pt-2">
+                <button 
+                  onClick={() => {
+                    setEditingImageSubId(sub.id);
+                    setEditingImageVal(sub.image || '');
+                  }}
+                  className="px-2.5 py-1.5 bg-gray-50 text-gray-500 hover:text-primary transition-all rounded-lg text-[11px] font-black"
+                >
+                  صورة مخصصة
+                </button>
+                <button 
+                  onClick={() => handleDeleteSub(sub.id)}
+                  className="p-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white transition-all rounded-lg"
+                >
+                  <Icons.Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {editingImageSubId === sub.id && (
+                <div className="flex flex-col gap-2 pt-2 border-t">
+                  <input 
+                    type="text" 
+                    value={editingImageVal}
+                    onChange={e => setEditingImageVal(e.target.value)}
+                    placeholder="رابط الصورة https://..."
+                    className="w-full bg-gray-50 border rounded p-1.5 text-[10px] text-left outline-none text-right"
+                    dir="ltr"
+                  />
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => handleUpdateImage(sub.id, editingImageVal)} className="px-2 py-1 bg-primary text-white rounded text-[9px] font-bold">حفظ</button>
+                    <button onClick={() => { setEditingImageSubId(null); setEditingImageVal(''); }} className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-[9px] font-bold">إلغاء</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {showAddModal && (
+        <AddSubcategoryModal onClose={() => setShowAddModal(false)} onSave={handleAddSub} />
+      )}
+    </div>
+  );
+}
+
 interface AddSubModalProps {
   onClose: () => void;
   onSave: (name: string, image: string, useAutoImage: boolean) => void;
@@ -4703,231 +4888,52 @@ function AddSubcategoryModal({ onClose, onSave }: AddSubModalProps) {
   );
 }
 
-function SubcategoriesPanel({ category, onRefresh }: { category: any, onRefresh: () => void }) {
-  const [subImages, setSubImages] = useState<Record<string, string>>({});
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingImageSubId, setEditingImageSubId] = useState<string | null>(null);
-  const [editingImageVal, setEditingImageVal] = useState('');
-
-  const subs = category.subcategories || [];
-
-  useEffect(() => {
-    async function loadImages() {
-      const images: Record<string, string> = {};
-      for (const sub of subs) {
-        if (sub.useAutoImage) {
-          const img = await getFirstProductImage(category.name, sub.name);
-          images[sub.id] = img || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
-        } else {
-          images[sub.id] = sub.image || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
-        }
-      }
-      setSubImages(images);
-    }
-    loadImages();
-  }, [category, subs]);
-
-  const handleAddSub = async (name: string, image: string, useAutoImage: boolean) => {
-    try {
-      const ref = doc(db, 'panda_categories', category.id);
-      const nextOrder = subs.length > 0 ? Math.max(...subs.map((s: any) => s.order || 0)) + 1 : 1;
-      const newSub = {
-        id: 'sub_' + Math.random().toString(36).substring(2, 9),
-        name,
-        image,
-        useAutoImage,
-        order: nextOrder,
-        active: true
-      };
-      await updateDoc(ref, {
-        subcategories: [...subs, newSub]
-      });
-      toast.success('تمت إضافة الفرع بنجاح 🎉');
-      setShowAddModal(false);
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-      toast.error('فشل إضافة الفرع');
-    }
-  };
-
-  const handleToggleActive = async (subId: string) => {
-    try {
-      const updated = subs.map((s: any) => s.id === subId ? { ...s, active: !s.active } : s);
-      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
-      toast.success('تم تحديث حالة الفرع');
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleToggleAutoImage = async (subId: string) => {
-    try {
-      const updated = subs.map((s: any) => s.id === subId ? { ...s, useAutoImage: !s.useAutoImage } : s);
-      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
-      toast.success('تم تحديث إعدادات الصورة');
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleUpdateImage = async (subId: string, imgPath: string) => {
-    try {
-      const updated = subs.map((s: any) => s.id === subId ? { ...s, image: imgPath, useAutoImage: false } : s);
-      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
-      toast.success('تم تحديث الصورة مخصصاً');
-      setEditingImageSubId(null);
-      setEditingImageVal('');
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteSub = async (subId: string) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الفرع؟')) return;
-    try {
-      const updated = subs.filter((s: any) => s.id !== subId);
-      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
-      toast.success('تم حذف الفرع');
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleMoveSub = async (index: number, direction: 'up' | 'down') => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === subs.length - 1) return;
-
-    const updated = [...subs];
-    const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    const temp = updated[index];
-    updated[index] = updated[targetIdx];
-    updated[targetIdx] = temp;
-
-    // Re-assign layout order sequentially
-    const sequential = updated.map((s: any, idx: number) => ({ ...s, order: idx + 1 }));
-
-    try {
-      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: sequential });
-      toast.success('تمت إعادة ترتيب الفروع');
-      onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  return (
-    <div className="bg-gray-50/50 border border-gray-100 rounded-[32px] p-6 md:p-8 flex flex-col gap-6 mt-8 w-full text-right" dir="rtl">
-      <div className="flex items-center justify-between border-b pb-4">
-        <div>
-          <h3 className="font-black text-xl text-primary">إدارة الفروع لقسم: {category.name}</h3>
-          <p className="text-xs font-bold text-gray-400 mt-1">تحديد، ترتيب أو حذف الفروع التابعة لهذا القسم.</p>
-        </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="bg-primary text-white px-5 py-2 rounded-2xl text-xs font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-right"
-        >
-          <Icons.Plus className="w-4 h-4" /> إضافة فرع جديد
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {subs.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-gray-400 font-bold border border-dashed rounded-3xl">لا يوجد فروع مضافة حالياً. أنشئ فرعاً جديداً للتبويب.</div>
-        ) : (
-          [...subs].sort((a,b)=>(a.order || 0) - (b.order || 0)).map((sub: any, idx: number) => (
-            <div key={sub.id} className="bg-white border rounded-2xl p-4 flex flex-col gap-4 shadow-sm hover:border-primary/20 transition-all text-right">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
-                    <img src={subImages[sub.id] || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60'} alt={sub.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-gray-900 leading-none">{sub.name}</h4>
-                    <span className="text-[10px] font-bold text-gray-400 leading-none mt-1 inline-block">ترتيب: {sub.order}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button onClick={() => handleMoveSub(idx, 'up')} disabled={idx === 0} className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-500 disabled:opacity-20"><Icons.ChevronUp className="w-4 h-4" /></button>
-                  <button onClick={() => handleMoveSub(idx, 'down')} disabled={idx === subs.length - 1} className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-500 disabled:opacity-20"><Icons.ChevronDown className="w-4 h-4" /></button>
-                </div>
-              </div>
-
-              {/* Toggle custom vs auto */}
-              <div className="flex flex-col gap-2 pt-2 border-t text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 font-bold">صورة تلقائية:</span>
-                  <button 
-                    onClick={() => handleToggleAutoImage(sub.id)}
-                    className={`px-2 py-1 rounded font-black text-[10px] ${sub.useAutoImage ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'}`}
-                  >
-                    {sub.useAutoImage ? 'مفعلة (من المعرض)' : 'موقوفة (يدوية)'}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 font-bold">الحالة:</span>
-                  <button 
-                    onClick={() => handleToggleActive(sub.id)}
-                    className={`px-2 py-1 rounded font-black text-[10px] ${sub.active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
-                  >
-                    {sub.active !== false ? 'نشط ومظهر' : 'معطل ومخفي'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end mt-auto pt-2">
-                <button 
-                  onClick={() => {
-                    setEditingImageSubId(sub.id);
-                    setEditingImageVal(sub.image || '');
-                  }}
-                  className="px-2.5 py-1.5 bg-gray-50 text-gray-500 hover:text-primary transition-all rounded-lg text-[11px] font-black"
-                >
-                  صورة مخصصة
-                </button>
-                <button 
-                  onClick={() => handleDeleteSub(sub.id)}
-                  className="p-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white transition-all rounded-lg"
-                >
-                  <Icons.Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              {editingImageSubId === sub.id && (
-                <div className="flex flex-col gap-2 pt-2 border-t">
-                  <input 
-                    type="text" 
-                    value={editingImageVal}
-                    onChange={e => setEditingImageVal(e.target.value)}
-                    placeholder="رابط الصورة https://..."
-                    className="w-full bg-gray-50 border rounded p-1.5 text-[10px] text-left outline-none text-right"
-                    dir="ltr"
-                  />
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={() => handleUpdateImage(sub.id, editingImageVal)} className="px-2 py-1 bg-primary text-white rounded text-[9px] font-bold">حفظ</button>
-                    <button onClick={() => { setEditingImageSubId(null); setEditingImageVal(''); }} className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-[9px] font-bold">إلغاء</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      {showAddModal && (
-        <AddSubcategoryModal onClose={() => setShowAddModal(false)} onSave={handleAddSub} />
-      )}
-    </div>
-  );
+function parseTemuRow(cols: any[]) {
+  return null;
 }
 
-function detectAndParse(csvText: string, platform: string, settings: { usdToMru: number; profitMargin: number }): any[] {
+function parseRow(cols: any[], platform: string) {
+  if (platform === 'temu') {
+    // keep existing temu parser unchanged
+    return parseTemuRow(cols);
+  }
+  
+  // AliExpress - new format
+  const priceUSD = parseFloat(
+    (cols[5] || '0').replace(/[^0-9.]/g, '')
+  ) || 0;
+  
+  const discount = parseInt(
+    (cols[6] || '0').replace(/[^0-9]/g, '')
+  ) || 0;
+  
+  const originalPriceUSD = (discount > 0 && priceUSD > 0)
+    ? parseFloat((priceUSD / (1 - discount/100)).toFixed(2))
+    : null;
+  
+  const image = (cols[1] || '').trim();
+  
+  const name = (cols[2] || '').trim();
+  
+  if (!name || priceUSD === 0) return null;
+  
+  return {
+    name,
+    priceUSD,
+    originalPriceUSD,
+    discount,
+    images: image ? [image] : [],
+    mainImage: image,
+    sourceUrl: (cols[0] || '').trim(),
+    url: (cols[0] || '').trim(),
+    rating: parseFloat(cols[9]) || null,
+    salesCount: (cols[10] || '').trim(),
+    soldCount: (cols[10] || '').trim(),
+    platform: 'aliexpress',
+  };
+}
+
+function detectAndParse(csvText: string, platform: string, settings: { usdToMru: number; profitMargin: number }, margins: any = {}, selectedCategory: string = ''): any[] {
   // Parse CSV properly handling quotes
   function parseCSV(text: string) {
     const rows = [];
@@ -4964,154 +4970,20 @@ function detectAndParse(csvText: string, platform: string, settings: { usdToMru:
   console.log('First data row:', dataRows[0]);
   console.log('Total rows:', dataRows.length);
   
-  return dataRows.map(cols => {
-    if (platform === 'aliexpress') {
-      // Find name: longest Arabic text column
-      let name = '';
-      let nameCol = -1;
-      for (let i = 0; i < cols.length; i++) {
-        const val = cols[i] || '';
-        // Arabic text is longer than 10 chars and contains Arabic unicode
-        if (/[\u0600-\u06FF]/.test(val) && val.length > name.length) {
-          name = val;
-          nameCol = i;
-        }
-      }
-
-      // Fallback if no Arabic text found
-      if (!name) {
-        for (let i = 0; i < cols.length; i++) {
-          const val = cols[i] || '';
-          if (val.length > name.length && !val.startsWith('http') && !/^\d+$/.test(val) && !val.includes('.com') && val.length > 5) {
-            name = val;
-            nameCol = i;
-          }
-        }
-      }
-      
-      // Find price: look for columns with 
-      // small numbers (1-4 digits) near each other or a decimal col
-      let priceUSD = 0;
-      let foundPriceCol = -1;
-      for (let i = 0; i < cols.length - 2; i++) {
-        const a = (cols[i] || '').trim();
-        const b = (cols[i+1] || '').trim();
-        const c = (cols[i+2] || '').trim();
-        
-        // Pattern: "8" "." "26" = 8.26
-        if (/^\d{1,4}$/.test(a) && 
-            b === '.' && 
-            /^\d{1,2}$/.test(c)) {
-          priceUSD = parseFloat(a + '.' + c);
-          foundPriceCol = i;
-          console.log(`Price split found at col ${i}:`, priceUSD);
-          break;
-        }
-      }
-
-      // Fallback if split price pattern not found
-      if (priceUSD === 0) {
-        for (let i = 0; i < cols.length; i++) {
-          const val = (cols[i] || '').trim();
-          // Match standard price format: 12.34 or $12.34 or US $12.34
-          const match = val.match(/(?:US\s*\$|USD\s*|\$)?\s*(\d+(?:\.\d+)+)/i);
-          if (match) {
-            const parsedVal = parseFloat(match[1]);
-            // Exclude column if it is clearly an image dimension or some typical URL parameter or huge number
-            if (parsedVal > 0 && parsedVal < 10000 && !val.startsWith('http') && !val.includes('/')) {
-              priceUSD = parsedVal;
-              foundPriceCol = i;
-              console.log(`Regex price found at col ${i}:`, priceUSD);
-              break;
-            }
-          }
-        }
-      }
-
-      // Search for original price (usually another price column present that is higher than the main priceUSD)
-      let originalPriceUSD = 0;
-      for (let i = 0; i < cols.length; i++) {
-        if (i === foundPriceCol) continue;
-        const val = (cols[i] || '').trim();
-        const match = val.match(/(?:US\s*\$|USD\s*|\$)?\s*(\d+(?:\.\d+)+)/i);
-        if (match) {
-          const parsedVal = parseFloat(match[1]);
-          if (parsedVal > priceUSD && parsedVal < 10000 && !val.startsWith('http') && !val.includes('/')) {
-            originalPriceUSD = parsedVal;
-            break;
-          }
-        }
-      }
-
-      // Find discount
-      let discount = 0;
-      for (let i = 0; i < cols.length; i++) {
-        const val = (cols[i] || '').trim();
-        const match = val.match(/(-?\d+)\s*%/);
-        if (match) {
-          discount = Math.abs(parseInt(match[1]));
-          break;
-        }
-      }
-
-      // Find sales / soldCount
-      let soldCount = 0;
-      for (let i = 0; i < cols.length; i++) {
-        const val = (cols[i] || '').trim();
-        const match = val.match(/(\d[\d,]*)\+?\s*sold/i);
-        if (match) {
-          soldCount = parseInt(match[1].replace(/,/g, ''));
-          break;
-        }
-      }
-
-      // Find productUrl
-      let productUrl = '';
-      for (let i = 0; i < cols.length; i++) {
-        const val = cols[i] || '';
-        if (val.startsWith('http') && (val.includes('aliexpress.com') || val.includes('/item/')) && !val.match(/\.(jpg|jpeg|png|gif|webp|bmp)(?:\?|$)/i)) {
-          productUrl = val;
-          break;
-        }
-      }
-      if (!productUrl) {
-        for (let i = 0; i < cols.length; i++) {
-          const val = cols[i] || '';
-          if (val.startsWith('http') && !val.includes('alicdn.com') && !val.match(/\.(jpg|jpeg|png|gif|webp)(?:\?|$)/i)) {
-            productUrl = val;
-            break;
-          }
-        }
-      }
-      
-      // Find images: URLs containing aliexpress or alicdn with image extensions
-      const images = cols.filter(c => 
-        c && c.startsWith('http') && 
-        (c.includes('aliexpress') || c.includes('alicdn') || c.match(/\.(jpg|jpeg|png|webp|gif)(?:\?|$)/i))
-      );
-
-      const mainImage = images[0] || '';
-      const convertedPriceMRU = Math.round(priceUSD * settings.usdToMru * settings.profitMargin);
-      
-      // fallback originalPriceUSD calculation if discount is present
-      if (originalPriceUSD === 0 && discount > 0) {
-        originalPriceUSD = parseFloat((priceUSD / (1 - discount / 100)).toFixed(2));
-      }
-
-      return {
-        url: productUrl,
-        images,
-        mainImage,
-        name,
-        priceUSD,
-        originalPriceUSD,
-        discount,
-        soldCount,
-        price: convertedPriceMRU
-      };
-    }
-    return {};
-  });
+  const parsedRows: any[] = [];
+  for (const cols of dataRows) {
+    const parsed = parseRow(cols, platform);
+    if (!parsed || !parsed.name || parsed.priceUSD <= 0) continue;
+    
+    // Fix price conversion
+    parsed.price = Math.round(
+      parsed.priceUSD * (settings.usdToMru || 40) * 
+      (margins[selectedCategory] || settings.profitMargin || 1.3)
+    );
+    
+    parsedRows.push(parsed);
+  }
+  return parsedRows;
 }
 
 function CsvImportModal({ onClose }: { onClose: () => void }) {
@@ -5119,6 +4991,8 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [settings, setSettings] = useState({ usdToMru: 37, profitMargin: 1.30 });
+  const [margins, setMargins] = useState<any>({});
+  const [fileContent, setFileContent] = useState<string>('');
   
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -5138,6 +5012,13 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
       }
     });
 
+    // Load margins
+    getDoc(doc(db, 'panda_settings', 'margins')).then(snap => {
+      if (snap.exists()) {
+        setMargins(snap.data());
+      }
+    });
+
     // Load categories
     getDocs(collection(db, 'panda_categories')).then(snap => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
@@ -5148,6 +5029,14 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (!fileContent) return;
+    const parsedRows = detectAndParse(fileContent, 'aliexpress', settings, margins, selectedCategory);
+    
+    setRows(parsedRows);
+    setPreviewRows(parsedRows.slice(0, 5));
+  }, [fileContent, selectedCategory, settings, margins]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
@@ -5156,15 +5045,13 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      const parsedRows = detectAndParse(text, 'aliexpress', settings);
+      setFileContent(text);
       
+      const parsedRows = detectAndParse(text, 'aliexpress', settings, margins, selectedCategory);
       if (parsedRows.length === 0) {
         toast.error('الملف فارغ أو لم يتم العثور على أي منتجات صالحة');
         return;
       }
-
-      setRows(parsedRows);
-      setPreviewRows(parsedRows.slice(0, 5));
       toast.success(`تم تحليل ${parsedRows.length} منتج بنجاح. راجع المعاينة واضغط استيراد.`);
     };
 
