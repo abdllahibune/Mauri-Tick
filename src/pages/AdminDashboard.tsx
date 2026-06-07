@@ -14,7 +14,7 @@ import {
   Search as SearchIcon, Palette, Smartphone, FileText, Star, Send, Gift,
   ShoppingBag, PackageCheck, RefreshCw
 } from 'lucide-react';
-import { formatPrice, cn, proxyImage } from '../lib/utils';
+import { formatPrice, cn, proxyImage, getDisplayPrice } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
@@ -789,7 +789,7 @@ function ProductsSection({ products }: { products: Product[] }) {
                   </div>
                 </td>
                 <td className="py-6 font-bold text-gray-500 uppercase">{p.brand}</td>
-                <td className="py-6 font-black text-primary">{formatPrice(p.price)}</td>
+                <td className="py-6 font-black text-primary">{formatPrice(getDisplayPrice(p))}</td>
                 <td className="py-6">
                    <span className={cn("px-3 py-1 rounded-full text-xs font-black", p.stock > 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600")}>
                      {p.stock} قطعة
@@ -2720,6 +2720,8 @@ function FinancialSettingsAdmin() {
     lastUpdated: ''
   });
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [margins, setMargins] = useState<any>({});
 
   useEffect(() => {
     const fetchFinancialSettings = async () => {
@@ -2736,6 +2738,13 @@ function FinancialSettingsAdmin() {
             minOrderMru: data.minOrderMru ?? 3000,
             lastUpdated: data.updatedAt ? data.updatedAt.toDate().toLocaleString('ar') : ''
           });
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('panda_general_settings', JSON.stringify({
+              usdToMru: Number(data.usdToMru ?? 37),
+              profitMarginPercent: pMarginPercent
+            }));
+          }
         }
       } catch (err) {
         console.error("Error loading financial settings:", err);
@@ -2743,7 +2752,40 @@ function FinancialSettingsAdmin() {
         setLoading(false);
       }
     };
+
+    const loadCategoriesAndMargins = async () => {
+      try {
+        const categorySnap = await getDocs(collection(db, 'panda_categories'));
+        const list = categorySnap.docs.map(d => ({ id: d.id, name: d.data().name }));
+        setCategories(list);
+
+        const snap = await getDoc(doc(db, 'panda_settings', 'margins'));
+        if (snap.exists()) {
+          const data = snap.data();
+          setMargins(data);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('panda_margins', JSON.stringify(data));
+          }
+        } else {
+          const initialMargins = {
+            default: 1.30,
+            'إلكترونيات': 1.20,
+            'ملابس وأزياء': 1.40,
+            'منزل ومطبخ': 1.35,
+            'جمال وعناية': 1.45,
+            'رياضة': 1.30,
+            'أطفال': 1.35,
+            'ألعاب وترفيه': 1.25,
+          };
+          setMargins(initialMargins);
+        }
+      } catch (err) {
+        console.error("Error loading categories or margins:", err);
+      }
+    };
+
     fetchFinancialSettings();
+    loadCategoriesAndMargins();
   }, []);
 
   const saveFinancialSettings = async () => {
@@ -2757,6 +2799,13 @@ function FinancialSettingsAdmin() {
         minOrderMru: Number(financials.minOrderMru),
         updatedAt: now
       }, { merge: true });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('panda_general_settings', JSON.stringify({
+          usdToMru: Number(financials.usdToMru),
+          profitMarginPercent: Number(financials.profitMarginPercent)
+        }));
+      }
       
       setFinancials(prev => ({
         ...prev,
@@ -2766,6 +2815,31 @@ function FinancialSettingsAdmin() {
     } catch (err) {
       console.error(err);
       toast.error('❌ حدث خطأ أثناء حفظ الإعدادات المالية');
+    }
+  };
+
+  const updateMargin = (categoryName: string, value: number) => {
+    setMargins((prev: any) => ({
+      ...prev,
+      [categoryName]: value
+    }));
+  };
+
+  const saveMargins = async () => {
+    try {
+      await setDoc(
+        doc(db, 'panda_settings', 'margins'),
+        { ...margins, updatedAt: new Date() },
+        { merge: true }
+      );
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('panda_margins', JSON.stringify(margins));
+      }
+      alert('✅ تم حفظ هوامش الربح');
+      toast.success('✅ تم حفظ هوامش الربح بنجاح!');
+    } catch (err) {
+      console.error(err);
+      toast.error('❌ حدث خطأ أثناء حفظ هوامش الربح');
     }
   };
 
@@ -2852,6 +2926,74 @@ function FinancialSettingsAdmin() {
           <p className="text-xs text-gray-400 font-bold mr-2 text-right">
              آخر تحديث: {financials.lastUpdated || 'لم يحدَّث بعد'}
           </p>
+       </div>
+
+       {/* Category-specific Profit Margins */}
+       <div style={{ marginTop: 24, direction: 'rtl', fontFamily: 'Cairo' }} className="border-t border-gray-100 pt-6">
+          <h4 style={{ fontSize: 15, marginBottom: 16, borderBottom: '1px solid #f3f4f6', paddingBottom: 8 }} className="font-black text-gray-700">
+             هامش الربح حسب القسم
+          </h4>
+          
+          <table style={{ width: '100%', borderCollapse: 'collapse' }} className="text-right">
+             <thead>
+                <tr style={{ background: '#f8f9fc' }} className="border-b border-gray-200">
+                   <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13 }} className="font-bold text-gray-500">القسم</th>
+                   <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: 13 }} className="font-bold text-gray-500">هامش الربح %</th>
+                   <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: 13 }} className="font-bold text-gray-500">مثال: $10 =</th>
+                </tr>
+             </thead>
+             <tbody>
+                {categories.map(cat => (
+                   <tr style={{ borderBottom: '1px solid #f0f0f0' }} key={cat.id} className="hover:bg-gray-50/50">
+                      <td style={{ padding: '12px 14px', fontSize: 14 }} className="font-bold text-gray-700">
+                         {cat.name}
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                         <div className="flex items-center justify-center gap-1">
+                            <input
+                               type="number"
+                               min="0" max="200"
+                               value={Math.round(((margins[cat.name] || margins.default || 1.30) - 1) * 100)}
+                               onChange={e => updateMargin(
+                                  cat.name, 
+                                  1 + Number(e.target.value) / 100
+                               )}
+                               style={{
+                                  width: 70, padding: '6px 10px',
+                                  border: '1px solid #ddd',
+                                  borderRadius: 8, textAlign: 'center',
+                                  fontFamily: 'Cairo',
+                               }}
+                               className="outline-none focus:ring-2 ring-primary/20 font-bold"
+                            />
+                            <span style={{ fontSize: 12 }} className="font-bold text-gray-400">%</span>
+                         </div>
+                      </td>
+                      <td style={{
+                         padding: '12px 14px', textAlign: 'center',
+                         color: '#0A1628', fontWeight: 'bold', fontSize: 13,
+                      }} className="text-primary font-black">
+                         {Math.round(10 * (financials.usdToMru || 37) * (margins[cat.name] || margins.default || 1.3))
+                            .toLocaleString()} أوقية
+                      </td>
+                   </tr>
+                ))}
+             </tbody>
+          </table>
+          
+          <button
+             onClick={saveMargins}
+             style={{
+                marginTop: 16, padding: '12px 28px',
+                background: '#0A1628', color: 'white',
+                border: 'none', borderRadius: 10,
+                fontFamily: 'Cairo', fontWeight: 'bold',
+                cursor: 'pointer',
+             }}
+             className="hover:bg-primary-dark transition-all shadow-md active:scale-[0.98] font-black cursor-pointer"
+          >
+             💾 حفظ هوامش الربح حسب الأقسام
+          </button>
        </div>
     </section>
   );
@@ -3340,7 +3482,7 @@ function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) 
                     </div>
                   </div>
                 </td>
-                <td className="py-6 font-black text-primary">{formatPrice(p.price)}</td>
+                <td className="py-6 font-black text-primary">{formatPrice(getDisplayPrice(p))}</td>
                 <td className="py-6">
                    <div className="flex flex-col">
                       <span className="font-bold text-xs" dir="ltr">{p.sellerPhone}</span>
@@ -5184,7 +5326,7 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
                       </td>
                       <td className="p-3 font-bold truncate max-w-[250px]">{r.name}</td>
                       <td className="p-3 text-center font-bold text-gray-600">${r.priceUSD}</td>
-                      <td className="p-3 text-center font-black text-primary">{r.price.toLocaleString()} أوقية</td>
+                      <td className="p-3 text-center font-black text-primary">{getDisplayPrice(r).toLocaleString()} أوقية</td>
                       <td className="p-3 text-center text-gray-500">{r.soldCount} مباعة</td>
                       <td className="p-3 text-center">
                         {r.discount > 0 ? (

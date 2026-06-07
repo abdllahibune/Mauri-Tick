@@ -4,7 +4,7 @@ import { Heart, ShoppingBag, Eye, TrendingUp, Timer, MessageCircle, Smartphone, 
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
-import { formatPrice, cn, contactWhatsApp, getProductTier, proxyImage } from '../lib/utils';
+import { formatPrice, cn, contactWhatsApp, getProductTier, proxyImage, getDisplayPrice } from '../lib/utils';
 import { motion } from 'motion/react';
 import toast from 'react-hot-toast';
 
@@ -117,9 +117,10 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         return { price: Math.min(...prices), hasVariants: true };
       }
     }
+    const basePrice = getDisplayPrice(product);
     const finalPrice = product.discount > 0
-      ? Math.round(product.price * (1 - product.discount / 100))
-      : (product.usedPrice || product.price);
+      ? Math.round(basePrice * (1 - product.discount / 100))
+      : basePrice;
     return { price: finalPrice, hasVariants: false };
   })();
 
@@ -242,7 +243,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         {/* Mobile Price Badge Overlay */}
         <div className="md:hidden absolute bottom-2 right-2 z-10">
            <div className="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg font-black text-[10px] shadow-sm flex items-center gap-1.5 flex-wrap justify-end" dir="rtl">
-              <span>{formatPrice(displayPrice)}</span>
+              <span>{displayPrice > 0 ? displayPrice.toLocaleString() + ' ' + 'أوقية' : 'السعر عند الطلب'}</span>
               {product.priceUSD && <span className="text-[9px] text-gray-300 font-bold" dir="ltr">(${product.priceUSD})</span>}
            </div>
         </div>
@@ -276,7 +277,13 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
                 <span className="text-[9px] text-gray-400 font-bold leading-none mb-0.5">من</span>
              )}
              <div className="flex items-center gap-1.5 flex-wrap" dir="rtl">
-               <span className="text-sm sm:text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
+               <span className="text-sm sm:text-lg font-black text-primary leading-none price">
+                  {displayPrice > 0 ? (
+                    <span>{displayPrice.toLocaleString()} أوقية</span>
+                  ) : (
+                    <span className="text-xs sm:text-sm text-gray-400 font-bold" style={{ fontFamily: 'Cairo' }}>السعر عند الطلب</span>
+                  )}
+                </span>
                {product.priceUSD && (
                  <span className="text-[10px] text-gray-400 font-bold" dir="ltr">(${product.priceUSD})</span>
                )}

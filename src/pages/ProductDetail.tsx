@@ -4,7 +4,7 @@ import { doc, getDoc, getDocs, query, where, limit, collection } from 'firebase/
 import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
-import { contactWhatsApp, getProductTier, proxyImage } from '../lib/utils';
+import { contactWhatsApp, getProductTier, proxyImage, getDisplayPrice } from '../lib/utils';
 import { MessageCircle, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,6 +55,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [mainImage, setMainImage] = useState('');
+  const [activeImg, setActiveImg] = useState(0);
   const [related, setRelated] = useState<Product[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -109,6 +110,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
         const data = { id: snap.id, ...snap.data() } as Product;
         setProduct(data);
         setMainImage(data.images?.[0] || '');
+        setActiveImg(0);
         
         // Fetch related products after main product is loaded
         loadRelated(data);
@@ -209,10 +211,11 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
     </div>
   );
 
+  const basePrice = getDisplayPrice(product);
   const currentPrice = selectedVariant?.price 
     || (product.discount > 0
-      ? Math.round(product.price * (1 - product.discount/100))
-      : product.price);
+      ? Math.round(basePrice * (1 - product.discount/100))
+      : basePrice);
 
   return (
     <div style={{
@@ -239,53 +242,60 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             justifyContent: 'center',
             alignItems: 'center'
           }}>
-            <img 
-              src={proxyImage(mainImage)} 
-              alt={product.name}
-              style={{
-                width:'100%',
-                maxHeight:'500px',
-                objectFit:'contain'
-              }}
-              onError={(e: any) => {
-                e.target.onerror = null;
-                e.target.style.opacity = '0.3';
-              }}
-            />
-          </div>
-          <div style={{
-            display:'flex', gap:'12px',
-            marginTop:'20px', flexWrap:'wrap',
-            justifyContent: 'center'
-          }}>
-            {product.images?.map((img, i) => (
-              <div
-                key={i}
-                onClick={() => setMainImage(img)}
-                style={{
-                  width:'80px', height:'80px',
-                  borderRadius:'12px',
-                  cursor:'pointer', 
-                  border: mainImage === img 
-                    ? '3px solid #1A237E' : '1px solid #eee',
-                  padding: '5px',
-                  background: '#fff',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                <img 
-                  src={proxyImage(img)} 
-                  style={{width: '100%', height: '100%', objectFit: 'contain'}} 
-                  onError={(e: any) => {
-                    e.target.onerror = null;
-                    e.target.style.opacity = '0.3';
-                  }}
-                />
-              </div>
-            ))}
+            {(() => {
+              const allImages = [
+                product.mainImage,
+                ...(product.images || [])
+              ].filter((img, index, self) => 
+                img && img.length > 10 && self.indexOf(img) === index
+              ); // deduplicate + remove empty
+
+              return (
+                <div style={{ width: '100%' }}>
+                  <img
+                    src={proxyImage(allImages[activeImg] || product.mainImage)}
+                    alt={product.name}
+                    style={{
+                      width:'100%', height:380,
+                      objectFit:'cover', borderRadius:14,
+                    }}
+                    onError={(e: any) => { 
+                      e.target.onerror = null; 
+                      e.target.style.opacity = '0.2'; 
+                    }}
+                  />
+
+                  {/* Thumbnails row - show ALL images: */}
+                  <div style={{
+                    display:'flex', gap:8, marginTop:12,
+                    overflowX:'auto', paddingBottom:4,
+                    justifyContent: 'center'
+                  }}>
+                    {allImages.map((img, i) => (
+                      <img
+                        key={i}
+                        src={proxyImage(img)}
+                        onClick={() => setActiveImg(i)}
+                        style={{
+                          width:72, height:72, flexShrink:0,
+                          objectFit:'cover', borderRadius:8,
+                          cursor:'pointer',
+                          border: activeImg === i 
+                            ? '2px solid #0A1628' 
+                            : '1px solid #eee',
+                          opacity: activeImg === i ? 1 : 0.7,
+                          transition:'all 0.2s',
+                        }}
+                        onError={(e: any) => { 
+                          e.target.onerror = null; 
+                          e.target.style.display = 'none'; 
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -343,12 +353,12 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                 className="product-price"
                 style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}
                >
-                {currentPrice.toLocaleString()} أوقية
+                {currentPrice > 0 ? `${currentPrice.toLocaleString()} أوقية` : 'السعر عند الطلب'}
               </span>
               {product.discount > 0 && !selectedVariant && (
                 <div style={{display: 'flex', flexDirection: 'column'}}>
                   <span style={{textDecoration:'line-through', color:'#999', fontSize:'16px'}}>
-                    {product.price?.toLocaleString()} أوقية
+                    {basePrice > 0 ? `${basePrice.toLocaleString()} أوقية` : ''}
                   </span>
                 </div>
               )}

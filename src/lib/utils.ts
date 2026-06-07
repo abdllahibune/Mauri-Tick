@@ -22,9 +22,10 @@ export function generateOrderNumber() {
 }
 
 export function contactWhatsApp(product: any) {
+  const base = getDisplayPrice(product);
   const price = product.discount > 0
-    ? Math.round(product.price * (1 - product.discount/100))
-    : (product.usedPrice || product.price);
+    ? Math.round(base * (1 - product.discount/100))
+    : base;
     
   const msg = 
     `مرحباً Panda 👋\n` +
@@ -75,5 +76,56 @@ export function proxyImage(url: string | undefined): string {
     return url;
   }
   return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&output=webp&q=75`;
+}
+
+export function getDisplayPrice(product: any, customMargins?: any, customUsdToMru?: number) {
+  if (!product) return 0;
+  
+  let margins = customMargins;
+  if (!margins || Object.keys(margins).length === 0) {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('panda_margins');
+        if (saved) margins = JSON.parse(saved);
+      } catch (e) {}
+    }
+  }
+  
+  if (!margins || Object.keys(margins).length === 0) {
+    margins = {
+      default: 1.30,
+      'إلكترونيات': 1.20,
+      'ملابس وأزياء': 1.40,
+      'منزل ومطبخ': 1.35,
+      'جمال وعناية': 1.45,
+      'رياضة': 1.30,
+      'أطفال': 1.35,
+      'ألعاب وترفيه': 1.25,
+    };
+  }
+
+  let usdToMru = customUsdToMru;
+  if (!usdToMru) {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSettings = localStorage.getItem('panda_general_settings');
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          usdToMru = Number(parsed.usdToMru);
+        }
+      } catch (e) {}
+    }
+  }
+  if (!usdToMru) {
+    usdToMru = Number(product.usdToMru) || Number(product.usd_to_mru) || 40;
+  }
+
+  const margin = margins[product.category] || margins.default || 1.3;
+
+  return Number(product.price) ||
+    Number(product.priceMRU) ||
+    Number(product.priceMru) ||
+    Math.round(Number(product.priceUSD || 0) * usdToMru * margin) ||
+    0;
 }
 
