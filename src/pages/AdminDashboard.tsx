@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Go to Firebase Console > Authentication > 
 // Sign-in method > Anonymous > Enable
 // Then go to Firestore > Rules > Publish rules above
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, getDocs, setDoc, getDoc, where, getFirestore } from 'firebase/firestore';
 import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { Product, Order, StoreConfig, Coupon, TradeIn, UsedProduct, Investor, Review } from '../types';
 import { 
@@ -716,6 +716,59 @@ function ProductsSection({ products }: { products: Product[] }) {
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [prefilledProduct, setPrefilledProduct] = useState<any | null>(null);
 
+  const [platformFilter, setPlatformFilter] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+
+  // Filter products by platform:
+  const filteredProducts = platformFilter
+    ? products.filter((p: any) => p.platform === platformFilter || 
+        p.importedFrom === platformFilter)
+    : products;
+
+  const selectAll = () => {
+    const currentFilteredIds = filteredProducts.map(p => p.id);
+    const allSelected = currentFilteredIds.every(id => selectedProducts.includes(id));
+    if (allSelected) {
+      setSelectedProducts(prev => prev.filter(id => !currentFilteredIds.includes(id)));
+    } else {
+      setSelectedProducts(prev => {
+        const next = [...prev];
+        currentFilteredIds.forEach(id => {
+          if (!next.includes(id)) next.push(id);
+        });
+        return next;
+      });
+    }
+  };
+
+  const loadAllProducts = () => {
+    console.log('Realtime onSnapshot auto-updates products');
+  };
+
+  async function deleteSelected() {
+    if (!confirm(`هل تريد حذف ${selectedProducts.length} منتج؟`)) return;
+    
+    const db_inst = getFirestore();
+    let deleted = 0;
+    
+    for (const id of selectedProducts) {
+      try {
+        // Try panda_products first
+        await deleteDoc(doc(db_inst, 'panda_products', id));
+        deleted++;
+      } catch(e) {
+        try {
+          await deleteDoc(doc(db_inst, 'mt_products', id));
+          deleted++;
+        } catch(e2) {}
+      }
+    }
+    
+    alert(`✅ تم حذف ${deleted} منتج`);
+    setSelectedProducts([]);
+    loadAllProducts();
+  }
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
     await safeWrite(() => deleteDoc(doc(db, 'mt_products', id)));
@@ -747,34 +800,99 @@ function ProductsSection({ products }: { products: Product[] }) {
         </div>
       </div>
 
+      {/* Filter and Bulk Actions Bar */}
+      <div style={{display:'flex', gap:8, marginBottom:16, direction:'rtl', fontFamily:'Cairo'}}>
+        <select
+          onChange={e => setPlatformFilter(e.target.value)}
+          style={{padding:'8px 14px', border:'1px solid #ddd', borderRadius:8, fontFamily:'Cairo'}}
+          value={platformFilter}
+        >
+          <option value="">كل المنصات</option>
+          <option value="aliexpress">AliExpress</option>
+          <option value="temu">Temu</option>
+        </select>
+        
+        {selectedProducts.length > 0 && (
+          <button
+            onClick={deleteSelected}
+            style={{
+              padding:'8px 20px',
+              background:'#c62828',
+              color:'white',
+              border:'none',
+              borderRadius:8,
+              fontFamily:'Cairo',
+              fontWeight:'bold',
+              cursor:'pointer',
+            }}
+          >
+            🗑️ حذف المحدد ({selectedProducts.length})
+          </button>
+        )}
+        
+        <button
+          onClick={selectAll}
+          style={{
+            padding:'8px 16px',
+            background:'#f0f0f0',
+            border:'none',
+            borderRadius:8,
+            fontFamily:'Cairo',
+            cursor:'pointer',
+          }}
+        >
+          تحديد الكل
+        </button>
+      </div>
+
       <div className="admin-table-container">
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-20 text-center gap-4 bg-gray-50/50 rounded-[40px] border border-dashed border-gray-200">
             <div className="bg-white p-6 rounded-full shadow-sm text-gray-300">
               <ShoppingBag className="w-12 h-12" />
             </div>
             <div className="flex flex-col gap-1">
-              <h3 className="text-xl font-black text-primary">لا توجد منتجات</h3>
-              <p className="text-sm font-bold text-gray-400">ابدأ بإضافة أول منتج لمتجرك من خلال الضغط على "إضافة جديد".</p>
+              <h3 className="text-xl font-black text-primary">لا توجد منتجات مطابقة</h3>
+              <p className="text-sm font-bold text-gray-400">لا توجد منتجات تطابق خيارات التصفية الحالية.</p>
             </div>
           </div>
         ) : (
           <table className="w-full text-right min-w-[800px]">
             <thead>
               <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                <th className="pb-4 pr-4">المنتج</th>
-              <th className="pb-4">الماركة</th>
-              <th className="pb-4">السعر</th>
-              <th className="pb-4">المخزون</th>
-              <th className="pb-4">المبيعات</th>
-              <th className="pb-4 pl-4 text-left">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {products.map((p) => (
+                <th className="pb-4 pr-12">المنتج</th>
+                <th className="pb-4">الماركة</th>
+                <th className="pb-4">السعر</th>
+                <th className="pb-4">المخزون</th>
+                <th className="pb-4">المبيعات</th>
+                <th className="pb-4 pl-4 text-left">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredProducts.map((p) => (
               <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
-                <td className="py-6 pr-4">
-                  <div className="flex items-center gap-4">
+                <td className="py-6 pr-4 relative">
+                  <div className="flex items-center gap-4 relative pr-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.includes(p.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setSelectedProducts(prev => [...prev, p.id]);
+                        } else {
+                          setSelectedProducts(prev => 
+                            prev.filter(id => id !== p.id)
+                          );
+                        }
+                      }}
+                      style={{
+                        position:'absolute',
+                        top:12, right:4,
+                        width:20, height:20,
+                        cursor:'pointer',
+                        zIndex:10,
+                      }}
+                    />
                     <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
                       <img 
                         src={proxyImage(p.images[0])} 
@@ -2723,6 +2841,18 @@ function FinancialSettingsAdmin() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [margins, setMargins] = useState<any>({});
 
+  const [shippingSettings, setShippingSettings] = useState({ ratePerKg: 20 });
+  const DEFAULT_WEIGHTS = {
+    'ملابس وأزياء': 0.5,
+    'منزل ومطبخ': 1.5,
+    'جمال وعناية': 0.3,
+    'رياضة': 1.0,
+    'أطفال': 0.5,
+    'ألعاب وترفيه': 0.8,
+    'إلكترونيات': 0, // manual
+  };
+  const [weights, setWeights] = useState<any>(DEFAULT_WEIGHTS);
+
   useEffect(() => {
     const fetchFinancialSettings = async () => {
       try {
@@ -2784,8 +2914,26 @@ function FinancialSettingsAdmin() {
       }
     };
 
+    const loadShippingSettings = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'panda_settings', 'shipping'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.ratePerKg !== undefined) {
+            setShippingSettings({ ratePerKg: Number(data.ratePerKg) });
+          }
+          if (data.weights) {
+            setWeights(data.weights);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading shipping settings:", err);
+      }
+    };
+
     fetchFinancialSettings();
     loadCategoriesAndMargins();
+    loadShippingSettings();
   }, []);
 
   const saveFinancialSettings = async () => {
@@ -2840,6 +2988,20 @@ function FinancialSettingsAdmin() {
     } catch (err) {
       console.error(err);
       toast.error('❌ حدث خطأ أثناء حفظ هوامش الربح');
+    }
+  };
+
+  const saveShippingSettings = async () => {
+    try {
+      await setDoc(doc(db, 'panda_settings', 'shipping'), {
+        ratePerKg: Number(shippingSettings.ratePerKg),
+        weights: weights,
+        updatedAt: new Date()
+      }, { merge: true });
+      toast.success('✅ تم حفظ إعدادات الشحن بنجاح!');
+    } catch (err) {
+      console.error(err);
+      toast.error('❌ حدث خطأ أثناء حفظ إعدادات الشحن');
     }
   };
 
@@ -2995,6 +3157,88 @@ function FinancialSettingsAdmin() {
              💾 حفظ هوامش الربح حسب الأقسام
           </button>
        </div>
+
+        {/* Category-specific Shipping Weights (Feature 2) */}
+        <div style={{ marginTop: 32, direction: 'rtl', fontFamily: 'Cairo' }} className="border-t border-gray-150 pt-6">
+           <h4 style={{ fontSize: 15, marginBottom: 16, borderBottom: '1px solid #f3f4f6', paddingBottom: 8 }} className="font-black text-gray-700">
+              أوزان الشحن حسب القسم وكل كغ
+           </h4>
+           
+           <div className="flex flex-col gap-2 mb-6 max-w-xs">
+              <label className="text-xs font-bold text-gray-500 mr-1 block text-right">تكلفة الشحن للكيلوغرام الواحد ($ USD)</label>
+              <div className="flex gap-2">
+                 <input 
+                    type="number" 
+                    value={shippingSettings.ratePerKg} 
+                    onChange={e => setShippingSettings({ ratePerKg: parseFloat(e.target.value) || 0 })} 
+                    style={{ fontFamily: "Cairo" }}
+                    className="bg-white border border-gray-200 rounded-2xl p-4 outline-none focus:ring-2 ring-primary/20 font-black flex-1 text-right" 
+                 />
+                 <span className="p-4 bg-gray-100 rounded-2xl text-xs font-black text-gray-500 flex items-center justify-center border border-gray-150 min-w-[70px]">$ USD</span>
+              </div>
+           </div>
+
+           <table style={{ width: '100%', borderCollapse: 'collapse' }} className="text-right">
+             <thead>
+               <tr style={{background:'#f8f9fc'}} className="border-b border-gray-200">
+                 <th style={{padding:'10px 14px', textAlign:'right', fontSize: 13}} className="font-bold text-gray-500">القسم</th>
+                 <th style={{padding:'10px 14px', textAlign:'center', fontSize: 13}} className="font-bold text-gray-500">الوزن التقريبي (kg)</th>
+                 <th style={{padding:'10px 14px', textAlign:'center', fontSize: 13}} className="font-bold text-gray-500">تكلفة الشحن</th>
+               </tr>
+             </thead>
+             <tbody>
+               {Object.entries(weights).map(([cat, weight]) => {
+                 const shippingUSD = (weight as number) * (shippingSettings.ratePerKg || 20);
+                 const shippingMRU = Math.round(shippingUSD * (financials.usdToMru || 37));
+                 return (
+                   <tr style={{borderBottom:'1px solid #f0f0f0'}} key={cat} className="hover:bg-gray-50/50">
+                     <td style={{padding:'10px 14px', fontSize: 14}} className="font-bold text-gray-700">{cat}</td>
+                     <td style={{padding:'10px 14px', textAlign:'center'}}>
+                       <input
+                         type="number"
+                         step="0.1"
+                         min="0"
+                         value={weight as number}
+                         onChange={e => setWeights((prev: any) => ({
+                           ...prev,
+                           [cat]: parseFloat(e.target.value) || 0
+                         }))}
+                         style={{
+                           width:70, padding:'6px 10px',
+                           border:'1px solid #ddd',
+                           borderRadius:8, textAlign:'center',
+                           fontFamily:'Cairo',
+                         }}
+                         className="outline-none focus:ring-2 ring-primary/20 font-bold"
+                       />
+                       <span style={{marginRight:4, fontSize:12}} className="font-bold text-gray-400">kg</span>
+                     </td>
+                     <td style={{
+                       padding:'10px 14px', textAlign:'center',
+                       color:'#0A1628', fontWeight:'bold', fontSize: 13
+                     }} className="text-primary font-black">
+                       {(weight as number) === 0 ? 'يدوي' : `${shippingMRU.toLocaleString()} أوقية`}
+                     </td>
+                   </tr>
+                 );
+               })}
+             </tbody>
+           </table>
+
+           <button
+              onClick={saveShippingSettings}
+              style={{
+                 marginTop: 16, padding: '12px 28px',
+                 background: '#0A1628', color: 'white',
+                 border: 'none', borderRadius: 10,
+                 fontFamily: 'Cairo', fontWeight: 'bold',
+                 cursor: 'pointer',
+              }}
+              className="hover:bg-primary-dark transition-all shadow-md active:scale-[0.98] font-black cursor-pointer"
+           >
+              💾 حفظ أوزان وإعدادات الشحن
+           </button>
+        </div>
     </section>
   );
 }

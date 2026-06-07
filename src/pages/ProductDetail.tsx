@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, getDocs, query, where, limit, collection } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, limit, collection, getFirestore } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
@@ -54,13 +54,26 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mainImage, setMainImage] = useState('');
   const [activeImg, setActiveImg] = useState(0);
   const [related, setRelated] = useState<Product[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const DESC_LIMIT = 120;
+
+  // Shipping and Settings States (Feature 3)
+  const [shippingSettings, setShippingSettings] = useState<any>({});
+  const DEFAULT_WEIGHTS = {
+    'ملابس وأزياء': 0.5,
+    'منزل ومطبخ': 1.5,
+    'جمال وعناية': 0.3,
+    'رياضة': 1.0,
+    'أطفال': 0.5,
+    'ألعاب وترفيه': 0.8,
+    'إلكترونيات': 0, // manual
+  };
+  const [weights, setWeights] = useState<any>(DEFAULT_WEIGHTS);
+  const [settings, setSettings] = useState<any>({ usdToMru: 37, profitMargin: 1.30 });
 
   useEffect(() => {
     if (!id) {
@@ -71,9 +84,13 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   }, [id]);
 
   useEffect(() => {
+    loadShippingSettings();
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
     if (product) {
       if (product.variants && product.variants.length > 0) {
-        // Sort by price and select cheapest
         const sorted = [...product.variants].sort((a, b) => a.price - b.price);
         setSelectedVariant(sorted[0]);
       }
@@ -83,16 +100,50 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
     }
   }, [product]);
 
+  async function loadShippingSettings() {
+    const db_inst = getFirestore();
+    const snap = await getDoc(doc(db_inst, 'panda_settings', 'shipping'));
+    if (snap.exists()) {
+      const data = snap.data();
+      setShippingSettings(data);
+      if (data.weights) setWeights(data.weights);
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, 'panda_settings', 'general'));
+      if (snap.exists()) {
+        const data = snap.data();
+        setSettings({
+          usdToMru: parseFloat(data.usdToMru) || 37,
+          profitMargin: parseFloat(data.profitMargin) || 1.30
+        });
+      }
+    } catch (err) {
+      console.error("Error loading general settings:", err);
+    }
+  }
+
+  // Calculate shipping:
+  function getShippingCost(prod: any) {
+    if (!prod) return null;
+    const weight = weights[prod.category] || 0;
+    if (weight === 0) return null; // manual
+    const usdToMru = settings.usdToMru || 37;
+    const ratePerKg = shippingSettings.ratePerKg || 20;
+    return Math.round(weight * ratePerKg * usdToMru);
+  }
+
   const handleVariantChange = (variant: any) => {
     setSelectedVariant(variant);
-    
     const priceEl = document.getElementById('productPrice');
     if (priceEl) {
       priceEl.style.transform = 'scale(1.1)';
-      priceEl.style.color = '#E53935';
+      priceEl.style.color = '#FF6600';
       setTimeout(() => {
         priceEl.style.transform = 'scale(1)';
-        priceEl.style.color = '#1A237E';
+        priceEl.style.color = '#FF6600';
       }, 300);
     }
   };
@@ -109,10 +160,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() } as Product;
         setProduct(data);
-        setMainImage(data.images?.[0] || '');
         setActiveImg(0);
-        
-        // Fetch related products after main product is loaded
         loadRelated(data);
       } else {
         setProduct(null);
@@ -163,22 +211,6 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
         suggested = [...suggested, ...extra].slice(0, 6);
       }
 
-      // 3. Last fallback: any products
-      if (suggested.length < 4) {
-        const q3 = query(
-          collection(db, 'mt_products'),
-          limit(10)
-        );
-        const s3 = await getDocs(q3);
-        const randomExtra = s3.docs
-          .map(d => ({ id: d.id, ...d.data() } as Product))
-          .filter(p => 
-            p.id !== currentProduct.id && 
-            !suggested.find(s => s.id === p.id)
-          );
-        suggested = [...suggested, ...randomExtra].slice(0, 6);
-      }
-
       setRelated(suggested);
     } catch (e) {
       console.error('Related products fetch error:', e);
@@ -217,168 +249,184 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       ? Math.round(basePrice * (1 - product.discount/100))
       : basePrice);
 
+  const allImages = [
+    product.mainImage,
+    ...(product.images || [])
+  ].filter((img, index, self) => 
+    img && img.length > 10 && self.indexOf(img) === index
+  );
+
+  const shippingCost = getShippingCost(product);
+
   return (
     <div style={{
-      maxWidth:'1200px', margin:'0 auto',
-      padding:'40px 20px', fontFamily:'Cairo',
-      direction:'rtl'
-    }}>
-      {/* Main product layout */}
+      maxWidth:1200, margin:'0 auto',
+      padding:'20px 16px',
+      direction:'rtl',
+      fontFamily:'Cairo',
+    }} id="productDetailRoot">
+      
       <div style={{
         display:'grid',
-        gridTemplateColumns: window.innerWidth < 768 
-          ? '1fr' : '1fr 1fr',
-        gap:'40px',
-        alignItems: 'start'
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1.1fr 1fr',
+        gap:32,
       }}>
-        {/* Images */}
+        
+        {/* LEFT - Images */}
         <div>
+          {/* Main image */}
           <div style={{
-            background: '#fff', 
-            borderRadius: '24px', 
-            padding: '20px', 
-            border: '1px solid #eee',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
+            borderRadius:16,
+            overflow:'hidden',
+            marginBottom:12,
+            background:'#f8f8f8',
+            aspectRatio:'1',
+            border: '1px solid #eee'
           }}>
-            {(() => {
-              const allImages = [
-                product.mainImage,
-                ...(product.images || [])
-              ].filter((img, index, self) => 
-                img && img.length > 10 && self.indexOf(img) === index
-              ); // deduplicate + remove empty
-
-              return (
-                <div style={{ width: '100%' }}>
-                  <img
-                    src={proxyImage(allImages[activeImg] || product.mainImage)}
-                    alt={product.name}
-                    style={{
-                      width:'100%', height:380,
-                      objectFit:'cover', borderRadius:14,
-                    }}
-                    onError={(e: any) => { 
-                      e.target.onerror = null; 
-                      e.target.style.opacity = '0.2'; 
-                    }}
-                  />
-
-                  {/* Thumbnails row - show ALL images: */}
-                  <div style={{
-                    display:'flex', gap:8, marginTop:12,
-                    overflowX:'auto', paddingBottom:4,
-                    justifyContent: 'center'
-                  }}>
-                    {allImages.map((img, i) => (
-                      <img
-                        key={i}
-                        src={proxyImage(img)}
-                        onClick={() => setActiveImg(i)}
-                        style={{
-                          width:72, height:72, flexShrink:0,
-                          objectFit:'cover', borderRadius:8,
-                          cursor:'pointer',
-                          border: activeImg === i 
-                            ? '2px solid #0A1628' 
-                            : '1px solid #eee',
-                          opacity: activeImg === i ? 1 : 0.7,
-                          transition:'all 0.2s',
-                        }}
-                        onError={(e: any) => { 
-                          e.target.onerror = null; 
-                          e.target.style.display = 'none'; 
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
+            <img
+              src={proxyImage(allImages[activeImg] || product.mainImage)}
+              style={{
+                width:'100%', height:'100%',
+                objectFit:'contain',
+              }}
+              onError={(e: any) => {
+                e.target.style.opacity='0.2';
+              }}
+            />
+          </div>
+          
+          {/* Thumbnails */}
+          <div style={{
+            display:'flex', gap:8,
+            overflowX:'auto',
+            paddingBottom:4,
+          }}>
+            {allImages.map((img, i) => (
+              <img
+                key={i}
+                src={proxyImage(img)}
+                onClick={() => setActiveImg(i)}
+                style={{
+                  width:68, height:68, flexShrink:0,
+                  objectFit:'cover', borderRadius:8,
+                  cursor:'pointer',
+                  border: activeImg === i
+                    ? '2px solid #FF6600'
+                    : '1px solid #eee',
+                }}
+                onError={(e: any) => {
+                  e.target.style.display='none';
+                }}
+              />
+            ))}
           </div>
         </div>
-
-        {/* Info */}
-        <div style={{padding: '10px'}}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px'}}>
-            <span style={{background:'#F5F5F5', color:'#666', fontSize:'12px', fontWeight: 'bold', padding: '4px 12px', borderRadius: '20px'}}>
+        
+        {/* RIGHT - Details */}
+        <div style={{ padding: '0 8px' }}>
+          {/* Brand & Category badges */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <span style={{ background: '#F5F5F5', color: '#666', fontSize: 11, fontWeight: 'bold', padding: '4px 12px', borderRadius: 20 }}>
               {product.brand}
             </span>
+            <span style={{ background: '#FFF0F0', color: '#FF6600', fontSize: 11, fontWeight: 'bold', padding: '4px 12px', borderRadius: 20 }}>
+              {product.category}
+            </span>
           </div>
-          <h1 style={{fontSize:'32px', fontWeight: '900', color: '#1A237E', lineHeight: '1.2'}}>
+
+          {/* Title */}
+          <h1 style={{
+            fontSize:20, lineHeight:1.6,
+            color:'#111', marginBottom:16,
+            fontWeight:'bold',
+          }}>
             {product.name}
           </h1>
           
-          <div style={{margin:'24px 0', background: '#F8F9FF', padding: '20px', borderRadius: '20px', border: '1px solid #EEF2FF'}}>
-            {product.tier && (
-              <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px'}}>
-                {(() => {
-                  const tier = getProductTier(product);
-                  return (
-                    <span 
-                      className="tier-badge inline-block px-3 py-1 rounded-full text-xs font-bold border shadow-sm"
-                      style={{ background: tier.color, color: tier.textColor, borderColor: tier.border }}
-                    >
-                      {tier.label}
-                    </span>
-                  );
-                })()}
+          {/* Rating + Sales */}
+          {((product as any).rating || (product as any).salesCount) && (
+            <div style={{
+              display:'flex', gap:16,
+              marginBottom:16,
+              fontSize:13, color:'#666',
+              borderBottom:'1px solid #f0f0f0',
+              paddingBottom:12,
+            }}>
+              {(product as any).rating && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>⭐ {(product as any).rating}</span>
+              )}
+              {(product as any).salesCount && (
+                <span>{(product as any).salesCount}</span>
+              )}
+            </div>
+          )}
+          
+          {/* Price box */}
+          <div style={{
+            background:'#FFF8F0',
+            borderRadius:12,
+            padding:'16px 20px',
+            marginBottom:20,
+            border: '1px solid #FFE8D6'
+          }}>
+            {product.originalPrice && 
+             product.originalPrice > currentPrice && (
+              <div style={{
+                textDecoration:'line-through',
+                color:'#999', fontSize:14,
+                marginBottom:4,
+              }}>
+                {product.originalPrice.toLocaleString()} أوقية
               </div>
             )}
-            <div style={{display: 'flex', alignItems: 'center', gap: '15px'}} className="flex-wrap">
-              {((product as any).priceUSD || (product as any).originalPriceUSD) && (
-                <div style={{display: 'flex', flexDirection: 'column', gap: '4px', marginRight: '12px'}}>
-                  {(product as any).priceUSD && (
-                    <span style={{ fontSize: '18px', color: '#888', fontWeight: 'bold' }} dir="ltr">
-                      (${ (product as any).priceUSD })
-                    </span>
-                  )}
-                  {(product as any).originalPriceUSD && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} dir="rtl">
-                      <span style={{ textDecoration: 'line-through', color: '#bbb', fontSize: '15px' }}>
-                        {Math.round((product as any).originalPriceUSD * ((product as any).usdToMru || 37) * ((product as any).profitMargin || 1.3)).toLocaleString()} أوقية
-                      </span>
-                      {product.discount > 0 && (
-                        <span style={{ background: '#ff4444', color: 'white', borderRadius: 4, padding: '1px 5px', fontSize: 11, fontWeight: 'bold' }}>
-                          -{product.discount}%
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-               <span 
-                id="productPrice"
-                className="product-price"
-                style={{fontSize:'36px', fontWeight:'900', color:'#1A237E'}}
-               >
+            
+            <div style={{
+              display:'flex',
+              alignItems:'baseline',
+              gap:10,
+              flexWrap: 'wrap'
+            }}>
+              <span id="productPrice" style={{
+                fontSize:32, fontWeight:'bold',
+                color:'#FF6600',
+                transition: 'all 0.2s'
+              }}>
                 {currentPrice > 0 ? `${currentPrice.toLocaleString()} أوقية` : 'السعر عند الطلب'}
               </span>
-              {product.discount > 0 && !selectedVariant && (
-                <div style={{display: 'flex', flexDirection: 'column'}}>
-                  <span style={{textDecoration:'line-through', color:'#999', fontSize:'16px'}}>
-                    {basePrice > 0 ? `${basePrice.toLocaleString()} أوقية` : ''}
-                  </span>
-                </div>
+              {((product as any).priceUSD || (product as any).originalPriceUSD) && (
+                <span style={{color:'#999', fontSize:14}} dir="ltr">
+                  ($(${ ((product as any).priceUSD || Math.round(currentPrice / (settings.usdToMru || 37))).toFixed(2) }))
+                </span>
+              )}
+              {product.discount > 0 && (
+                <span style={{
+                  background:'#FF6600',
+                  color:'white',
+                  padding:'2px 8px',
+                  borderRadius:4,
+                  fontSize:12,
+                  fontWeight:'bold',
+                }}>
+                  -${product.discount}%
+                </span>
               )}
             </div>
             {selectedVariant && (
-              <div style={{fontSize: '13px', color: '#666', marginTop: '4px', fontWeight: 'bold'}}>
-                سعر نسخة {selectedVariant.storage} {selectedColor ? ` — ${selectedColor}` : ''}
+              <div style={{fontSize: '12px', color: '#666', marginTop: '6px', fontWeight: 'bold'}}>
+                سعر نسخة ${selectedVariant.storage} ${selectedColor ? ` — ${selectedColor}` : ''}
               </div>
             )}
           </div>
 
           {/* Variants Selector */}
           {product.variants && product.variants.length > 0 && (() => {
-            const basePrice = Math.min(...product.variants.map(v => v.price));
+            const minVarPrice = Math.min(...product.variants.map(v => v.price));
             return (
-              <div style={{marginTop:20, direction:'rtl'}}>
-                <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>💾 السعة:</p>
+              <div style={{marginTop:20, marginBottom: 20, direction:'rtl'}}>
+                <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px', color: '#444' }}>💾 السعة:</p>
                 <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                  {product.variants.map(v => {
-                    const diff = v.price - basePrice;
+                  {product.variants.map((v: any) => {
+                    const diff = v.price - minVarPrice;
                     const isSelected = selectedVariant?.id === v.id;
                     return (
                       <button
@@ -386,10 +434,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                         onClick={() => handleVariantChange(v)}
                         style={{
                           padding:'10px 18px',
-                          border: isSelected ? '2px solid #1A237E' : '1px solid #ddd',
+                          border: isSelected ? '2px solid #FF6600' : '1px solid #ddd',
                           borderRadius:10,
-                          background: isSelected ? '#E8EAF6' : 'white',
-                          color: isSelected ? '#1A237E' : '#333',
+                          background: isSelected ? '#FFFDFB' : 'white',
+                          color: isSelected ? '#FF6600' : '#333',
                           fontWeight: isSelected ? 'bold' : 'normal',
                           cursor:'pointer',
                           transition:'all 0.2s',
@@ -398,12 +446,12 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                         }}
                       >
                         <div style={{fontSize:14, fontWeight: 'bold'}}>{v.storage}</div>
-                        <div style={{fontSize:13, color:'#1A237E', fontWeight:'bold'}}>
+                        <div style={{fontSize:13, color:'#FF6600', fontWeight:'bold'}}>
                           {v.price.toLocaleString()} أوقية
                         </div>
                         {diff > 0 && (
                           <div style={{ fontSize: 11, color: '#E53935' }}>
-                            +{diff.toLocaleString()}
+                            +${diff.toLocaleString()}
                           </div>
                         )}
                         {diff === 0 && (
@@ -421,8 +469,8 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
           {/* Colors Selector */}
           {product.colors && product.colors.length > 0 && (
-            <div style={{marginTop:16, direction:'rtl'}}>
-              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px' }}>
+            <div style={{marginTop:16, marginBottom: 20, direction:'rtl'}}>
+              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px', color: '#444' }}>
                 🎨 اللون: <span style={{fontWeight:'normal', color:'#666', marginRight:8}}>{selectedColor}</span>
               </p>
               <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
@@ -432,9 +480,9 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                     onClick={() => setSelectedColor(color)}
                     style={{
                       padding:'8px 16px',
-                      border: selectedColor === color ? '2px solid #1A237E' : '1px solid #ddd',
+                      border: selectedColor === color ? '2px solid #FF6600' : '1px solid #ddd',
                       borderRadius:20,
-                      background: selectedColor === color ? '#1A237E' : 'white',
+                      background: selectedColor === color ? '#FF6600' : 'white',
                       color: selectedColor === color ? 'white' : '#333',
                       fontSize:13,
                       cursor:'pointer',
@@ -448,50 +496,115 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             </div>
           )}
 
-          <div style={{margin: '20px 0'}}>
+          {/* Stock Display */}
+          <div style={{marginBottom: 20}}>
             <p style={{
               color: product.stock > 5 ? '#2E7D32' 
                 : product.stock > 0 ? '#F57C00' : '#D32F2F',
               fontWeight: 'bold',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              fontSize: '14px'
             }}>
-              {product.stock > 5 ? '✅ متوفر بالمخزون'
+              {product.stock > 5 ? '✅ متوفر بالمخزون للتوصيل الفوري'
                 : product.stock > 0 
                   ? `⚠️ متبقي ${product.stock} قطع فقط`
                   : '❌ نفذ المخزون'}
             </p>
           </div>
-
+          
+          {/* Shipping info */}
           <div style={{
-              color: '#444', 
-              fontSize: '15px', 
-              lineHeight: '1.6', 
-              margin: '20px 0', 
+            border:'1px solid #f0f0f0',
+            borderRadius:12,
+            padding:'14px 16px',
+            marginBottom:20,
           }}>
-            <p style={{ margin: 0 }}>
-              {showFullDesc || (product.description || '').length <= DESC_LIMIT
-                ? product.description
-                : product.description.substring(0, DESC_LIMIT) + '...'
-              }
-            </p>
-            {product.description && product.description.length > DESC_LIMIT && (
-              <button
-                onClick={() => setShowFullDesc(!showFullDesc)}
-                style={{
-                  background:'none', border:'none',
-                  color:'#1A237E', fontFamily:'Cairo',
-                  fontSize:13, cursor:'pointer',
-                  padding:'4px 0', fontWeight:'bold'
-                }}
-              >
-                {showFullDesc ? '▲ عرض أقل' : '▼ المزيد'}
-              </button>
+            <div style={{
+              display:'flex',
+              justifyContent:'space-between',
+              alignItems:'center',
+              marginBottom:8,
+            }}>
+              <span style={{color:'#666', fontSize:13}}>
+                🚚 الشحن إلى موريتانيا
+              </span>
+              <span style={{
+                fontWeight:'bold',
+                color: shippingCost ? '#0A1628' : '#999',
+                fontSize:14,
+              }}>
+                {shippingCost 
+                  ? `${shippingCost.toLocaleString()} أوقية`
+                  : 'يُحدد عند الطلب'
+                }
+              </span>
+            </div>
+            
+            <div style={{
+              display:'flex',
+              justifyContent:'space-between',
+              fontSize:12, color:'#888',
+            }}>
+              <span>⏱️ مدة التوصيل</span>
+              <span>15 - 30 يوم عمل</span>
+            </div>
+            
+            {shippingCost && (
+              <div style={{
+                marginTop:10,
+                padding:'8px 12px',
+                background:'#F0F7FF',
+                borderRadius:8,
+                fontSize:12,
+                color:'#0A1628',
+              }}>
+                💰 الإجمالي التقديري:{' '}
+                <strong>
+                  {(currentPrice + shippingCost)
+                    .toLocaleString()} أوقية
+                </strong>
+              </div>
             )}
           </div>
+          
+          {/* Order button */}
+          <a
+            href={`https://wa.me/22236096100?text=${
+              encodeURIComponent(
+                `🛍️ أريد طلب هذا المنتج - Panda Store\n\n` +
+                `📦 ${product.name}\n` +
+                `💰 السعر: ${currentPrice?.toLocaleString()} أوقية\n` +
+                `🚚 الشحن: ${shippingCost?.toLocaleString() || 'يُحدد'} أوقية\n` +
+                `💵 الإجمالي: ${((currentPrice||0) + (shippingCost||0)).toLocaleString()} أوقية\n` +
+                `🔗 ${product.sourceUrl || ''}`
+              )
+            }`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              gap:10,
+              width:'100%',
+              padding:'16px',
+              background:'#FF6600',
+              color:'white',
+              borderRadius:14,
+              textDecoration:'none',
+              fontSize:16,
+              fontWeight:'bold',
+              marginBottom:12,
+              boxShadow:'0 4px 16px rgba(255,102,0,0.3)',
+              textAlign: 'center'
+            }}
+          >
+            اطلب الآن عبر واتساب 💬
+          </a>
 
-          {/* Add to cart */}
+          {/* Add to Cart button */}
           <button
             onClick={() => {
                 const cartVariant = selectedVariant ? {
@@ -504,86 +617,88 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             }}
             disabled={product.stock === 0}
             style={{
-              width:'100%', padding:'20px',
-              background: product.stock === 0 
-                ? '#ccc' : '#1A237E',
-              color:'white', border:'none',
-              borderRadius:'16px', fontSize:'20px',
-              fontWeight: '900',
-              cursor: product.stock === 0 
-                ? 'not-allowed' : 'pointer',
-              marginTop:'20px', fontFamily:'Cairo',
-              boxShadow: product.stock > 0 ? '0 10px 20px rgba(26, 35, 126, 0.2)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            {product.stock === 0 
-              ? 'نفذ المخزون' : '🛒 أضف للسلة'}
-          </button>
-
-          <a
-            href={`https://wa.me/22236096100?text=${
-              encodeURIComponent(
-                `🛍️ أريد طلب هذا المنتج من Panda Store\n\n` +
-                `📦 المنتج: ${product.name}\n` +
-                `💰 السعر: ${product.price?.toLocaleString()} أوقية\n` +
-                `🔗 الرابط الأصلي: ${product.sourceUrl || ''}\n\n` +
-                `يرجى تأكيد التوفر والشحن.`
-              )
-            }`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              width: '100%',
-              padding: '16px',
-              background: '#25D366',
-              color: 'white',
-              borderRadius: 14,
-              textDecoration: 'none',
-              fontFamily: 'Cairo',
-              fontSize: 16,
+              display: 'block',
+              width:'100%', padding:'14px',
+              background: product.stock === 0 ? '#ccc' : '#ffffff',
+              color: product.stock === 0 ? '#999' : '#1A237E',
+              border: product.stock === 0 ? '1px solid #ccc' : '2px solid #1A237E',
+              borderRadius:'14px', fontSize:'15px',
               fontWeight: 'bold',
-              marginTop: 12,
-              boxShadow: '0 4px 16px rgba(37,211,102,0.3)',
+              cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
+              marginBottom: 20,
+              fontFamily:'Cairo',
+              textAlign: 'center'
             }}
           >
-            اطلب الآن عبر واتساب 💬
-          </a>
-
-          {/* Features */}
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '30px'}}>
-             <div style={{background: '#fff', border: '1px solid #eee', padding: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                 <span style={{fontSize: '20px'}}>🚚</span>
-                 <div style={{display: 'flex', flexDirection: 'column'}}>
-                    <span style={{fontSize: '12px', fontWeight: 'bold'}}>توصيل سريع</span>
-                    <span style={{fontSize: '10px', color: '#666'}}>24 ساعة</span>
-                 </div>
-             </div>
-             <div style={{background: '#fff', border: '1px solid #eee', padding: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                 <span style={{fontSize: '20px'}}>🛡️</span>
-                 <div style={{display: 'flex', flexDirection: 'column'}}>
-                    <span style={{fontSize: '12px', fontWeight: 'bold'}}>ضمان Panda</span>
-                    <span style={{fontSize: '10px', color: '#666'}}>أصلي 100%</span>
-                 </div>
-             </div>
+            {product.stock === 0 ? 'نفذ المخزون' : '🛒 أضف إلى سلة المشتريات'}
+          </button>
+          
+          {/* Guarantee badges */}
+          <div style={{
+            display:'grid',
+            gridTemplateColumns:'1fr 1fr',
+            gap:8,
+          }}>
+            {[
+              {icon:'🛡️', text:'ضمان Panda 100%'},
+              {icon:'📦', text:'تغليف آمن'},
+              {icon:'↩️', text:'إرجاع مضمون'},
+              {icon:'💬', text:'دعم على واتساب'},
+            ].map((b, idx) => (
+              <div style={{
+                display:'flex',
+                alignItems:'center',
+                gap:8,
+                padding:'10px 12px',
+                background:'#f8f9fc',
+                borderRadius:10,
+                fontSize:12,
+                color:'#444',
+              }} key={idx}>
+                <span>{b.icon}</span>
+                <span>{b.text}</span>
+              </div>
+            ))}
           </div>
+
+          {/* Full description */}
+          {product.description && (
+            <div style={{ marginTop: 24, padding: '16px', background: '#FAFAFA', borderRadius: 12, border: '1px solid #f0f0f0' }}>
+              <p style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 8, color: '#333' }}>📝 وصف المنتج:</p>
+              <p style={{ color: '#555', fontSize: 14, lineHeight: '1.6', margin: 0 }}>
+                {showFullDesc || product.description.length <= DESC_LIMIT
+                  ? product.description
+                  : product.description.substring(0, DESC_LIMIT) + '...'
+                }
+              </p>
+              {product.description.length > DESC_LIMIT && (
+                <button
+                  onClick={() => setShowFullDesc(!showFullDesc)}
+                  style={{
+                    background:'none', border:'none',
+                    color:'#FF6600', fontFamily:'Cairo',
+                    fontSize:13, cursor:'pointer',
+                    padding:'4px 0', fontWeight:'bold',
+                    marginTop: 4
+                  }}
+                >
+                  {showFullDesc ? '▲ عرض أقل' : '▼ المزيد'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Specs */}
-      {product.specifications && (
-        <div style={{marginTop:'60px'}}>
-           <div style={{borderBottom: '3px solid #FFD700', width: 'fit-content', paddingBottom: '5px', marginBottom: '24px'}}>
-                <h2 style={{fontSize:'24px', fontWeight: '900', color: '#1A237E'}}>المواصفات التقنية</h2>
+      {product.specifications && Object.values(product.specifications).some(x => x) && (
+        <div style={{marginTop:'40px'}}>
+           <div style={{borderBottom: '3px solid #FF6600', width: 'fit-content', paddingBottom: '5px', marginBottom: '24px'}}>
+                <h2 style={{fontSize:'20px', fontWeight: 'bold', color: '#111'}}>المواصفات التقنية</h2>
            </div>
           <div style={{
             display:'grid',
-            gridTemplateColumns: window.innerWidth < 768
-              ? '1fr' : '1fr 1fr',
+            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
             gap:'12px'
           }}>
             {Object.entries(product.specifications).map(([k, v]) => {
@@ -602,7 +717,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                     borderRadius:'12px', border: '1px solid #eee'
                   }}>
                     <span style={{color:'#666', fontWeight: 'bold'}}>{labels[k] || k}</span>
-                    <span style={{fontWeight:'900', color: '#1A237E'}}>{v as string}</span>
+                    <span style={{fontWeight:'bold', color: '#111'}}>{v as string}</span>
                   </div>;
             })}
           </div>
@@ -611,13 +726,13 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
       {/* Related Products */}
       {related.length > 0 && (
-         <div style={{marginTop:'60px'}} id="productPageRoot">
+         <div style={{marginTop:'40px'}} id="productPageRoot">
             <div style={{
-              borderRight: '4px solid #FFD700', 
+              borderRight: '4px solid #FF6600', 
               paddingRight: '12px', 
               marginBottom: '20px'
             }}>
-                 <h2 style={{fontSize:'20px', fontWeight: '900', color: '#1A237E', fontFamily: 'Cairo'}}>قد يعجبك أيضاً 💡</h2>
+                 <h2 style={{fontSize:'18px', fontWeight: 'bold', color: '#111', fontFamily: 'Cairo'}}>قد يعجبك أيضاً 💡</h2>
             </div>
             <div 
               id="suggestedGrid" 
@@ -693,7 +808,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                                 {p.price.toLocaleString()} أوقية
                               </p>
                             )}
-                            <p style={{color: '#1A237E', fontWeight: 'bold', fontSize: '14px', margin: '2px 0'}}>
+                            <p style={{color: '#FF6600', fontWeight: 'bold', fontSize: '14px', margin: '2px 0'}}>
                               {price.toLocaleString()} أوقية
                             </p>
                           </div>
