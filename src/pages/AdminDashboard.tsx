@@ -94,10 +94,11 @@ if (typeof window !== 'undefined') {
         <!-- Main image -->
         <img id="adminViewerMainImg"
           src="${imgs[index]}"
+          referrerpolicy="no-referrer"
           style="max-width:88vw; max-height:78vh;
           object-fit:contain; border-radius:10px;
           transition:opacity 0.2s;"
-          onerror="this.src='https://via.placeholder.com/400x400/1A237E/white?text=error'">
+          onerror="this.src='/placeholder-product.png'">
         
         <!-- Thumbnails -->
         ${imgs.length > 1 ? `
@@ -108,6 +109,7 @@ if (typeof window !== 'undefined') {
             max-width:90vw;">
             ${imgs.map((img, i) => `
               <img src="${img}"
+                referrerpolicy="no-referrer"
                 onclick="adminImgGoTo(${i})"
                 id="adminThumb_${i}"
                 style="width:58px; height:58px;
@@ -772,7 +774,36 @@ function ProductsSection({ products }: { products: Product[] }) {
               <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
                 <td className="py-6 pr-4">
                   <div className="flex items-center gap-4">
-                    <img src={p.images[0]} className="w-12 h-12 rounded-lg object-contain bg-gray-50" />
+                    <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
+                      <img 
+                        src={p.images[0]} 
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        className="w-12 h-12 object-contain" 
+                        onError={(e: any) => {
+                          e.target.onerror = null;
+                          e.target.style.display = 'none';
+                          if (e.target.parentElement) {
+                            const greyBox = document.createElement('div');
+                            greyBox.style.width = '100%';
+                            greyBox.style.height = '100%';
+                            greyBox.style.background = '#f5f5f5';
+                            greyBox.style.display = 'flex';
+                            greyBox.style.alignItems = 'center';
+                            greyBox.style.justifyContent = 'center';
+                            greyBox.innerHTML = `
+                              <svg width="20" height="20" viewBox="0 0 24 24" 
+                                fill="none" stroke="#ccc" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="M21 15l-5-5L5 21"/>
+                              </svg>
+                            `;
+                            e.target.parentElement.appendChild(greyBox);
+                          }
+                        }}
+                      />
+                    </div>
                     <span className="font-black text-gray-900">{p.name}</span>
                   </div>
                 </td>
@@ -3312,7 +3343,36 @@ function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) 
               <tr key={p.id}>
                 <td className="py-6 pr-4">
                   <div className="flex items-center gap-4">
-                    <img src={p.images[0]} className="w-12 h-12 rounded-lg object-contain bg-gray-50" />
+                    <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
+                      <img 
+                        src={p.images[0]} 
+                        referrerPolicy="no-referrer"
+                        crossOrigin="anonymous"
+                        className="w-12 h-12 object-contain"
+                        onError={(e: any) => {
+                          e.target.onerror = null;
+                          e.target.style.display = 'none';
+                          if (e.target.parentElement) {
+                            const greyBox = document.createElement('div');
+                            greyBox.style.width = '100%';
+                            greyBox.style.height = '100%';
+                            greyBox.style.background = '#f5f5f5';
+                            greyBox.style.display = 'flex';
+                            greyBox.style.alignItems = 'center';
+                            greyBox.style.justifyContent = 'center';
+                            greyBox.innerHTML = `
+                              <svg width="20" height="20" viewBox="0 0 24 24" 
+                                fill="none" stroke="#ccc" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="M21 15l-5-5L5 21"/>
+                              </svg>
+                            `;
+                            e.target.parentElement.appendChild(greyBox);
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="flex flex-col">
                        <span className="font-black text-gray-900">{p.name}</span>
                        <span className="text-[10px] font-bold text-gray-400 uppercase">{p.brand}</span>
@@ -5149,7 +5209,37 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
                   {previewRows.map((r, i) => (
                     <tr key={i} className="border-b hover:bg-white transition-all">
                       <td className="p-3">
-                        <img src={r.mainImage} alt="Product" className="w-10 h-10 object-cover rounded-md border" />
+                        <div className="w-10 h-10 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-md border">
+                          <img 
+                            src={r.mainImage} 
+                            alt="Product" 
+                            referrerPolicy="no-referrer"
+                            crossOrigin="anonymous"
+                            className="w-10 h-10 object-cover" 
+                            onError={(e: any) => {
+                              e.target.onerror = null;
+                              e.target.style.display = 'none';
+                              if (e.target.parentElement) {
+                                const greyBox = document.createElement('div');
+                                greyBox.style.width = '100%';
+                                greyBox.style.height = '100%';
+                                greyBox.style.background = '#f5f5f5';
+                                greyBox.style.display = 'flex';
+                                greyBox.style.alignItems = 'center';
+                                greyBox.style.justifyContent = 'center';
+                                greyBox.innerHTML = `
+                                  <svg width="24" height="24" viewBox="0 0 24 24" 
+                                    fill="none" stroke="#ccc" strokeWidth="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <path d="M21 15l-5-5L5 21"/>
+                                  </svg>
+                                `;
+                                e.target.parentElement.appendChild(greyBox);
+                              }
+                            }}
+                          />
+                        </div>
                       </td>
                       <td className="p-3 font-bold truncate max-w-[250px]">{r.name}</td>
                       <td className="p-3 text-center font-bold text-gray-600">${r.priceUSD}</td>

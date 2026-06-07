@@ -242,10 +242,37 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             <img 
               src={mainImage} 
               alt={product.name}
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               style={{
                 width:'100%',
                 maxHeight:'500px',
                 objectFit:'contain'
+              }}
+              onError={(e: any) => {
+                e.target.onerror = null;
+                e.target.src = '/placeholder-product.png';
+                e.target.style.display = 'none';
+                if (e.target.parentElement) {
+                  const greyBox = document.createElement('div');
+                  greyBox.style.width = '100%';
+                  greyBox.style.height = '100%';
+                  greyBox.style.minHeight = '300px';
+                  greyBox.style.background = '#f5f5f5';
+                  greyBox.style.display = 'flex';
+                  greyBox.style.alignItems = 'center';
+                  greyBox.style.justifyContent = 'center';
+                  greyBox.style.borderRadius = '24px';
+                  greyBox.innerHTML = `
+                    <svg width="40" height="40" viewBox="0 0 24 24" 
+                      fill="none" stroke="#ccc" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                  `;
+                  e.target.parentElement.appendChild(greyBox);
+                }
               }}
             />
           </div>
@@ -272,7 +299,36 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                   alignItems: 'center'
                 }}
               >
-                <img src={img} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+                <img 
+                  src={img} 
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  style={{width: '100%', height: '100%', objectFit: 'contain'}} 
+                  onError={(e: any) => {
+                    e.target.onerror = null;
+                    e.target.src = '/placeholder-product.png';
+                    e.target.style.display = 'none';
+                    if (e.target.parentElement) {
+                      const greyBox = document.createElement('div');
+                      greyBox.style.width = '100%';
+                      greyBox.style.height = '100%';
+                      greyBox.style.background = '#f5f5f5';
+                      greyBox.style.display = 'flex';
+                      greyBox.style.alignItems = 'center';
+                      greyBox.style.justifyContent = 'center';
+                      greyBox.style.borderRadius = '8px';
+                      greyBox.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" 
+                          fill="none" stroke="#ccc" strokeWidth="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                      `;
+                      e.target.parentElement.appendChild(greyBox);
+                    }
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -626,8 +682,33 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                           <div style={{height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8f8f8'}}>
                               <img 
                                 src={p.images?.[0] || 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱'} 
+                                referrerPolicy="no-referrer"
+                                crossOrigin="anonymous"
                                 style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '10px'}} 
-                                onError={(e: any) => e.target.src = 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱'}
+                                onError={(e: any) => {
+                                  e.target.onerror = null;
+                                  e.target.src = '/placeholder-product.png';
+                                  e.target.style.display = 'none';
+                                  if (e.target.parentElement) {
+                                    const greyBox = document.createElement('div');
+                                    greyBox.style.width = '100%';
+                                    greyBox.style.height = '100%';
+                                    greyBox.style.background = '#f5f5f5';
+                                    greyBox.style.display = 'flex';
+                                    greyBox.style.alignItems = 'center';
+                                    greyBox.style.justifyContent = 'center';
+                                    greyBox.style.borderRadius = '8px';
+                                    greyBox.innerHTML = `
+                                      <svg width="24" height="24" viewBox="0 0 24 24" 
+                                        fill="none" stroke="#ccc" strokeWidth="1.5">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <path d="M21 15l-5-5L5 21"/>
+                                      </svg>
+                                    `;
+                                    e.target.parentElement.appendChild(greyBox);
+                                  }
+                                }}
                               />
                           </div>
                           <div style={{padding: '10px'}}>

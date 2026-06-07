@@ -33,7 +33,7 @@ const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: str
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full flex items-center justify-center">
       {(!isLoaded || !isInView) && !error && (
         <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
           <Smartphone className="w-10 h-10 text-gray-200" />
@@ -41,11 +41,37 @@ const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: str
       )}
       {isInView && (
         <img
-          src={error ? 'https://via.placeholder.com/400x400/f5f5f5/1A237E?text=📱' : src}
+          src={src}
           alt={alt}
           loading="lazy"
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           onLoad={() => setIsLoaded(true)}
-          onError={() => setError(true)}
+          onError={(e: any) => {
+            setError(true);
+            e.target.onerror = null;
+            e.target.src = '/placeholder-product.png';
+            e.target.style.display = 'none';
+            if (e.target.parentElement) {
+              const greyBox = document.createElement('div');
+              greyBox.style.width = '100%';
+              greyBox.style.height = '100%';
+              greyBox.style.background = '#f5f5f5';
+              greyBox.style.display = 'flex';
+              greyBox.style.alignItems = 'center';
+              greyBox.style.justifyContent = 'center';
+              greyBox.style.borderRadius = '8px';
+              greyBox.innerHTML = `
+                <svg width="40" height="40" viewBox="0 0 24 24" 
+                  fill="none" stroke="#ccc" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <path d="M21 15l-5-5L5 21"/>
+                </svg>
+              `;
+              e.target.parentElement.appendChild(greyBox);
+            }
+          }}
           className={cn(
             className,
             "transition-opacity duration-300",
