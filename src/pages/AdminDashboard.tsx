@@ -4764,6 +4764,193 @@ function SubcategoriesPanel({ category, onRefresh }: { category: any, onRefresh:
   );
 }
 
+function detectAndParse(csvText: string, platform: string, settings: { usdToMru: number; profitMargin: number }): any[] {
+  // Parse CSV properly handling quotes
+  function parseCSV(text: string) {
+    const rows = [];
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cols = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          cols.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      cols.push(current.trim().replace(/^"|"$/g, ''));
+      rows.push(cols);
+    }
+    return rows;
+  }
+
+  const rows = parseCSV(csvText);
+  
+  // Skip header row
+  const dataRows = rows.slice(1).filter(
+    r => r.length > 3
+  );
+  
+  console.log('First data row:', dataRows[0]);
+  console.log('Total rows:', dataRows.length);
+  
+  return dataRows.map(cols => {
+    if (platform === 'aliexpress') {
+      // Find name: longest Arabic text column
+      let name = '';
+      let nameCol = -1;
+      for (let i = 0; i < cols.length; i++) {
+        const val = cols[i] || '';
+        // Arabic text is longer than 10 chars and contains Arabic unicode
+        if (/[\u0600-\u06FF]/.test(val) && val.length > name.length) {
+          name = val;
+          nameCol = i;
+        }
+      }
+
+      // Fallback if no Arabic text found
+      if (!name) {
+        for (let i = 0; i < cols.length; i++) {
+          const val = cols[i] || '';
+          if (val.length > name.length && !val.startsWith('http') && !/^\d+$/.test(val) && !val.includes('.com') && val.length > 5) {
+            name = val;
+            nameCol = i;
+          }
+        }
+      }
+      
+      // Find price: look for columns with 
+      // small numbers (1-4 digits) near each other or a decimal col
+      let priceUSD = 0;
+      let foundPriceCol = -1;
+      for (let i = 0; i < cols.length - 2; i++) {
+        const a = (cols[i] || '').trim();
+        const b = (cols[i+1] || '').trim();
+        const c = (cols[i+2] || '').trim();
+        
+        // Pattern: "8" "." "26" = 8.26
+        if (/^\d{1,4}$/.test(a) && 
+            b === '.' && 
+            /^\d{1,2}$/.test(c)) {
+          priceUSD = parseFloat(a + '.' + c);
+          foundPriceCol = i;
+          console.log(`Price split found at col ${i}:`, priceUSD);
+          break;
+        }
+      }
+
+      // Fallback if split price pattern not found
+      if (priceUSD === 0) {
+        for (let i = 0; i < cols.length; i++) {
+          const val = (cols[i] || '').trim();
+          // Match standard price format: 12.34 or $12.34 or US $12.34
+          const match = val.match(/(?:US\s*\$|USD\s*|\$)?\s*(\d+(?:\.\d+)+)/i);
+          if (match) {
+            const parsedVal = parseFloat(match[1]);
+            // Exclude column if it is clearly an image dimension or some typical URL parameter or huge number
+            if (parsedVal > 0 && parsedVal < 10000 && !val.startsWith('http') && !val.includes('/')) {
+              priceUSD = parsedVal;
+              foundPriceCol = i;
+              console.log(`Regex price found at col ${i}:`, priceUSD);
+              break;
+            }
+          }
+        }
+      }
+
+      // Search for original price (usually another price column present that is higher than the main priceUSD)
+      let originalPriceUSD = 0;
+      for (let i = 0; i < cols.length; i++) {
+        if (i === foundPriceCol) continue;
+        const val = (cols[i] || '').trim();
+        const match = val.match(/(?:US\s*\$|USD\s*|\$)?\s*(\d+(?:\.\d+)+)/i);
+        if (match) {
+          const parsedVal = parseFloat(match[1]);
+          if (parsedVal > priceUSD && parsedVal < 10000 && !val.startsWith('http') && !val.includes('/')) {
+            originalPriceUSD = parsedVal;
+            break;
+          }
+        }
+      }
+
+      // Find discount
+      let discount = 0;
+      for (let i = 0; i < cols.length; i++) {
+        const val = (cols[i] || '').trim();
+        const match = val.match(/(-?\d+)\s*%/);
+        if (match) {
+          discount = Math.abs(parseInt(match[1]));
+          break;
+        }
+      }
+
+      // Find sales / soldCount
+      let soldCount = 0;
+      for (let i = 0; i < cols.length; i++) {
+        const val = (cols[i] || '').trim();
+        const match = val.match(/(\d[\d,]*)\+?\s*sold/i);
+        if (match) {
+          soldCount = parseInt(match[1].replace(/,/g, ''));
+          break;
+        }
+      }
+
+      // Find productUrl
+      let productUrl = '';
+      for (let i = 0; i < cols.length; i++) {
+        const val = cols[i] || '';
+        if (val.startsWith('http') && (val.includes('aliexpress.com') || val.includes('/item/')) && !val.match(/\.(jpg|jpeg|png|gif|webp|bmp)(?:\?|$)/i)) {
+          productUrl = val;
+          break;
+        }
+      }
+      if (!productUrl) {
+        for (let i = 0; i < cols.length; i++) {
+          const val = cols[i] || '';
+          if (val.startsWith('http') && !val.includes('alicdn.com') && !val.match(/\.(jpg|jpeg|png|gif|webp)(?:\?|$)/i)) {
+            productUrl = val;
+            break;
+          }
+        }
+      }
+      
+      // Find images: URLs containing aliexpress or alicdn with image extensions
+      const images = cols.filter(c => 
+        c && c.startsWith('http') && 
+        (c.includes('aliexpress') || c.includes('alicdn') || c.match(/\.(jpg|jpeg|png|webp|gif)(?:\?|$)/i))
+      );
+
+      const mainImage = images[0] || '';
+      const convertedPriceMRU = Math.round(priceUSD * settings.usdToMru * settings.profitMargin);
+      
+      // fallback originalPriceUSD calculation if discount is present
+      if (originalPriceUSD === 0 && discount > 0) {
+        originalPriceUSD = parseFloat((priceUSD / (1 - discount / 100)).toFixed(2));
+      }
+
+      return {
+        url: productUrl,
+        images,
+        mainImage,
+        name,
+        priceUSD,
+        originalPriceUSD,
+        discount,
+        soldCount,
+        price: convertedPriceMRU
+      };
+    }
+    return {};
+  });
+}
+
 function CsvImportModal({ onClose }: { onClose: () => void }) {
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -4806,82 +4993,15 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-      if (lines.length <= 1) {
-        toast.error('الملف فارغ أو يحتوي على العناوين فقط');
+      const parsedRows = detectAndParse(text, 'aliexpress', settings);
+      
+      if (parsedRows.length === 0) {
+        toast.error('الملف فارغ أو لم يتم العثور على أي منتجات صالحة');
         return;
       }
 
-      // Skip header row
-      const parsedRows = [];
-      const preview = [];
-      
-      const parseCSVRow = (rawLine: string): string[] => {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        for (let i = 0; i < rawLine.length; i++) {
-          const char = rawLine[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        result.push(current.trim());
-        return result;
-      };
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVRow(lines[i]);
-        if (cols.length < 12) continue; // safety check
-        
-        // Extract required columns
-        const productUrl = cols[0];
-        const imagesList = [cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]].filter(Boolean);
-        const nameAr = cols[8];
-        const priceInt = cols[9] || '0';
-        const priceDec = cols[11] || '0';
-        const salesText = cols[12] || '';
-        const origPriceText = cols[16] || '';
-        const discountText = cols[17] || '';
-
-        // Parsing
-        const parsedPriceUSD = parseFloat(priceInt + '.' + priceDec) || 0;
-        const convertedPriceMRU = Math.round(parsedPriceUSD * settings.usdToMru * settings.profitMargin);
-        
-        const matchOrig = origPriceText.match(/[\d.]+/);
-        const originalPriceUSD = matchOrig ? parseFloat(matchOrig[0]) : 0;
-        
-        const matchDiscount = discountText.match(/\d+/);
-        const discount = matchDiscount ? parseInt(matchDiscount[0]) : 0;
-
-        const matchSold = salesText.match(/\d+/);
-        const soldCount = matchSold ? parseInt(matchSold[0]) : 0;
-
-        const rowObj = {
-          url: productUrl,
-          images: imagesList,
-          mainImage: imagesList[0] || '',
-          name: nameAr,
-          priceUSD: parsedPriceUSD,
-          originalPriceUSD,
-          discount,
-          soldCount,
-          price: convertedPriceMRU
-        };
-
-        parsedRows.push(rowObj);
-        if (preview.length < 5) {
-          preview.push(rowObj);
-        }
-      }
-
       setRows(parsedRows);
-      setPreviewRows(preview);
+      setPreviewRows(parsedRows.slice(0, 5));
       toast.success(`تم تحليل ${parsedRows.length} منتج بنجاح. راجع المعاينة واضغط استيراد.`);
     };
 
