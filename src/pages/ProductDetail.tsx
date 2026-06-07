@@ -100,8 +100,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
     if (!id) return;
     try {
       setLoading(true);
-      const ref = doc(db, 'mt_products', id);
-      const snap = await getDoc(ref);
+      let snap = await getDoc(doc(db, 'mt_products', id));
+      if (!snap.exists()) {
+        snap = await getDoc(doc(db, 'panda_products', id));
+      }
       
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() } as Product;
@@ -122,7 +124,16 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
   async function loadRelated(currentProduct: Product) {
     try {
-      // 1. Try same brand + same category
+      if (allProducts && allProducts.length > 0) {
+        const matched = allProducts.filter(p => 
+          p.id !== currentProduct.id && 
+          (p.brand === currentProduct.brand || p.category === currentProduct.category)
+        ).slice(0, 8);
+        setRelated(matched);
+        return;
+      }
+
+      // Legacy fallback
       const q1 = query(
         collection(db, 'mt_products'),
         where('brand', '==', currentProduct.brand),
@@ -134,7 +145,6 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
         .map(d => ({ id: d.id, ...d.data() } as Product))
         .filter(p => p.id !== currentProduct.id);
 
-      // 2. Fill with same category if needed
       if (suggested.length < 4) {
         const q2 = query(
           collection(db, 'mt_products'),
@@ -295,7 +305,28 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                 })()}
               </div>
             )}
-            <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '15px'}} className="flex-wrap">
+              {((product as any).priceUSD || (product as any).originalPriceUSD) && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '4px', marginRight: '12px'}}>
+                  {(product as any).priceUSD && (
+                    <span style={{ fontSize: '18px', color: '#888', fontWeight: 'bold' }} dir="ltr">
+                      (${ (product as any).priceUSD })
+                    </span>
+                  )}
+                  {(product as any).originalPriceUSD && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} dir="rtl">
+                      <span style={{ textDecoration: 'line-through', color: '#bbb', fontSize: '15px' }}>
+                        {Math.round((product as any).originalPriceUSD * ((product as any).usdToMru || 37) * ((product as any).profitMargin || 1.3)).toLocaleString()} أوقية
+                      </span>
+                      {product.discount > 0 && (
+                        <span style={{ background: '#ff4444', color: 'white', borderRadius: 4, padding: '1px 5px', fontSize: 11, fontWeight: 'bold' }}>
+                          -{product.discount}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
                <span 
                 id="productPrice"
                 className="product-price"

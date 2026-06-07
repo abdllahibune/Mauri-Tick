@@ -237,8 +237,9 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         
         {/* Mobile Price Badge Overlay */}
         <div className="md:hidden absolute bottom-2 right-2 z-10">
-           <div className="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg font-black text-[11px] shadow-sm">
-              {formatPrice(displayPrice)}
+           <div className="bg-black/70 backdrop-blur-md text-white px-2 py-1 rounded-lg font-black text-[10px] shadow-sm flex items-center gap-1.5 flex-wrap justify-end" dir="rtl">
+              <span>{formatPrice(displayPrice)}</span>
+              {product.priceUSD && <span className="text-[9px] text-gray-300 font-bold" dir="ltr">(${product.priceUSD})</span>}
            </div>
         </div>
       </div>
@@ -270,7 +271,24 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
              {hasVariants && (
                 <span className="text-[9px] text-gray-400 font-bold leading-none mb-0.5">من</span>
              )}
-             <span className="text-sm sm:text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
+             <div className="flex items-center gap-1.5 flex-wrap" dir="rtl">
+               <span className="text-sm sm:text-lg font-black text-primary leading-none price">{formatPrice(displayPrice)}</span>
+               {product.priceUSD && (
+                 <span className="text-[10px] text-gray-400 font-bold" dir="ltr">(${product.priceUSD})</span>
+               )}
+             </div>
+             {product.originalPriceUSD && (
+               <div className="flex items-center gap-1 mt-1" dir="rtl">
+                 <span className="line-through text-gray-300 text-[10px] font-bold">
+                   {formatPrice(Math.round(product.originalPriceUSD * (product.usdToMru || 37) * (product.profitMargin || 1.3)))}
+                 </span>
+                 {product.discount > 0 && (
+                   <span className="bg-red-500 text-white text-[8px] font-bold px-1 rounded">
+                     -{product.discount}%
+                   </span>
+                 )}
+               </div>
+             )}
            </div>
 
            <div className="flex gap-1">

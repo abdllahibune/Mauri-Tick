@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
+import { SubcategoriesGrid } from '../components/SubcategoriesGrid';
 import { cn } from '../lib/utils';
 import { Search, SlidersHorizontal, ArrowUpDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,7 +15,7 @@ export function Products({ products: initialProducts }: { products: Product[] })
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category');
   
   const [selectedCategory, setSelectedCategory] = useState('الكل');
@@ -42,7 +43,6 @@ export function Products({ products: initialProducts }: { products: Product[] })
   async function loadProducts() {
     setLoading(true);
     try {
-      let q = collection(db, 'mt_products');
       const conditions: any[] = [];
 
       if (selectedCategory !== 'الكل') {
@@ -53,19 +53,21 @@ export function Products({ products: initialProducts }: { products: Product[] })
         conditions.push(where('brand', '==', selectedBrand.toUpperCase()));
       }
 
-      const queryConstraints = [...conditions];
-      
-      // Only limit when no specific filter is active
-      if (conditions.length === 0) {
-        queryConstraints.push(limit(20));
-      }
+      const q1 = query(collection(db, 'mt_products'), ...conditions, limit(100));
+      const q2 = query(collection(db, 'panda_products'), ...conditions, limit(100));
 
-      const productsQuery = query(q, ...queryConstraints);
-      const snap = await getDocs(productsQuery);
-      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+      const [snap1, snap2] = await Promise.all([
+        getDocs(q1),
+        getDocs(q2)
+      ]);
+
+      const fetched1 = snap1.docs.map(d => ({ id: d.id, ...d.data(), dbCollection: 'mt_products' } as any as Product));
+      const fetched2 = snap2.docs.map(d => ({ id: d.id, ...d.data(), dbCollection: 'panda_products' } as any as Product));
+      
+      const combined = [...fetched2, ...fetched1];
       
       // Fallback to initialProducts if DB is empty or demo data
-      setProducts(fetched.length > 0 ? fetched : initialProducts);
+      setProducts(combined.length > 0 ? combined : initialProducts);
     } catch (e) {
       console.error('Filtering error:', e);
       setProducts(initialProducts);
@@ -79,6 +81,8 @@ export function Products({ products: initialProducts }: { products: Product[] })
   const categories = ['الكل', 'هواتف ذكية', 'لابتوب وحاسوب', 'سماعات وصوتيات', 'أجهزة لوحية', 'إكسسوارات'];
   const brands = ['الكل', 'APPLE', 'SAMSUNG', 'XIAOMI', 'HUAWEI', 'INFINIX', 'TECNO', 'OTHER'];
 
+  const subParam = searchParams.get('sub') || '';
+
   const filteredProducts = useMemo(() => {
     return products
       .filter(p => {
@@ -87,7 +91,8 @@ export function Products({ products: initialProducts }: { products: Product[] })
         const matchesPrice = p.price * (1 - (p.discount || 0) / 100) <= maxPrice;
         const isOffersPage = window.location.pathname === '/offers';
         const matchesOffers = isOffersPage ? (p.discount !== undefined && p.discount > 0) : true;
-        return matchesSearch && matchesPrice && matchesOffers;
+        const matchesSub = subParam ? p.subcategory === subParam : true;
+        return matchesSearch && matchesPrice && matchesOffers && matchesSub;
       })
       .sort((a, b) => {
         const priceA = a.price * (1 - (a.discount || 0) / 100);
@@ -97,7 +102,7 @@ export function Products({ products: initialProducts }: { products: Product[] })
         if (sortBy === 'best-selling') return (b.soldCount || 0) - (a.soldCount || 0);
         return (new Date(b.createdAt?.toDate?.() || 0)).getTime() - (new Date(a.createdAt?.toDate?.() || 0)).getTime();
       });
-  }, [products, search, maxPrice, sortBy]);
+  }, [products, search, maxPrice, sortBy, subParam]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12 flex flex-col gap-6 sm:gap-8">
@@ -136,7 +141,13 @@ export function Products({ products: initialProducts }: { products: Product[] })
           {categories.map(cat => (
             <button 
               key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => {
+                if (cat === 'الكل') {
+                  setSearchParams({});
+                } else {
+                  setSearchParams({ category: cat });
+                }
+              }}
               className={cn(
                 "flex-shrink-0 px-5 py-2.5 rounded-2xl text-[11px] font-black transition-all border shadow-sm",
                 selectedCategory === cat 
@@ -150,6 +161,10 @@ export function Products({ products: initialProducts }: { products: Product[] })
         </div>
       </div>
 
+      {selectedCategory && selectedCategory !== 'الكل' && (
+        <SubcategoriesGrid category={selectedCategory} />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12">
         {/* Sidebar Filters Desktop */}
         <aside className="hidden lg:flex flex-col gap-8 sticky top-32 h-fit">
@@ -160,7 +175,13 @@ export function Products({ products: initialProducts }: { products: Product[] })
                 {categories.map(cat => (
                   <button 
                     key={cat}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => {
+                      if (cat === 'الكل') {
+                        setSearchParams({});
+                      } else {
+                        setSearchParams({ category: cat });
+                      }
+                    }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCategory === cat ? 'bg-primary text-white shadow-lg' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
                   >
                     {cat}

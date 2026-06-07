@@ -36,6 +36,14 @@ export interface Product {
   originalPrice?: number;
   usedPrice?: number;
   createdAt?: any;
+  subcategory?: string;
+  priceUSD?: number;
+  originalPriceUSD?: number;
+  usdToMru?: number;
+  profitMargin?: number;
+  dbCollection?: string;
+  collection?: string;
+  sourceUrl?: string;
 }
 
 export interface UsedProduct {

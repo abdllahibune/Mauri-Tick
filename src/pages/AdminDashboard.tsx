@@ -20,6 +20,7 @@ import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
 import { UserProfile } from '../types';
 import * as Icons from 'lucide-react';
+import { getFirstProductImage } from '../components/SubcategoriesGrid';
 
 // Global helper for admin image viewing (requested fix)
 if (typeof window !== 'undefined') {
@@ -709,6 +710,7 @@ function ProductsSection({ products }: { products: Product[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [prefilledProduct, setPrefilledProduct] = useState<any | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -721,6 +723,12 @@ function ProductsSection({ products }: { products: Product[] }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-2xl md:text-3xl font-black text-primary">إدارة المنتجات</h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button 
+            onClick={() => setShowCsvImportModal(true)}
+            className="w-full sm:w-auto bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Icons.FileSpreadsheet className="w-5 h-5" /> استيراد CSV
+          </button>
           <button 
             onClick={() => setShowImportModal(true)}
             className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
@@ -803,6 +811,12 @@ function ProductsSection({ products }: { products: Product[] }) {
             setShowImportModal(false);
             setPrefilledProduct(item);
           }}
+        />
+      )}
+
+      {showCsvImportModal && (
+        <CsvImportModal 
+          onClose={() => setShowCsvImportModal(false)}
         />
       )}
 
@@ -1123,6 +1137,7 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
   const [form, setForm] = useState<Partial<Product>>(initial || {
     name: '',
     category: initial?.category || '',
+    subcategory: (initial as any)?.subcategory || '',
     brand: '',
     price: 0,
     discount: 0,
@@ -1633,12 +1648,29 @@ function ProductForm({ onClose, initial }: { onClose: () => void, initial?: Prod
                   <label className="text-xs font-bold text-gray-500 mr-2">فئة المنتج</label>
                   <select 
                     value={form.category} 
-                    onChange={e => setForm({...form, category: e.target.value, specifications: {}})} 
+                    onChange={e => setForm({...form, category: e.target.value, subcategory: '', specifications: {}})} 
                     className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]"
                   >
                     {categories.map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
+                  </select>
+               </div>
+               <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-500 mr-2">الفئة الفرعية (Subcategory) - اختياري</label>
+                  <select 
+                    value={(form as any).subcategory || ''} 
+                    onChange={e => setForm({...form, subcategory: e.target.value})} 
+                    className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px]"
+                  >
+                    <option value="">بدون فئة فرعية</option>
+                    {(() => {
+                      const selectedCatDoc = categories.find(c => c.name === form.category) as any;
+                      const subList = (selectedCatDoc?.subcategories || []) as any[];
+                      return subList.filter(s => s.active !== false).map(sub => (
+                        <option key={sub.id} value={sub.name}>{sub.name}</option>
+                      ));
+                    })()}
                   </select>
                </div>
                <div className="flex flex-col gap-2">
@@ -3968,6 +4000,7 @@ function PartnerRequestsSection({ partnerRequests }: { partnerRequests: any[] })
 
 function CategoriesSection() {
   const [cats, setCats] = useState<any[]>([]);
+  const [selectedCategoryForSubs, setSelectedCategoryForSubs] = useState<any | null>(null);
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
   const [icon, setIcon] = useState('Smartphone');
@@ -4376,6 +4409,23 @@ function CategoriesSection() {
                         <td className="py-4 pl-4 text-left">
                           <div className="flex items-center justify-end gap-2">
                             <button
+                              onClick={() => {
+                                setSelectedCategoryForSubs(
+                                  selectedCategoryForSubs?.id === cat.id ? null : cat
+                                );
+                              }}
+                              className={cn(
+                                "p-2.5 rounded-xl transition-all font-bold text-xs flex items-center gap-1.5",
+                                selectedCategoryForSubs?.id === cat.id 
+                                  ? "bg-primary text-white" 
+                                  : "bg-indigo-50 text-primary hover:bg-indigo-100"
+                              )}
+                              title="إدارة الفروع (Subcategories)"
+                            >
+                              <Icons.Grid className="w-4 h-4" />
+                              <span className="hidden md:inline text-[11px]">الفروع</span>
+                            </button>
+                            <button
                               onClick={() => startEdit(cat)}
                               className="p-2.5 bg-gray-50 rounded-xl text-gray-400 hover:text-primary transition-colors"
                               title="تعديل هذا القسم"
@@ -4398,6 +4448,636 @@ function CategoriesSection() {
               </table>
             )}
           </div>
+        </div>
+      </div>
+
+      {selectedCategoryForSubs && (
+        <SubcategoriesPanel 
+          category={selectedCategoryForSubs} 
+          onRefresh={() => {
+            const fresh = cats.find(c => c.id === selectedCategoryForSubs.id);
+            if (fresh) setSelectedCategoryForSubs(fresh);
+          }} 
+        />
+      )}
+    </div>
+  );
+}
+
+interface AddSubModalProps {
+  onClose: () => void;
+  onSave: (name: string, image: string, useAutoImage: boolean) => void;
+}
+
+function AddSubcategoryModal({ onClose, onSave }: AddSubModalProps) {
+  const [subName, setSubName] = useState('');
+  const [subImage, setSubImage] = useState('');
+  const [useAutoImage, setUseAutoImage] = useState(true);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative text-right font-cairo" dir="rtl">
+        <button onClick={onClose} className="absolute left-4 top-4 p-2 text-gray-400 hover:text-gray-600"><Icons.X className="w-6 h-6" /></button>
+        <h3 className="font-black text-2xl text-primary mb-6">إضافة فرع جديد</h3>
+
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (!subName.trim()) return;
+          onSave(subName.trim(), subImage.trim(), useAutoImage);
+        }} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">اسم الفرع (بالعربية)</label>
+            <input 
+              type="text" 
+              value={subName}
+              onChange={e => setSubName(e.target.value)}
+              placeholder="مثال: هواتف مستعملة"
+              required
+              className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary transition-all text-right"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">تلقائي الصورة من المتجر</label>
+            <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm">
+              <input 
+                type="checkbox" 
+                id="useAutoSubImg" 
+                checked={useAutoImage}
+                onChange={e => setUseAutoImage(e.target.checked)}
+                className="w-5 h-5 accent-primary"
+              />
+              <label htmlFor="useAutoSubImg" className="text-xs font-black text-gray-600 cursor-pointer">
+                تفعيل: إظهار صورة أول منتج متوفر في هذا القسم تلقائياً
+              </label>
+            </div>
+          </div>
+
+          {!useAutoImage && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-gray-500 mr-2">رابط صورة مخصص</label>
+              <input 
+                type="text" 
+                value={subImage}
+                onChange={e => setSubImage(e.target.value)}
+                placeholder="https://..."
+                required
+                className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm border border-gray-100 focus:border-primary transition-all text-left"
+                dir="ltr"
+              />
+            </div>
+          )}
+
+          <button 
+            type="submit"
+            className="bg-primary text-white p-4 rounded-xl font-black text-sm w-full hover:scale-[1.02] active:scale-[0.98] transition-all mt-4"
+          >
+            حفظ وإضافة
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SubcategoriesPanel({ category, onRefresh }: { category: any, onRefresh: () => void }) {
+  const [subImages, setSubImages] = useState<Record<string, string>>({});
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingImageSubId, setEditingImageSubId] = useState<string | null>(null);
+  const [editingImageVal, setEditingImageVal] = useState('');
+
+  const subs = category.subcategories || [];
+
+  useEffect(() => {
+    async function loadImages() {
+      const images: Record<string, string> = {};
+      for (const sub of subs) {
+        if (sub.useAutoImage) {
+          const img = await getFirstProductImage(category.name, sub.name);
+          images[sub.id] = img || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
+        } else {
+          images[sub.id] = sub.image || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60';
+        }
+      }
+      setSubImages(images);
+    }
+    loadImages();
+  }, [category, subs]);
+
+  const handleAddSub = async (name: string, image: string, useAutoImage: boolean) => {
+    try {
+      const ref = doc(db, 'panda_categories', category.id);
+      const nextOrder = subs.length > 0 ? Math.max(...subs.map((s: any) => s.order || 0)) + 1 : 1;
+      const newSub = {
+        id: 'sub_' + Math.random().toString(36).substring(2, 9),
+        name,
+        image,
+        useAutoImage,
+        order: nextOrder,
+        active: true
+      };
+      await updateDoc(ref, {
+        subcategories: [...subs, newSub]
+      });
+      toast.success('تمت إضافة الفرع بنجاح 🎉');
+      setShowAddModal(false);
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast.error('فشل إضافة الفرع');
+    }
+  };
+
+  const handleToggleActive = async (subId: string) => {
+    try {
+      const updated = subs.map((s: any) => s.id === subId ? { ...s, active: !s.active } : s);
+      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
+      toast.success('تم تحديث حالة الفرع');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleAutoImage = async (subId: string) => {
+    try {
+      const updated = subs.map((s: any) => s.id === subId ? { ...s, useAutoImage: !s.useAutoImage } : s);
+      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
+      toast.success('تم تحديث إعدادات الصورة');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateImage = async (subId: string, imgPath: string) => {
+    try {
+      const updated = subs.map((s: any) => s.id === subId ? { ...s, image: imgPath, useAutoImage: false } : s);
+      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
+      toast.success('تم تحديث الصورة مخصصاً');
+      setEditingImageSubId(null);
+      setEditingImageVal('');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteSub = async (subId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الفرع؟')) return;
+    try {
+      const updated = subs.filter((s: any) => s.id !== subId);
+      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: updated });
+      toast.success('تم حذف الفرع');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMoveSub = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === subs.length - 1) return;
+
+    const updated = [...subs];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    const temp = updated[index];
+    updated[index] = updated[targetIdx];
+    updated[targetIdx] = temp;
+
+    // Re-assign layout order sequentially
+    const sequential = updated.map((s: any, idx: number) => ({ ...s, order: idx + 1 }));
+
+    try {
+      await updateDoc(doc(db, 'panda_categories', category.id), { subcategories: sequential });
+      toast.success('تمت إعادة ترتيب الفروع');
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <div className="bg-gray-50/50 border border-gray-100 rounded-[32px] p-6 md:p-8 flex flex-col gap-6 mt-8 w-full text-right" dir="rtl">
+      <div className="flex items-center justify-between border-b pb-4">
+        <div>
+          <h3 className="font-black text-xl text-primary">إدارة الفروع لقسم: {category.name}</h3>
+          <p className="text-xs font-bold text-gray-400 mt-1">تحديد، ترتيب أو حذف الفروع التابعة لهذا القسم.</p>
+        </div>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="bg-primary text-white px-5 py-2 rounded-2xl text-xs font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-right"
+        >
+          <Icons.Plus className="w-4 h-4" /> إضافة فرع جديد
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {subs.length === 0 ? (
+          <div className="col-span-full py-16 text-center text-gray-400 font-bold border border-dashed rounded-3xl">لا يوجد فروع مضافة حالياً. أنشئ فرعاً جديداً للتبويب.</div>
+        ) : (
+          [...subs].sort((a,b)=>(a.order || 0) - (b.order || 0)).map((sub: any, idx: number) => (
+            <div key={sub.id} className="bg-white border rounded-2xl p-4 flex flex-col gap-4 shadow-sm hover:border-primary/20 transition-all text-right">
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
+                    <img src={subImages[sub.id] || 'https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?w=150&auto=format&fit=crop&q=60'} alt={sub.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-gray-900 leading-none">{sub.name}</h4>
+                    <span className="text-[10px] font-bold text-gray-400 leading-none mt-1 inline-block">ترتيب: {sub.order}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button onClick={() => handleMoveSub(idx, 'up')} disabled={idx === 0} className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-500 disabled:opacity-20"><Icons.ChevronUp className="w-4 h-4" /></button>
+                  <button onClick={() => handleMoveSub(idx, 'down')} disabled={idx === subs.length - 1} className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-500 disabled:opacity-20"><Icons.ChevronDown className="w-4 h-4" /></button>
+                </div>
+              </div>
+
+              {/* Toggle custom vs auto */}
+              <div className="flex flex-col gap-2 pt-2 border-t text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 font-bold">صورة تلقائية:</span>
+                  <button 
+                    onClick={() => handleToggleAutoImage(sub.id)}
+                    className={`px-2 py-1 rounded font-black text-[10px] ${sub.useAutoImage ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {sub.useAutoImage ? 'مفعلة (من المعرض)' : 'موقوفة (يدوية)'}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 font-bold">الحالة:</span>
+                  <button 
+                    onClick={() => handleToggleActive(sub.id)}
+                    className={`px-2 py-1 rounded font-black text-[10px] ${sub.active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}
+                  >
+                    {sub.active !== false ? 'نشط ومظهر' : 'معطل ومخفي'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end mt-auto pt-2">
+                <button 
+                  onClick={() => {
+                    setEditingImageSubId(sub.id);
+                    setEditingImageVal(sub.image || '');
+                  }}
+                  className="px-2.5 py-1.5 bg-gray-50 text-gray-500 hover:text-primary transition-all rounded-lg text-[11px] font-black"
+                >
+                  صورة مخصصة
+                </button>
+                <button 
+                  onClick={() => handleDeleteSub(sub.id)}
+                  className="p-1.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white transition-all rounded-lg"
+                >
+                  <Icons.Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {editingImageSubId === sub.id && (
+                <div className="flex flex-col gap-2 pt-2 border-t">
+                  <input 
+                    type="text" 
+                    value={editingImageVal}
+                    onChange={e => setEditingImageVal(e.target.value)}
+                    placeholder="رابط الصورة https://..."
+                    className="w-full bg-gray-50 border rounded p-1.5 text-[10px] text-left outline-none text-right"
+                    dir="ltr"
+                  />
+                  <div className="flex gap-1 justify-end">
+                    <button onClick={() => handleUpdateImage(sub.id, editingImageVal)} className="px-2 py-1 bg-primary text-white rounded text-[9px] font-bold">حفظ</button>
+                    <button onClick={() => { setEditingImageSubId(null); setEditingImageVal(''); }} className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-[9px] font-bold">إلغاء</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {showAddModal && (
+        <AddSubcategoryModal onClose={() => setShowAddModal(false)} onSave={handleAddSub} />
+      )}
+    </div>
+  );
+}
+
+function CsvImportModal({ onClose }: { onClose: () => void }) {
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [settings, setSettings] = useState({ usdToMru: 37, profitMargin: 1.30 });
+  
+  const [file, setFile] = useState<File | null>(null);
+  const [rows, setRows] = useState<any[]>([]);
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // Load Settings
+  useEffect(() => {
+    getDoc(doc(db, 'panda_settings', 'general')).then(snap => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setSettings({
+          usdToMru: parseFloat(d.usdToMru) || 37,
+          profitMargin: parseFloat(d.profitMargin) || 1.30
+        });
+      }
+    });
+
+    // Load categories
+    getDocs(collection(db, 'panda_categories')).then(snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      setCategories(list);
+      if (list.length > 0) {
+        setSelectedCategory((list[0] as any).name);
+      }
+    });
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length <= 1) {
+        toast.error('الملف فارغ أو يحتوي على العناوين فقط');
+        return;
+      }
+
+      // Skip header row
+      const parsedRows = [];
+      const preview = [];
+      
+      const parseCSVRow = (rawLine: string): string[] => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < rawLine.length; i++) {
+          const char = rawLine[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVRow(lines[i]);
+        if (cols.length < 12) continue; // safety check
+        
+        // Extract required columns
+        const productUrl = cols[0];
+        const imagesList = [cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]].filter(Boolean);
+        const nameAr = cols[8];
+        const priceInt = cols[9] || '0';
+        const priceDec = cols[11] || '0';
+        const salesText = cols[12] || '';
+        const origPriceText = cols[16] || '';
+        const discountText = cols[17] || '';
+
+        // Parsing
+        const parsedPriceUSD = parseFloat(priceInt + '.' + priceDec) || 0;
+        const convertedPriceMRU = Math.round(parsedPriceUSD * settings.usdToMru * settings.profitMargin);
+        
+        const matchOrig = origPriceText.match(/[\d.]+/);
+        const originalPriceUSD = matchOrig ? parseFloat(matchOrig[0]) : 0;
+        
+        const matchDiscount = discountText.match(/\d+/);
+        const discount = matchDiscount ? parseInt(matchDiscount[0]) : 0;
+
+        const matchSold = salesText.match(/\d+/);
+        const soldCount = matchSold ? parseInt(matchSold[0]) : 0;
+
+        const rowObj = {
+          url: productUrl,
+          images: imagesList,
+          mainImage: imagesList[0] || '',
+          name: nameAr,
+          priceUSD: parsedPriceUSD,
+          originalPriceUSD,
+          discount,
+          soldCount,
+          price: convertedPriceMRU
+        };
+
+        parsedRows.push(rowObj);
+        if (preview.length < 5) {
+          preview.push(rowObj);
+        }
+      }
+
+      setRows(parsedRows);
+      setPreviewRows(preview);
+      toast.success(`تم تحليل ${parsedRows.length} منتج بنجاح. راجع المعاينة واضغط استيراد.`);
+    };
+
+    reader.readAsText(selected);
+  };
+
+  const handleImportAll = async () => {
+    if (rows.length === 0) return;
+    if (!selectedCategory) {
+      toast.error('الرجاء اختيار القسم أولاً');
+      return;
+    }
+
+    setImporting(true);
+    setProgress(0);
+
+    let doneCount = 0;
+    const total = rows.length;
+
+    for (let i = 0; i < total; i++) {
+      const r = rows[i];
+      try {
+        const docData = {
+          name: r.name,
+          priceUSD: r.priceUSD,
+          originalPriceUSD: r.originalPriceUSD,
+          discount: r.discount,
+          soldCount: r.soldCount,
+          price: r.price,
+          usdToMru: settings.usdToMru,
+          profitMargin: settings.profitMargin,
+          images: r.images,
+          mainImage: r.mainImage,
+          brand: 'OTHER',
+          category: selectedCategory,
+          subcategory: selectedSubcategory,
+          active: true,
+          stock: 100,
+          sold: r.soldCount,
+          createdAt: serverTimestamp()
+        };
+
+        // Write to panda_products (Fix 4)
+        await addDoc(collection(db, 'panda_products'), docData);
+      } catch (e) {
+        console.error('Error importing row:', e);
+      }
+
+      doneCount++;
+      setProgress(Math.round((doneCount / total) * 100));
+    }
+
+    toast.success('تم استيراد جميع المنتجات بنجاح لمتجر باندا! 🎉');
+    setImporting(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-[40px] p-6 md:p-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative text-right font-cairo border" dir="rtl">
+        <button onClick={onClose} className="absolute left-6 top-6 p-2 text-gray-400 hover:text-gray-600"><Icons.X className="w-6 h-6" /></button>
+        
+        <div className="flex items-center gap-3 mb-6">
+          <Icons.FileSpreadsheet className="w-8 h-8 text-primary" />
+          <h3 className="font-black text-2xl md:text-3xl text-primary font-cairo">استيراد المنتجات من ملف CSV</h3>
+        </div>
+
+        {/* Categories Targets selectors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">القسم المستهدف للمنتجات</label>
+            <select 
+              value={selectedCategory} 
+              onChange={e => {
+                setSelectedCategory(e.target.value);
+                setSelectedSubcategory('');
+              }}
+              className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px] border border-gray-100 focus:border-primary"
+            >
+              {categories.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-gray-500 mr-2">الفرع الفرعي المستهدف (اختياري)</label>
+            <select 
+              value={selectedSubcategory} 
+              onChange={e => setSelectedSubcategory(e.target.value)}
+              className="bg-gray-50 rounded-2xl p-4 outline-none font-bold text-sm min-h-[56px] border border-gray-100 focus:border-primary"
+            >
+              <option value="">بدون فرع فرعي</option>
+              {(() => {
+                const parent = categories.find(c => c.name === selectedCategory);
+                const subList = (parent?.subcategories || []) as any[];
+                return subList.filter(s => s.active !== false).map(sub => (
+                  <option key={sub.id} value={sub.name}>{sub.name}</option>
+                ));
+              })()}
+            </select>
+          </div>
+        </div>
+
+        {/* File selection box */}
+        <div className="border-4 border-dashed border-gray-100 rounded-[32px] p-8 text-center bg-gray-50/50 flex flex-col items-center justify-center gap-4 hover:bg-gray-50 transition-all mb-6">
+          <Icons.UploadCloud className="w-12 h-12 text-gray-400 animate-pulse" />
+          <div>
+            <span className="font-black text-sm text-gray-600">اختر ملف CSV الخاص بجلب البيانات (AliExpress Instant Data Scraper)</span>
+            <input 
+              type="file" 
+              accept=".csv"
+              onChange={handleFileChange}
+              className="hidden" 
+              id="csvFileInput" 
+            />
+            <label htmlFor="csvFileInput" className="block mt-3 bg-primary text-white px-5 py-2.5 rounded-xl text-xs font-black cursor-pointer hover:scale-105 transition-all">
+              تصفح الملفات
+            </label>
+          </div>
+          {file && (
+            <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-xs text-primary font-black mt-1">
+              مبني: {file.name}
+            </div>
+          )}
+        </div>
+
+        {/* Preview Section */}
+        {previewRows.length > 0 && (
+          <div className="mb-6">
+            <h4 className="font-black text-sm text-gray-600 mb-3 mr-1">معاينة أول 5 منتجات مجهزة للاستيراد:</h4>
+            <div className="overflow-x-auto rounded-2xl border bg-gray-50">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="border-b bg-gray-100 text-gray-500 font-bold">
+                    <th className="p-3">صورة</th>
+                    <th className="p-3">الاسم بالكامل</th>
+                    <th className="p-3 text-center">السعر بالدولار</th>
+                    <th className="p-3 text-center">السعر النهائي (أوقية)</th>
+                    <th className="p-3 text-center">المبيعات</th>
+                    <th className="p-3 text-center">الخصم</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewRows.map((r, i) => (
+                    <tr key={i} className="border-b hover:bg-white transition-all">
+                      <td className="p-3">
+                        <img src={r.mainImage} alt="Product" className="w-10 h-10 object-cover rounded-md border" />
+                      </td>
+                      <td className="p-3 font-bold truncate max-w-[250px]">{r.name}</td>
+                      <td className="p-3 text-center font-bold text-gray-600">${r.priceUSD}</td>
+                      <td className="p-3 text-center font-black text-primary">{r.price.toLocaleString()} أوقية</td>
+                      <td className="p-3 text-center text-gray-500">{r.soldCount} مباعة</td>
+                      <td className="p-3 text-center">
+                        {r.discount > 0 ? (
+                          <span className="bg-red-50 text-red-500 font-bold px-2 py-0.5 rounded">-{r.discount}%</span>
+                        ) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Progress & Actions */}
+        {importing && (
+          <div className="bg-blue-50/50 border border-blue-100 p-6 rounded-2xl flex flex-col gap-3 mb-6">
+            <div className="flex justify-between items-center text-xs font-black text-blue-700">
+              <span>جاري استيراد المنتجات وحفظها في قاعدة بيانات Panda...</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="w-full bg-blue-100 h-3 rounded-full overflow-hidden">
+              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 justify-end font-bold text-sm">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            disabled={importing}
+            className="px-6 py-3 bg-gray-50 border rounded-xl font-bold hover:bg-gray-100 transition-all cursor-pointer disabled:opacity-50"
+          >
+            إلغاء
+          </button>
+          <button 
+            type="button" 
+            onClick={handleImportAll} 
+            disabled={importing || rows.length === 0}
+            className="px-8 py-3 bg-primary text-white rounded-xl font-black hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+          >
+            {importing ? 'جاري الاستيراد...' : `استيراد الكل (${rows.length} منتج) 🚀`}
+          </button>
         </div>
       </div>
     </div>

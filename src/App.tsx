@@ -108,17 +108,42 @@ function MainApp() {
     trackVisit();
 
     let unsubProducts: (() => void) | undefined;
+    let unsubPandaProducts: (() => void) | undefined;
     let unsubConfig: (() => void) | undefined;
 
     const init = async () => {
       try {
         await ensureAuth();
         
-        // 1. Fetch Products
-        const q = query(collection(db, 'mt_products'), limit(100));
-        unsubProducts = onSnapshot(q, (snapshot) => {
-          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+        // 1. Fetch Products from both lists and merge them
+        let mtList: Product[] = [];
+        let pandaList: Product[] = [];
+
+        const updateMergedProducts = () => {
+          setProducts([...pandaList, ...mtList]);
+        };
+
+        const qMt = query(collection(db, 'mt_products'), limit(100));
+        unsubProducts = onSnapshot(qMt, (snapshot) => {
+          mtList = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(), 
+            collection: 'mt_products',
+            dbCollection: 'mt_products'
+          } as any as Product));
+          updateMergedProducts();
         }, (err) => console.error("Products fallback:", err));
+
+        const qPanda = query(collection(db, 'panda_products'), limit(100));
+        unsubPandaProducts = onSnapshot(qPanda, (snapshot) => {
+          pandaList = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(), 
+            collection: 'panda_products',
+            dbCollection: 'panda_products'
+          } as any as Product));
+          updateMergedProducts();
+        }, (err) => console.error("Panda products loading error:", err));
 
         // 2. Fetch Theme Colors from 'mt_settings/general' as requested
         unsubConfig = onSnapshot(doc(db, 'mt_settings', 'general'), (snapshot) => {
@@ -143,6 +168,7 @@ function MainApp() {
 
     return () => {
       if (unsubProducts) unsubProducts();
+      if (unsubPandaProducts) unsubPandaProducts();
       if (unsubConfig) unsubConfig();
     };
   }, []);
