@@ -65,3 +65,15 @@ export function getProductTier(product: any) {
     border: 'transparent'
   };
 }
+
+export function proxyImage(url: string | undefined): string {
+  if (!url || url.length < 10) return '';
+  if (url.startsWith('data:') || url.startsWith('/')) {
+    return url;
+  }
+  if (url.includes('images.weserv.nl')) {
+    return url;
+  }
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=400&output=webp&q=75`;
+}
+

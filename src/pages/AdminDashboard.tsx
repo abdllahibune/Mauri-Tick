@@ -14,7 +14,7 @@ import {
   Search as SearchIcon, Palette, Smartphone, FileText, Star, Send, Gift,
   ShoppingBag, PackageCheck, RefreshCw
 } from 'lucide-react';
-import { formatPrice, cn } from '../lib/utils';
+import { formatPrice, cn, proxyImage } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadToCloudinary } from '../lib/cloudinary';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ import { getFirstProductImage } from '../components/SubcategoriesGrid';
 
 // Global helper for admin image viewing (requested fix)
 if (typeof window !== 'undefined') {
+  (window as any).proxyImage = proxyImage;
   (window as any)._editingProduct = null;
   (window as any)._editingProductId = null;
   (window as any).uploadedImages = [];
@@ -93,7 +94,7 @@ if (typeof window !== 'undefined') {
         
         <!-- Main image -->
         <img id="adminViewerMainImg"
-          src="${imgs[index]}"
+          src="${(window as any).proxyImage(imgs[index])}"
           referrerpolicy="no-referrer"
           style="max-width:88vw; max-height:78vh;
           object-fit:contain; border-radius:10px;
@@ -108,7 +109,7 @@ if (typeof window !== 'undefined') {
             border-radius:14px; overflow-x:auto;
             max-width:90vw;">
             ${imgs.map((img, i) => `
-              <img src="${img}"
+              <img src="${(window as any).proxyImage(img)}"
                 referrerpolicy="no-referrer"
                 onclick="adminImgGoTo(${i})"
                 id="adminThumb_${i}"
@@ -776,31 +777,11 @@ function ProductsSection({ products }: { products: Product[] }) {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
                       <img 
-                        src={p.images[0]} 
-                        referrerPolicy="no-referrer"
-                        crossOrigin="anonymous"
+                        src={proxyImage(p.images[0])} 
                         className="w-12 h-12 object-contain" 
                         onError={(e: any) => {
                           e.target.onerror = null;
-                          e.target.style.display = 'none';
-                          if (e.target.parentElement) {
-                            const greyBox = document.createElement('div');
-                            greyBox.style.width = '100%';
-                            greyBox.style.height = '100%';
-                            greyBox.style.background = '#f5f5f5';
-                            greyBox.style.display = 'flex';
-                            greyBox.style.alignItems = 'center';
-                            greyBox.style.justifyContent = 'center';
-                            greyBox.innerHTML = `
-                              <svg width="20" height="20" viewBox="0 0 24 24" 
-                                fill="none" stroke="#ccc" strokeWidth="1.5">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <path d="M21 15l-5-5L5 21"/>
-                              </svg>
-                            `;
-                            e.target.parentElement.appendChild(greyBox);
-                          }
+                          e.target.style.opacity = '0.3';
                         }}
                       />
                     </div>
@@ -3345,31 +3326,11 @@ function UsedProductsSection({ usedProducts }: { usedProducts: UsedProduct[] }) 
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
                       <img 
-                        src={p.images[0]} 
-                        referrerPolicy="no-referrer"
-                        crossOrigin="anonymous"
+                        src={proxyImage(p.images[0])} 
                         className="w-12 h-12 object-contain"
                         onError={(e: any) => {
                           e.target.onerror = null;
-                          e.target.style.display = 'none';
-                          if (e.target.parentElement) {
-                            const greyBox = document.createElement('div');
-                            greyBox.style.width = '100%';
-                            greyBox.style.height = '100%';
-                            greyBox.style.background = '#f5f5f5';
-                            greyBox.style.display = 'flex';
-                            greyBox.style.alignItems = 'center';
-                            greyBox.style.justifyContent = 'center';
-                            greyBox.innerHTML = `
-                              <svg width="20" height="20" viewBox="0 0 24 24" 
-                                fill="none" stroke="#ccc" strokeWidth="1.5">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <path d="M21 15l-5-5L5 21"/>
-                              </svg>
-                            `;
-                            e.target.parentElement.appendChild(greyBox);
-                          }
+                          e.target.style.opacity = '0.3';
                         }}
                       />
                     </div>
@@ -5211,32 +5172,12 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
                       <td className="p-3">
                         <div className="w-10 h-10 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-md border">
                           <img 
-                            src={r.mainImage} 
+                            src={proxyImage(r.mainImage)} 
                             alt="Product" 
-                            referrerPolicy="no-referrer"
-                            crossOrigin="anonymous"
                             className="w-10 h-10 object-cover" 
                             onError={(e: any) => {
                               e.target.onerror = null;
-                              e.target.style.display = 'none';
-                              if (e.target.parentElement) {
-                                const greyBox = document.createElement('div');
-                                greyBox.style.width = '100%';
-                                greyBox.style.height = '100%';
-                                greyBox.style.background = '#f5f5f5';
-                                greyBox.style.display = 'flex';
-                                greyBox.style.alignItems = 'center';
-                                greyBox.style.justifyContent = 'center';
-                                greyBox.innerHTML = `
-                                  <svg width="24" height="24" viewBox="0 0 24 24" 
-                                    fill="none" stroke="#ccc" strokeWidth="1.5">
-                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <path d="M21 15l-5-5L5 21"/>
-                                  </svg>
-                                `;
-                                e.target.parentElement.appendChild(greyBox);
-                              }
+                              e.target.style.opacity = '0.3';
                             }}
                           />
                         </div>

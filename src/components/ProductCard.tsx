@@ -4,7 +4,7 @@ import { Heart, ShoppingBag, Eye, TrendingUp, Timer, MessageCircle, Smartphone, 
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useCompare } from '../context/CompareContext';
-import { formatPrice, cn, contactWhatsApp, getProductTier } from '../lib/utils';
+import { formatPrice, cn, contactWhatsApp, getProductTier, proxyImage } from '../lib/utils';
 import { motion } from 'motion/react';
 import toast from 'react-hot-toast';
 
@@ -41,36 +41,14 @@ const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: str
       )}
       {isInView && (
         <img
-          src={src}
+          src={proxyImage(src)}
           alt={alt}
           loading="lazy"
-          referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
           onLoad={() => setIsLoaded(true)}
           onError={(e: any) => {
             setError(true);
             e.target.onerror = null;
-            e.target.src = '/placeholder-product.png';
-            e.target.style.display = 'none';
-            if (e.target.parentElement) {
-              const greyBox = document.createElement('div');
-              greyBox.style.width = '100%';
-              greyBox.style.height = '100%';
-              greyBox.style.background = '#f5f5f5';
-              greyBox.style.display = 'flex';
-              greyBox.style.alignItems = 'center';
-              greyBox.style.justifyContent = 'center';
-              greyBox.style.borderRadius = '8px';
-              greyBox.innerHTML = `
-                <svg width="40" height="40" viewBox="0 0 24 24" 
-                  fill="none" stroke="#ccc" strokeWidth="1.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <path d="M21 15l-5-5L5 21"/>
-                </svg>
-              `;
-              e.target.parentElement.appendChild(greyBox);
-            }
+            e.target.style.opacity = '0.3';
           }}
           className={cn(
             className,
