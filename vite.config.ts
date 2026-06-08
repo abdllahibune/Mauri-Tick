@@ -18,7 +18,7 @@ export default defineConfig(({mode}) => {
               try {
                 const appKey = '536002';
                 const appSecret = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
-                const code = '3_536002_GU9CuJ25QUe4z7d9b3Eyh8j51353';
+                const code = '3_536002_EGE8rAOACRKRd8D5JX8tOjEY1400';
                 const timestamp = Date.now().toString();
                 
                 const params: any = {

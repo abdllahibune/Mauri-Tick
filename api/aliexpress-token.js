@@ -3,7 +3,7 @@ import crypto from 'crypto';
 export default async function handler(req, res) {
   const APP_KEY = '536002';
   const APP_SECRET = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
-  const CODE = '3_536002_GU9CuJ25QUe4z7d9b3Eyh8j51353';
+  const CODE = '3_536002_EGE8rAOACRKRd8D5JX8tOjEY1400';
   const API_URL = 'https://api-sg.aliexpress.com/rest';
 
   const timestamp = String(Date.now());
