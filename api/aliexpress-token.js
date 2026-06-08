@@ -1,51 +1,49 @@
 const crypto = require('crypto');
 
-function signRequest(params, appSecret) {
-  const sorted = Object.keys(params).sort();
-  let str = appSecret;
-  for (const key of sorted) {
-    str += key + params[key];
-  }
-  str += appSecret;
-  return crypto.createHash('md5')
-    .update(str).digest('hex').toUpperCase();
-}
-
 export default async function handler(req, res) {
   const appKey = '536002';
   const appSecret = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
   const code = '3_536002_GU9CuJ25QUe4z7d9b3Eyh8j51353';
   
-  const timestamp = Date.now().toString();
+  const timestamp = String(Date.now());
   
+  // Build params object
   const params = {
     app_key: appKey,
     code: code,
     grant_type: 'authorization_code',
     timestamp: timestamp,
+    sign_method: 'md5',
   };
-
-  const sign = signRequest(params, appSecret);
+  
+  // Generate signature
+  const sortedKeys = Object.keys(params).sort();
+  let signStr = appSecret;
+  for (const key of sortedKeys) {
+    signStr += key + params[key];
+  }
+  signStr += appSecret;
+  
+  params.sign = crypto
+    .createHash('md5')
+    .update(signStr)
+    .digest('hex')
+    .toUpperCase();
+  
+  // Build query string
+  const queryString = Object.keys(params)
+    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&');
   
   try {
-    const queryStr = new URLSearchParams({ ...params, sign }).toString();
-    const tokenUrl = `https://oauth.aliexpress.com/token?${queryStr}`;
-    
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    
+    const response = await fetch(
+      `https://api-sg.aliexpress.com/rest/auth/token/create?${queryString}`,
+      { method: 'POST' }
+    );
     const data = await response.json();
-    
-    if (data.access_token) {
-      return res.status(200).json(data);
-    } else {
-      return res.status(400).json({ error: 'Failed to retrieve access token', details: data });
-    }
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.log('Token response:', data);
+    res.json(data);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
   }
 }

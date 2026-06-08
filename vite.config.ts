@@ -26,25 +26,27 @@ export default defineConfig(({mode}) => {
                   code: code,
                   grant_type: 'authorization_code',
                   timestamp: timestamp,
+                  sign_method: 'md5',
                 };
 
-                const signRequest = (p: any, secret: string) => {
-                  const sorted = Object.keys(p).sort();
-                  let str = secret;
-                  for (const key of sorted) {
-                    str += key + p[key];
-                  }
-                  str += secret;
-                  return crypto.createHash('md5').update(str).digest('hex').toUpperCase();
-                };
-
-                const sign = signRequest(params, appSecret);
-                const queryStr = new URLSearchParams({ ...params, sign }).toString();
-                const tokenUrl = `https://oauth.aliexpress.com/token?${queryStr}`;
+                const sortedKeys = Object.keys(params).sort();
+                let signStr = appSecret;
+                for (const key of sortedKeys) {
+                  signStr += key + params[key];
+                }
+                signStr += appSecret;
+                
+                params.sign = crypto
+                  .createHash('md5')
+                  .update(signStr)
+                  .digest('hex')
+                  .toUpperCase();
+                
+                const queryStr = new URLSearchParams(params).toString();
+                const tokenUrl = `https://api-sg.aliexpress.com/rest/auth/token/create?${queryStr}`;
                 
                 const response = await fetch(tokenUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                  method: 'POST'
                 });
                 
                 const data = await response.json();

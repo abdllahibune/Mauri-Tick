@@ -5590,22 +5590,26 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
       const res = await fetch('/api/aliexpress-token');
       const data = await res.json();
       if (data.access_token) {
-        // STEP 4: SAVE ACCESS TOKEN
-        const payload = {
+        await setDoc(
+          doc(db, 'panda_settings', 'aliexpress_token'),
+          { 
+            access_token: data.access_token,
+            refresh_token: data.refresh_token || '',
+            updatedAt: new Date() 
+          }
+        );
+        setToken(data.access_token);
+        setTokenStatus({
           access_token: data.access_token,
           refresh_token: data.refresh_token || '',
-          expires_in: data.expire_time || data.expires_in || 31536000,
           updatedAt: new Date()
-        };
-        await setDoc(doc(db, 'panda_settings', 'aliexpress_token'), payload);
-        setToken(data.access_token);
-        setTokenStatus(payload);
-        toast.success('تم جلب وتخزين رمز الوصول للـ API بنجاح! 🔑');
+        });
+        alert('✅ تم جلب رمز الوصول بنجاح');
       } else {
-        toast.error('فشل في استلام رمز الوصول: ' + JSON.stringify(data.details || data));
+        alert('❌ فشل في جلب رمز الوصول: ' + JSON.stringify(data));
       }
     } catch (err: any) {
-      toast.error('خطأ أثناء جلب رمز الوصول: ' + err.message);
+      alert('❌ خطأ أثناء جلب رمز الوصول: ' + err.message);
     } finally {
       setLoadingToken(false);
     }
