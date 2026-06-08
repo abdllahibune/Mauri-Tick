@@ -29,7 +29,7 @@ export function Footer() {
       }}>
         <div>
           <div style={{fontSize:20, fontWeight:900, marginBottom:8}}>
-            🐼 Panda Store
+            Panda Store
           </div>
           <p style={{fontSize:12, color:'#8888AA', lineHeight:1.8}}>
             متجرك الموريتاني لاستيراد المنتجات من العالم بأفضل الأسعار وأسرع التوصيل
@@ -65,9 +65,9 @@ export function Footer() {
         <div>
           <h4 style={{marginBottom:12, fontSize:14, fontWeight:'bold'}}>تواصل معنا</h4>
           <div style={{fontSize:12, color:'#8888AA', lineHeight:2}}>
-            <div>📱 واتساب: 22236096100</div>
-            <div>🕐 متاح: 8 ص — 10 م</div>
-            <div>📍 نواكشوط، موريتانيا</div>
+            <div>واتساب: 22236096100</div>
+            <div>متاح: 8 ص — 10 م</div>
+            <div>نواكشوط، موريتانيا</div>
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@ export function Footer() {
         paddingTop:16, textAlign:'center',
         fontSize:11, color:'#666688',
       }}>
-        © 2026 Panda Store — جميع الحقوق محفوظة | تسوق بذكاء 🐼
+        © 2026 Panda Store — جميع الحقوق محفوظة | تسوق بذكاء
       </div>
     </footer>
   );

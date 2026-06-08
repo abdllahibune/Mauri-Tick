@@ -1,7 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+
+const ICONS = {
+  search: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  ),
+  cart: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="9" cy="21" r="1"/>
+      <circle cx="20" cy="21" r="1"/>
+      <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.99-1.85L23 6H6"/>
+    </svg>
+  ),
+  heart: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+    </svg>
+  ),
+  user: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+};
 
 export function Navbar() {
   const { cart } = useCart();
@@ -14,23 +45,17 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSearchCategory, setSelectedSearchCategory] = useState('كل الأقسام');
 
-  // 3-clicks logo shortcut to admin dashboard
+  // CLICK ACTION FOR LOGO (FIX 4)
   const [logoClicks, setLogoClicks] = useState(0);
-  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   const handleLogoClick = () => {
-    setLogoClicks((prev) => prev + 1);
-    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-
-    clickTimerRef.current = setTimeout(() => {
-      setLogoClicks(0);
-    }, 500);
-
-    if (logoClicks >= 2) {
-      setLogoClicks(0);
+    const newCount = logoClicks + 1;
+    setLogoClicks(newCount);
+    if (newCount >= 3) {
       navigate('/mt-2025-admin');
+      setLogoClicks(0);
     } else {
       navigate('/');
+      setTimeout(() => setLogoClicks(0), 2000);
     }
   };
 
@@ -81,8 +106,6 @@ export function Navbar() {
 
   const activeCat = getActiveCat();
   const cartCount = cart.length;
-  // Make isAdmin true so they can always access the dashboard easily
-  const isAdmin = true;
 
   return (
     <div style={{ width: '100%' }}>
@@ -97,7 +120,7 @@ export function Navbar() {
       }}>
         <div style={{display:'flex', gap:16, alignItems:'center'}}>
           <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/products')}>
-            🌍 AR | MRU أوقية
+            AR | MRU أوقية
           </span>
           <span style={{color:'rgba(255,255,255,0.3)'}}>|</span>
           <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/orders')}>تتبع طلبك</span>
@@ -106,7 +129,7 @@ export function Navbar() {
         </div>
         <div style={{display:'flex', gap:12, alignItems:'center'}}>
           <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate(user ? '/account' : '/login')}>
-            👤 {user ? `مرحباً، ${user.name || 'حسابي'}` : 'تسجيل الدخول / إنشاء حساب'}
+            {user ? `مرحباً، ${user.name || 'حسابي'}` : 'تسجيل الدخول / إنشاء حساب'}
           </span>
         </div>
       </div>
@@ -127,13 +150,13 @@ export function Navbar() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}>
         {/* Logo */}
-        <div style={{flexShrink:0, cursor:'pointer'}} onClick={handleLogoClick}>
+        <div onClick={handleLogoClick} style={{cursor:'pointer', flexShrink:0}}>
           <div style={{
             fontFamily:'Cairo', fontWeight:900,
             fontSize:22, color:'#0C3299',
-            display:'flex', alignItems:'center', gap:6,
+            userSelect:'none',
           }}>
-            <span>Panda 🐼</span>
+            Panda
           </div>
           <div style={{
             fontSize:9, color:'#C9A84C',
@@ -185,46 +208,53 @@ export function Navbar() {
             background:'#0C3299',
             border:'none', cursor:'pointer',
             padding:'0 20px',
-            display:'flex', alignItems:'center', gap:6,
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            color: 'white',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
+            {ICONS.search}
           </button>
         </form>
 
         {/* Icons */}
-        <div style={{display:'flex', gap:8, alignItems:'center', flexShrink:0}}>
+        <div style={{display:'flex', gap:10, alignItems:'center', flexShrink:0}}>
           {/* Wishlist */}
-          <div 
+          <button 
             onClick={() => navigate('/wishlist')}
             style={{
-              display:'flex', flexDirection:'column',
-              alignItems:'center', cursor:'pointer',
-              padding:'6px 10px', borderRadius:8,
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              cursor:'pointer',
+              padding:'8px',
+              borderRadius:'50%',
+              background: 'none',
+              border: 'none',
+              color: '#0C3299',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0C3299" strokeWidth="1.8">
-              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-            </svg>
-            <span style={{fontFamily:'Cairo', fontSize:10, color:'#666'}}>المفضلة</span>
-          </div>
+            {ICONS.heart}
+          </button>
 
           {/* Cart */}
-          <div
+          <button
             onClick={() => navigate('/cart')}
             style={{
-              display:'flex', flexDirection:'column',
-              alignItems:'center', cursor:'pointer',
-              padding:'6px 10px', borderRadius:8,
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              cursor:'pointer',
+              padding:'8px',
+              borderRadius:'50%',
               position:'relative',
+              background: 'none',
+              border: 'none',
+              color: '#0C3299',
             }}
           >
             <div style={{position:'relative'}}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0C3299" strokeWidth="1.8">
-                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.99-1.85l1.1-8.15H6"/>
-              </svg>
+              {ICONS.cart}
               {cartCount > 0 && (
                 <span style={{
                   position:'absolute', top:-6, right:-6,
@@ -237,23 +267,25 @@ export function Navbar() {
                 </span>
               )}
             </div>
-            <span style={{fontFamily:'Cairo', fontSize:10, color:'#666'}}>السلة</span>
-          </div>
+          </button>
 
-          {/* Admin */}
-          {isAdmin && (
-            <div
-              onClick={() => navigate('/mt-2025-admin')}
-              style={{
-                background:'#0C3299', color:'white',
-                padding: '8px 14px', borderRadius:8,
-                fontFamily:'Cairo', fontSize:12,
-                cursor:'pointer', fontWeight:'bold',
-              }}
-            >
-              أدمن
-            </div>
-          )}
+          {/* User Button */}
+          <button
+            onClick={() => navigate(user ? '/account' : '/login')}
+            style={{
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              cursor:'pointer',
+              padding:'8px',
+              borderRadius:'50%',
+              background: 'none',
+              border: 'none',
+              color: '#0C3299',
+            }}
+          >
+            {ICONS.user}
+          </button>
         </div>
       </header>
 
@@ -271,15 +303,15 @@ export function Navbar() {
           minWidth:'max-content',
         }}>
           {[
-            {name:'الكل', icon:'🏪', path: '/'},
-            {name:'إلكترونيات', icon:'📱', path: '/category/إلكترونيات'},
-            {name:'ملابس وأزياء', icon:'👗', path: '/category/إلكترونيات'}, // mappings
-            {name:'منزل ومطبخ', icon:'🏠', path: '/category/إلكترونيات'},
-            {name:'جمال وعناية', icon:'💄', path: '/category/إلكترونيات'},
-            {name:'رياضة', icon:'⚽', path: '/category/إلكترونيات'},
-            {name:'أطفال', icon:'🧸', path: '/category/إلكترونيات'},
-            {name:'ألعاب', icon:'🎮', path: '/category/إلكترونيات'},
-            {name:'طلب مخصص', icon:'📦', path: '/custom-order'},
+            {name:'الكل', path: '/'},
+            {name:'إلكترونيات', path: '/category/إلكترونيات'},
+            {name:'ملابس وأزياء', path: '/category/إلكترونيات'}, // mappings
+            {name:'منزل ومطبخ', path: '/category/إلكترونيات'},
+            {name:'جمال وعناية', path: '/category/إلكترونيات'},
+            {name:'رياضة', path: '/category/إلكترونيات'},
+            {name:'أطفال', path: '/category/إلكترونيات'},
+            {name:'ألعاب', path: '/category/إلكترونيات'},
+            {name:'طلب مخصص', path: '/custom-order'},
           ].map(cat => {
             const isMatch = activeCat === cat.name;
             return (
@@ -303,7 +335,7 @@ export function Navbar() {
                   display:'flex', alignItems:'center', gap:4,
                 }}
               >
-                <span>{cat.icon}</span> <span>{cat.name}</span>
+                <span>{cat.name}</span>
               </button>
             );
           })}

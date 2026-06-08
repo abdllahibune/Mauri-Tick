@@ -18,7 +18,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, compact = fal
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     addToCart(product, 1);
-    toast.success('تمت الإضافة إلى السلة! 🛒');
+    toast.success('تمت الإضافة إلى السلة!');
   };
 
   const calculatedOriginalPrice = product.originalPrice ?? (
@@ -65,7 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, compact = fal
           onError={e => {
             const tgt = e.target as HTMLImageElement;
             tgt.onerror = null;
-            tgt.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f5f5f5"/><text x="50" y="55" font-family="Cairo" font-size="10" fill="%230C3299" text-anchor="middle">Panda 🐼</text></svg>';
+            tgt.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f5f5f5"/><text x="50" y="55" font-family="Cairo" font-size="10" fill="%230C3299" text-anchor="middle">Panda</text></svg>';
           }}
           referrerPolicy="no-referrer"
         />

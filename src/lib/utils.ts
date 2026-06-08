@@ -28,12 +28,12 @@ export function contactWhatsApp(product: any) {
     : base;
     
   const msg = 
-    `مرحباً Panda 👋\n` +
+    `مرحباً Panda\n` +
     `أريد الاستفسار عن هذا المنتج:\n\n` +
-    `📱 المنتج: ${product.name}\n` +
-    `🏷️ الماركة: ${product.brand}\n` +
-    `💰 السعر: ${price.toLocaleString()} أوقية\n` +
-    `🔗 الرابط: ${window.location.origin}/product/${product.id}\n\n` +
+    `المنتج: ${product.name}\n` +
+    `الماركة: ${product.brand}\n` +
+    `السعر: ${price.toLocaleString()} أوقية\n` +
+    `الرابط: ${window.location.origin}/product/${product.id}\n\n` +
     `هل هو متوفر؟`;
     
   window.open(
@@ -44,17 +44,17 @@ export function contactWhatsApp(product: any) {
 
 export function getProductTier(product: any) {
   if (product.tier === 'economy') return {
-    label: '💚 اقتصادي', 
+    label: 'اقتصادي', 
     color:'#E8F5E9', textColor:'#2E7D32', 
     border:'#A5D6A7'
   };
   if (product.tier === 'mid') return {
-    label: '🔵 متوسط',
+    label: 'متوسط',
     color:'#E3F2FD', textColor:'#1565C0',
     border:'#90CAF9'
   };
   if (product.tier === 'flagship') return {
-    label: '⭐ رائد',
+    label: 'رائد',
     color:'#FFF8E1', textColor:'#F57F17',
     border:'#FFD54F'
   };
