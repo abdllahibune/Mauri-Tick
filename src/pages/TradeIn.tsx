@@ -3,7 +3,7 @@ import { db, safeWrite, ensureAuth } from '../lib/firebase';
 import { collection, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Product, TradeIn } from '../types';
 import { uploadToCloudinary } from '../lib/cloudinary';
-import { formatPrice } from '../lib/utils';
+import { formatPrice, proxyImage } from '../lib/utils';
 import { 
   Smartphone, Calculator, Image as ImageIcon, CheckCircle2, 
   ArrowRight, ArrowLeft, Loader2, ShieldCheck, Upload, Trash2,
@@ -505,7 +505,7 @@ export function TradeInPage() {
                         className="bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all group"
                       >
                         <div className="aspect-square bg-gray-50 p-4">
-                          <img src={p.mainImage || p.images?.[0]} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                          <img src={proxyImage(p.mainImage || p.images?.[0]) || undefined} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
                         </div>
                         <div className="p-3">
                           <p className="text-[10px] text-gray-400 font-bold uppercase">{p.brand}</p>
@@ -533,7 +533,7 @@ export function TradeInPage() {
                         className="flex-shrink-0 w-36 bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer"
                       >
                         <div className="aspect-square bg-gray-50 p-3">
-                          <img src={a.mainImage || a.images?.[0]} className="w-full h-full object-contain" />
+                          <img src={proxyImage(a.mainImage || a.images?.[0]) || undefined} className="w-full h-full object-contain" />
                         </div>
                         <div className="p-2">
                           <h4 className="text-xs font-black text-gray-900 line-clamp-1">{a.name}</h4>

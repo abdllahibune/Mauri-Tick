@@ -1,7 +1,7 @@
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
-import { formatPrice } from '../lib/utils';
+import { formatPrice, proxyImage } from '../lib/utils';
 import { motion } from 'motion/react';
 
 export function Cart() {
@@ -51,7 +51,7 @@ export function Cart() {
               animate={{ opacity: 1 }}
               className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center gap-6 cart-item"
             >
-              <img src={item.image} alt={item.name} className="w-24 h-24 object-contain" />
+              <img src={proxyImage(item.image) || undefined} alt={item.name} className="w-24 h-24 object-contain" />
               <div className="flex-1 text-center sm:text-right">
                 <h3 className="font-black text-lg text-primary">{item.name}</h3>
                 {item.variant && (

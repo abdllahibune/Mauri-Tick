@@ -180,6 +180,7 @@ function MainApp() {
         <Routes>
           <Route path="/" element={<Home products={products} />} />
           <Route path="/products" element={<Products products={products} />} />
+          <Route path="/category/:categoryName" element={<Products products={products} />} />
           <Route path="/offers" element={<Products products={products} />} />
           <Route path="/custom-order" element={<CustomOrderPage />} />
           <Route path="/product/:id" element={<ProductDetail allProducts={products} />} />

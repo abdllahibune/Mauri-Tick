@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { Product } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { SubcategoriesGrid } from '../components/SubcategoriesGrid';
@@ -15,6 +15,7 @@ export function Products({ products: initialProducts }: { products: Product[] })
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { categoryName } = useParams();
   const [search, setSearch] = useState(() => {
     return searchParams.get('search') || searchParams.get('q') || '';
   });
@@ -29,12 +30,14 @@ export function Products({ products: initialProducts }: { products: Product[] })
   const [selectedBrand, setSelectedBrand] = useState('الكل');
   
   useEffect(() => {
-    if (categoryParam) {
+    if (categoryName) {
+      setSelectedCategory(decodeURIComponent(categoryName));
+    } else if (categoryParam) {
       setSelectedCategory(categoryParam);
     } else {
       setSelectedCategory('الكل');
     }
-  }, [categoryParam]);
+  }, [categoryParam, categoryName]);
   const [maxPrice, setMaxPrice] = useState(500000);
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);

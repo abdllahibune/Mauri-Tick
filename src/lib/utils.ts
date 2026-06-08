@@ -67,8 +67,8 @@ export function getProductTier(product: any) {
   };
 }
 
-export function proxyImage(url: string | undefined): string {
-  if (!url || url.length < 10) return '';
+export function proxyImage(url: string | undefined): string | null {
+  if (!url || url.length < 10) return null;
   if (url.startsWith('data:') || url.startsWith('/')) {
     return url;
   }

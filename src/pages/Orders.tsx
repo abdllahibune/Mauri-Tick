@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Order } from '../types';
-import { formatPrice } from '../lib/utils';
+import { formatPrice, proxyImage } from '../lib/utils';
 import { ShoppingCart, Package, ExternalLink, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -115,7 +115,7 @@ export function Orders() {
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex gap-4 items-center">
                       <div className="w-12 h-12 bg-gray-50 rounded-xl p-2 flex items-center justify-center">
-                        <img src={item.image} alt={item.name} className="max-w-full max-h-full object-contain" />
+                        <img src={proxyImage(item.image) || undefined} alt={item.name} className="max-w-full max-h-full object-contain" />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-primary">{item.name}</span>
