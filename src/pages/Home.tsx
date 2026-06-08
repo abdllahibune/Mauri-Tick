@@ -1,22 +1,16 @@
 import { Product, StoreConfig } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { motion } from 'motion/react';
-import { ShoppingBag, Truck, ShieldCheck, RefreshCcw, Headphones, ArrowLeft, Package } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, ArrowLeft, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { db, ensureAuth } from '../lib/firebase';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { useAuth } from '../context/AuthContext';
-import { AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
-
+import { doc, onSnapshot } from 'firebase/firestore';
 import { DEMO_PRODUCTS } from '../constants';
 
 export function Home({ products }: { products: Product[] }) {
   const [config, setConfig] = useState<StoreConfig | null>(null);
-  const [showFlash, setShowFlash] = useState(false);
-  const [flashDeal, setFlashDeal] = useState<any>(null);
-  const { user } = useAuth();
+  const [selectedCategory, setSelectedCategory] = useState<string>('الكل');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,355 +18,195 @@ export function Home({ products }: { products: Product[] }) {
     const unsubscribe = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
-
-    const checkFlashDeal = async () => {
-      const lastSeen = localStorage.getItem('mt_flash_seen');
-      if (lastSeen && Date.now() - parseInt(lastSeen) < 3 * 60 * 60 * 1000) return;
-
-      const snap = await getDoc(doc(db, 'mt_settings', 'flash_deal'));
-      if (snap.exists()) {
-        const deal = snap.data();
-        if (deal.active) {
-          setFlashDeal(deal);
-          setTimeout(() => setShowFlash(true), 2000);
-        }
-      }
-    };
-
-    checkFlashDeal();
     return () => unsubscribe();
   }, []);
 
-  const closeFlashPopup = () => {
-    setShowFlash(false);
-    localStorage.setItem('mt_flash_seen', Date.now().toString());
-  };
-
   const displayProducts = products.length > 0 ? products : DEMO_PRODUCTS;
 
-  // Improved filtering with fallbacks
-  const featured = displayProducts.filter(p => p.isFeatured).slice(0, 8);
-  const bestSellers = [...displayProducts].sort((a,b) => (b.soldCount || 0) - (a.soldCount || 0)).slice(0, 8);
-  const newArrivals = [...displayProducts].sort((a,b) => {
-    const da = a.createdAt?.toDate?.() || new Date(0);
-    const db = b.createdAt?.toDate?.() || new Date(0);
-    return db.getTime() - da.getTime();
-  }).slice(0, 8);
-
-  const [timeLeft, setTimeLeft] = useState(3600 * 24); // 24 hours
-
-  const checkAndGoToSell = () => {
-    if (!user) {
-      const confirmed = window.confirm(
-        'هذه الخدمة للزبائن فقط 🔒\n\n' +
-        'يجب أن تكون زبوناً لدينا وتملك إثبات شراء.\n\n' +
-        'هل تريد تسجيل الدخول؟'
-      );
-      if (confirmed) {
-        window.location.href = '/login?redirect=/used?tab=sell';
-      }
-      return;
-    }
-    navigate('/used?tab=sell');
-  };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h}:${m}:${s}`;
-  };
-
-  const trustBadges = [
-    { icon: ShieldCheck, text: 'دفع آمن' },
-    { icon: Truck, text: 'توصيل سريع' },
-    { icon: RefreshCcw, text: 'ضمان الاسترجاع' },
-    { icon: Headphones, text: 'دعم 24/7' },
+  // Horizontal Scroll Categories
+  const homeCategories = [
+    { name: 'الكل', emoji: '🌐' },
+    { name: 'إلكترونيات', emoji: '⚡' },
+    { name: 'ملابس وأزياء', emoji: '👕' },
+    { name: 'منزل ومطبخ', emoji: '🏠' },
+    { name: 'جمال وعناية', emoji: '💄' },
+    { name: 'رياضة', emoji: '⚽' },
+    { name: 'أطفال', emoji: '👶' },
+    { name: 'ألعاب', emoji: '🎮' },
+    { name: 'طلب مخصص', emoji: '📝' },
   ];
 
-  const categories = Array.from(new Set(displayProducts.map(p => p.category).filter(Boolean)));
+  // Section 3: Today's Deals (discount > 0, limit to 8)
+  const deals = displayProducts
+    .filter(p => (p.discount && p.discount > 0))
+    .filter(p => selectedCategory === 'الكل' || p.category === selectedCategory)
+    .slice(0, 8);
 
-  const sections = [
-    { title: 'الأكثر مبيعاً', data: bestSellers.length > 0 ? bestSellers : displayProducts.slice(0, 8) },
-    { title: 'وصل حديثاً', data: newArrivals.length > 0 ? newArrivals : displayProducts.slice(8, 16) },
-    { title: 'منتجات مختارة', data: featured.length > 0 ? featured : displayProducts.slice(16, 24) },
-  ];
+  // Section 4: New Products (latest 12 sorted by createdAt desc)
+  const newArrivals = [...displayProducts]
+    .sort((a, b) => {
+      const da = a.createdAt?.toDate?.() || new Date(0);
+      const db = b.createdAt?.toDate?.() || new Date(0);
+      return db.getTime() - da.getTime();
+    })
+    .filter(p => selectedCategory === 'الكل' || p.category === selectedCategory)
+    .slice(0, 12);
 
   return (
-    <div className="flex flex-col gap-16 pb-20">
-      <AnimatePresence>
-        {showFlash && flashDeal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-white rounded-[32px] overflow-hidden max-w-sm w-full shadow-2xl relative"
-              dir="rtl"
-            >
-              <button 
-                onClick={closeFlashPopup}
-                className="absolute top-4 left-4 z-10 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-all"
+    <div className="flex flex-col gap-10 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mt-6" style={{ direction: 'rtl' }}>
+      
+      {/* Section 1: Hero Banner */}
+      <section className="relative h-[350px] w-full rounded-2xl border border-[#DBDBDB] overflow-hidden bg-white shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 h-full">
+          {/* Right side card */}
+          <div className="p-8 md:p-12 flex flex-col justify-center text-right bg-white relative z-10">
+            <h1 className="text-4xl md:text-5xl font-black text-black mb-3" style={{ fontFamily: 'Cairo' }}>
+              باندا 🐼
+            </h1>
+            <p className="text-sm md:text-base text-gray-600 mb-8 max-w-md leading-relaxed font-semibold" style={{ fontFamily: 'Cairo' }}>
+              متجرك الموريتاني لاستيراد المنتجات من الصين وأمريكا بأفضل الأسعار
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate('/products')}
+                className="px-6 py-3 bg-[#C9A84C] text-black font-black text-sm rounded-xl transition-all hover:scale-105 active:scale-95 shadow-sm"
+                style={{ fontFamily: 'Cairo', cursor: 'pointer' }}
               >
-                <X className="w-5 h-5" />
+                تصفح المنتجات
               </button>
+              <button
+                onClick={() => navigate('/custom-order')}
+                className="px-6 py-3 border-2 border-[#0C3299] text-[#0C3299] font-black text-sm rounded-xl transition-all hover:bg-[#0C3299] hover:text-white active:scale-95"
+                style={{ fontFamily: 'Cairo', cursor: 'pointer' }}
+              >
+                طلب مخصص
+              </button>
+            </div>
+          </div>
+          {/* Left side background image */}
+          <div className="hidden md:block h-full relative">
+            <img
+              src={config?.mt_heroImage || 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=1200'}
+              alt="Panda Store Hero"
+              className="w-full h-full object-cover select-none"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-white pointer-events-none" />
+          </div>
+        </div>
+      </section>
 
-              <div className="bg-gradient-to-br from-red-600 to-red-800 p-8 text-center text-white relative">
-                <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl">⚡</div>
-                <div className="text-4xl mb-2">⚡</div>
-                <h3 className="text-xl font-black mb-1">عرض محدود الوقت!</h3>
-                <p className="text-white/80 text-xs font-bold font-cairo">لا تفوّت هذه الفرصة الذهبية</p>
-              </div>
-
-              {flashDeal.image && (
-                <div className="h-48 bg-gray-50 flex items-center justify-center p-6">
-                  <img src={flashDeal.image} alt={flashDeal.title} className="max-h-full object-contain" />
-                </div>
-              )}
-
-              <div className="p-8 text-center">
-                <h4 className="text-lg font-black text-primary mb-2 font-cairo">{flashDeal.title}</h4>
-                <p className="text-gray-500 text-sm font-bold mb-6 font-cairo leading-relaxed">
-                  {flashDeal.description || 'احصل على أفضل الأجهزة بأقل الأسعار لفترة محدودة جداً.'}
-                </p>
-                
-                <Link 
-                  to={flashDeal.link || '/products'} 
-                  onClick={closeFlashPopup}
-                  className="block w-full bg-red-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
+      {/* Section 2: Category Circles */}
+      <section className="w-full bg-white rounded-2xl border border-[#DBDBDB] p-6 shadow-sm overflow-hidden">
+        <h3 className="text-lg font-black text-[#1A1A1A] mb-4 text-right" style={{ fontFamily: 'Cairo' }}>
+          تصفح بالأقسام 🗂️
+        </h3>
+        <div className="flex gap-6 overflow-x-auto no-scrollbar py-2 select-none" style={{ scrollbarWidth: 'none' }}>
+          {homeCategories.map((item) => {
+            const isActive = selectedCategory === item.name;
+            return (
+              <button
+                key={item.name}
+                onClick={() => {
+                  if (item.name === 'طلب مخصص') {
+                    navigate('/custom-order');
+                  } else {
+                    setSelectedCategory(item.name);
+                  }
+                }}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group focus:outline-none"
+                style={{ cursor: 'pointer' }}
+              >
+                <div
+                  className="w-20 h-20 rounded-full border-2 flex items-center justify-center text-3xl transition-all"
+                  style={{
+                    borderColor: isActive ? '#0C3299' : '#DBDBDB',
+                    background: isActive ? '#0C3299' : '#FFFFFF',
+                    boxShadow: isActive ? '0 4px 12px rgba(12, 50, 153, 0.2)' : 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) e.currentTarget.style.borderColor = '#0C3299';
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) e.currentTarget.style.borderColor = '#DBDBDB';
+                  }}
                 >
-                  استفد من العرض الآن 🛍️
-                </Link>
-                
-                <p className="mt-4 text-[10px] font-black text-red-500 animate-pulse">
-                  * العرض ساري حتى نفاد الكمية!
-                </p>
-              </div>
-            </motion.div>
-          </motion.div>
+                  {item.emoji}
+                </div>
+                <span
+                  style={{
+                    fontFamily: 'Cairo',
+                    fontSize: 13,
+                    fontWeight: isActive ? 'bold' : 'normal',
+                    color: isActive ? '#0C3299' : '#1A1A1A'
+                  }}
+                >
+                  {item.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Section 3: Today's Deals */}
+      <section className="w-full">
+        <div className="flex flex-col gap-1 mb-6 text-right">
+          <h2 className="text-2xl font-bold text-[#0C3299]" style={{ fontFamily: 'Cairo' }}>
+            عروض اليوم ⚡
+          </h2>
+          <p className="text-xs font-semibold text-gray-500" style={{ fontFamily: 'Cairo' }}>
+            خصومات حصرية لفترة محدودة
+          </p>
+        </div>
+
+        {deals.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {deals.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-[#DBDBDB] flex flex-col items-center gap-4">
+            <div className="bg-gray-50 p-6 rounded-full">
+              <Package className="w-10 h-10 text-gray-300" />
+            </div>
+            <p className="text-[#1A1A1A] font-bold text-base" style={{ fontFamily: 'Cairo' }}>
+              لا توجد عروض نشطة حالياً في هذا القسم
+            </p>
+          </div>
         )}
-      </AnimatePresence>
+      </section>
 
-      {/* Mobile Scrolling Categories (Social Stories Style) */}
-      <div className="md:hidden flex overflow-x-auto scrollbar-hide py-4 px-4 gap-3 bg-white border-b-8 border-gray-50 no-scrollbar">
-        <button 
-          onClick={() => navigate('/products')}
-          className="flex-shrink-0 flex flex-col items-center gap-1.5"
-        >
-          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-accent to-yellow-300 p-0.5 shadow-md">
-            <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-primary border-2 border-white">
-              <ShoppingBag className="w-6 h-6" />
-            </div>
+      {/* Section 4: New Products */}
+      <section className="w-full">
+        <div className="flex flex-col gap-1 mb-6 text-right">
+          <h2 className="text-2xl font-bold text-[#0C3299]" style={{ fontFamily: 'Cairo' }}>
+            أحدث المنتجات ✨
+          </h2>
+          <p className="text-xs font-semibold text-gray-500" style={{ fontFamily: 'Cairo' }}>
+            وصلت حديثاً إلى متجرنا
+          </p>
+        </div>
+
+        {newArrivals.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {newArrivals.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
-          <span className="text-[10px] font-black text-primary">الكل</span>
-        </button>
-        {categories.map(cat => (
-          <button 
-            key={cat}
-            onClick={() => navigate(`/products?category=${cat}`)}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5"
-          >
-            <div className="w-16 h-16 rounded-full bg-gray-100 p-0.5 shadow-sm border border-gray-200">
-               <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-gray-400 font-black text-lg">
-                  {cat.charAt(0)}
-               </div>
+        ) : (
+          <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-[#DBDBDB] flex flex-col items-center gap-4">
+            <div className="bg-gray-50 p-6 rounded-full">
+              <Package className="w-10 h-10 text-gray-300" />
             </div>
-            <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">{cat}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Hero Banner */}
-      <section className="hero">
-        <img 
-          src={config?.mt_heroImage || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200'} 
-          alt="Hero" 
-          className="hero-bg" 
-        />
-        <div className="hero-overlay" />
-        <div className="hero-content">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="hero-glass"
-          >
-            <span className="hero-badge">موريتانيا - نواكشوط</span>
-            {config?.heroTitle ? (
-               <h1 className="hero-title-ar">{config.heroTitle}</h1>
-            ) : (
-              <>
-                <h1 className="hero-title-ar">Panda</h1>
-                <h2 className="hero-title-en">Panda Store</h2>
-              </>
-            )}
-            <p className="hero-desc">{config?.heroSubtitle || 'أفضل الهواتف بأفضل الأسعار. جودة نضمنها لك وتوصيل لباب منزلك.'}</p>
-            <Link to="/products" className="hero-btn">
-              تسوق الآن <ShoppingBag className="w-5 h-5" />
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Main Categories & Services Banners */}
-      <section className="max-w-7xl mx-auto px-4 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-           {/* Banner 1: Accessories */}
-           <div 
-             onClick={() => navigate('/products?category=إكسسوارات')}
-             className="bg-gray-900 rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
-            >
-              <img 
-                src="https://images.unsplash.com/photo-1605648916319-cf082f7524a1?auto=format&fit=crop&w=800&q=80" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" 
-              />
-              <div className="relative z-10 flex flex-col gap-2 text-white">
-                <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] w-fit font-black mb-2 uppercase">متوفرة الآن</span>
-                <h3 className="text-2xl md:text-3xl font-black italic">إكسسوارات الهواتف</h3>
-                <p className="text-gray-300 font-bold text-xs">سماعات، شواحن، وحماية للشاشة.</p>
-                <span className="mt-2 text-white font-black text-sm flex items-center gap-2 group-hover:gap-4 transition-all">تصفح الكل <ArrowLeft className="w-4 h-4" /></span>
-              </div>
-           </div>
-
-           {/* Banner 2: Used Phones */}
-           <div 
-             onClick={() => navigate('/products?isUsed=true')}
-             className="bg-accent rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
-            >
-              <img 
-                src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=800&q=80" 
-                className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" 
-              />
-              <div className="relative z-10 flex flex-col gap-2 text-primary">
-                <span className="bg-primary/10 px-3 py-1 rounded-full text-[10px] w-fit font-black mb-2 uppercase">أجهزة مضمونة</span>
-                <h3 className="text-2xl md:text-3xl font-black italic">هواتف مستعملة</h3>
-                <p className="text-primary/70 font-bold text-xs">نظيفة، مضمونة وبأفضل سعر.</p>
-                <span className="mt-2 text-primary font-black text-sm flex items-center gap-2 group-hover:gap-4 transition-all">شاهد العروض <ArrowLeft className="w-4 h-4" /></span>
-              </div>
-           </div>
-
-           {/* Banner 3: Trade-in & Sell */}
-           <div 
-             onClick={() => navigate('/tradein')}
-             className="bg-gradient-to-br from-[#1A237E] to-[#0D47A1] rounded-[32px] h-[200px] md:h-[280px] relative overflow-hidden flex items-end p-8 group cursor-pointer transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl active:scale-95 md:active:scale-100"
-            >
-              <div className="absolute top-6 right-6 text-7xl opacity-20 group-hover:rotate-12 transition-transform">🔄</div>
-              <div className="relative z-10 flex flex-col gap-2 text-white">
-                <h3 className="text-2xl md:text-3xl font-black italic">تبديل وبيع</h3>
-                <p className="text-white/80 font-bold text-xs mb-4">بدّل جهازك أو بعه باحترافية وسهولة.</p>
-                <span className="bg-accent text-primary px-5 py-2 rounded-xl font-black text-sm w-fit mt-2 group-hover:scale-105 transition-transform">اكتشف الخدمة</span>
-              </div>
-           </div>
-        </div>
-      </section>
-
-      {/* Trust Badges */}
-      <section className="max-w-7xl mx-auto px-4 w-full">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {trustBadges.map((badge, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-3xl flex flex-col items-center gap-4 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="bg-gray-50 p-4 rounded-2xl text-primary">
-                <badge.icon className="w-8 h-8" />
-              </div>
-              <span className="font-black text-primary">{badge.text}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Flash Sale */}
-      <section className="max-w-7xl mx-auto px-4 w-full">
-        <div className="bg-accent/10 rounded-[40px] p-8 md:p-12 relative overflow-hidden border-2 border-accent/20">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-            <div className="flex flex-col gap-4">
-              <h2 className="text-4xl font-black text-primary">عروض الفلاش ⚡</h2>
-              <p className="text-primary/70 font-bold">خصومات تصل إلى 40% على مختاراتنا.</p>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-xs font-bold text-primary opacity-50 uppercase tracking-widest">ينتهي العرض خلال</span>
-              <div className="flex gap-4">
-                {formatTime(timeLeft).split(':').map((unit, idx) => (
-                  <div key={idx} className="bg-primary text-white w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black shadow-xl">
-                    {unit}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <Link to="/products?filter=sale" className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:gap-4 transition-all btn">
-              شاهد العروض <ArrowLeft className="w-5 h-5" />
-            </Link>
+            <p className="text-[#1A1A1A] font-bold text-base" style={{ fontFamily: 'Cairo' }}>
+              لا توجد منتجات متوفرة حالياً في هذا القسم
+            </p>
           </div>
-        </div>
+        )}
       </section>
 
-      {/* Featured Sections */}
-      {sections.map((section, idx) => (
-        <section key={idx} className="max-w-7xl mx-auto px-4 w-full">
-          <div className="flex justify-between items-end mb-8">
-            <div className="flex flex-col gap-1">
-              <span className="text-accent font-black text-xs uppercase tracking-widest">تصفح الفئات</span>
-              <h2 className="text-4xl font-black text-primary section-title">{section.title}</h2>
-            </div>
-            <Link to="/products" className="text-sm font-bold text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
-              عرض الكل <ArrowLeft className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8 products-grid">
-            {section.data.length > 0 ? (
-              section.data.map(product => <ProductCard key={product.id} product={product} />)
-            ) : (
-              <div className="col-span-full py-16 text-center bg-white rounded-[40px] border border-dashed border-gray-100 flex flex-col items-center gap-4">
-                <div className="bg-gray-50 p-6 rounded-full">
-                   <Package className="w-10 h-10 text-gray-200" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-primary font-black text-lg">قريباً في هذا القسم</p>
-                  <p className="text-gray-400 font-bold text-sm">نحن نقوم بتحديث مخزوننا باستمرار، ترقبوا العروض القادمة!</p>
-                </div>
-                <Link to="/products" className="text-primary font-black underline text-xs">تصفح المنتجات المتوفرة</Link>
-              </div>
-            )}
-          </div>
-        </section>
-      ))}
-
-      {/* Category Banner */}
-      <section className="max-w-7xl mx-auto px-4 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-           <div className="bg-gray-900 rounded-[40px] h-[300px] relative overflow-hidden flex items-center p-12 group cursor-pointer">
-              <img 
-                src="https://images.unsplash.com/photo-1605648916319-cf082f7524a1?auto=format&fit=crop&w=800&q=80" 
-                className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" 
-              />
-              <div className="relative z-10 flex flex-col gap-4 text-white">
-                <h3 className="text-4xl font-black">إكسسوارات الهواتف</h3>
-                <p className="text-gray-300 font-medium">سماعات، شواحن، وحماية للشاشة.</p>
-                <button className="bg-white text-black font-bold px-6 py-3 rounded-xl w-fit">اكتشف الآن</button>
-              </div>
-           </div>
-           <div className="bg-accent rounded-[40px] h-[300px] relative overflow-hidden flex items-center p-12 group cursor-pointer">
-              <img 
-                src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=800&q=80" 
-                className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-700" 
-              />
-              <div className="relative z-10 flex flex-col gap-4 text-primary">
-                <h3 className="text-4xl font-black">هواتف مستعملة</h3>
-                <p className="text-primary/70 font-medium">نظيفة، مضمونة وبأفضل سعر.</p>
-                <button className="bg-primary text-white font-bold px-6 py-3 rounded-xl w-fit">تسوق الكسر</button>
-              </div>
-           </div>
-        </div>
-      </section>
     </div>
   );
 }

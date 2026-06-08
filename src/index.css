@@ -10,19 +10,19 @@
 }
 
 :root {
-  --primary: #0A1628;      /* Deep navy - more premium */
-  --primary-light: #1A2F5E;
-  --accent: #C9A84C;       /* Gold - premium feel */
-  --accent-light: #E8C96A;
-  --bg-light: #F8F9FC;
-  --text-dark: #0A1628;
-  --text-gray: #6B7280;
+  --primary: #0C3299;
+  --primary-light: #1A4AB8;
+  --accent: #C9A84C;
+  --accent-light: #dfc168;
+  --bg-light: #D7D6D0;
+  --text-dark: #1A1A1A;
+  --text-gray: #555555;
   --white: #FFFFFF;
-  --border: #E5E7EB;
-  --card-shadow: 0 4px 24px rgba(10,22,40,0.08);
-  --bg-main: #F8F9FC;
-  --nav-bg: #0A1628;
-  --btn-bg: #0A1628;
+  --border: #DBDBDB;
+  --card-shadow: 0 4px 24px rgba(12, 50, 153, 0.08);
+  --bg-main: #D7D6D0;
+  --nav-bg: #0C3299;
+  --btn-bg: #0C3299;
 }
 
 @layer base {

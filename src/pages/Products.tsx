@@ -14,8 +14,15 @@ import { DEMO_PRODUCTS } from '../constants';
 export function Products({ products: initialProducts }: { products: Product[] }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => {
+    return searchParams.get('search') || searchParams.get('q') || '';
+  });
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q') || '';
+    setSearch(q);
+  }, [searchParams]);
   const categoryParam = searchParams.get('category');
   
   const [selectedCategory, setSelectedCategory] = useState('الكل');
