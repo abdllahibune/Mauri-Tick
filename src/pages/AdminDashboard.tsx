@@ -239,6 +239,27 @@ export function AdminDashboard() {
   const [partnerRequests, setPartnerRequests] = useState<any[]>([]);
   const [customOrders, setCustomOrders] = useState<any[]>([]);
 
+  const loadProducts = async () => {
+    try {
+      const [p1, p2] = await Promise.all([
+        getDocs(collection(db, 'panda_products')),
+        getDocs(collection(db, 'mt_products')),
+      ]);
+      const all = [
+        ...p1.docs.map(d => ({id: d.id, ...d.data(), _col: 'panda_products'} as any)),
+        ...p2.docs.map(d => ({id: d.id, ...d.data(), _col: 'mt_products'} as any)),
+      ] as Product[];
+      all.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
+      setProducts(all);
+    } catch (err) {
+      console.error("Error fetching collections:", err);
+    }
+  };
+
   const loadCustomOrders = async () => {
     const q = query(
       collection(db, 'panda_custom_orders'),
@@ -254,8 +275,12 @@ export function AdminDashboard() {
     ensureAuth();
     if (!isLoggedIn) return;
 
-    const unsubProducts = onSnapshot(query(collection(db, 'mt_products'), orderBy('createdAt', 'desc')), (snap) => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+    loadProducts();
+    const unsubProductsPanda = onSnapshot(collection(db, 'panda_products'), () => {
+      loadProducts();
+    });
+    const unsubProductsMT = onSnapshot(collection(db, 'mt_products'), () => {
+      loadProducts();
     });
     const unsubOrders = onSnapshot(query(collection(db, 'mt_orders'), orderBy('createdAt', 'desc')), (snap) => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
@@ -290,7 +315,8 @@ export function AdminDashboard() {
     }, (err) => console.error("Custom orders fetch error:", err));
 
     return () => {
-      unsubProducts();
+      unsubProductsPanda();
+      unsubProductsMT();
       unsubOrders();
       unsubCoupons();
       unsubConfig();
@@ -714,6 +740,7 @@ function ProductsSection({ products }: { products: Product[] }) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [showAliExpressModal, setShowAliExpressModal] = useState(false);
   const [prefilledProduct, setPrefilledProduct] = useState<any | null>(null);
 
   const [platformFilter, setPlatformFilter] = useState('');
@@ -748,30 +775,26 @@ function ProductsSection({ products }: { products: Product[] }) {
   async function deleteSelected() {
     if (!confirm(`هل تريد حذف ${selectedProducts.length} منتج؟`)) return;
     
-    const db_inst = getFirestore();
     let deleted = 0;
-    
+    const db_inst = getFirestore();
     for (const id of selectedProducts) {
+      const p = products.find(prod => prod.id === id) as any;
+      const col = p?._col || 'mt_products';
       try {
-        // Try panda_products first
-        await deleteDoc(doc(db_inst, 'panda_products', id));
+        await deleteDoc(doc(db_inst, col, id));
         deleted++;
-      } catch(e) {
-        try {
-          await deleteDoc(doc(db_inst, 'mt_products', id));
-          deleted++;
-        } catch(e2) {}
-      }
+      } catch(e) {}
     }
     
     alert(`✅ تم حذف ${deleted} منتج`);
     setSelectedProducts([]);
-    loadAllProducts();
   }
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
-    await safeWrite(() => deleteDoc(doc(db, 'mt_products', id)));
+    const p = products.find(prod => prod.id === id) as any;
+    const col = p?._col || 'mt_products';
+    await safeWrite(() => deleteDoc(doc(db, col, id)));
   };
 
   return (
@@ -790,6 +813,12 @@ function ProductsSection({ products }: { products: Product[] }) {
             className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <Icons.Link className="w-5 h-5" /> استيراد من رابط
+          </button>
+          <button 
+            onClick={() => setShowAliExpressModal(true)}
+            className="w-full sm:w-auto bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 px-6 py-4 md:py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Icons.Layers className="w-5 h-5" /> 🔗 استيراد من AliExpress
           </button>
           <button 
             onClick={() => setShowAdd(true)}
@@ -941,6 +970,12 @@ function ProductsSection({ products }: { products: Product[] }) {
             setShowImportModal(false);
             setPrefilledProduct(item);
           }}
+        />
+      )}
+
+      {showAliExpressModal && (
+        <AliExpressImportModal 
+          onClose={() => setShowAliExpressModal(false)}
         />
       )}
 
@@ -5501,6 +5536,294 @@ function CsvImportModal({ onClose }: { onClose: () => void }) {
             className="px-8 py-3 bg-primary text-white rounded-xl font-black hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             {importing ? 'جاري الاستيراد...' : `استيراد الكل (${rows.length} منتج) 🚀`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AliExpressImportModal({ onClose }: { onClose: () => void }) {
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [usdToMru, setUsdToMru] = useState(37);
+  const [profitMargin, setProfitMargin] = useState(1.30);
+  
+  const [token, setToken] = useState('');
+  const [loadingToken, setLoadingToken] = useState(true);
+  const [tokenStatus, setTokenStatus] = useState<any>(null);
+
+  const [keyword, setKeyword] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    // 1. Load categories
+    getDocs(collection(db, 'panda_categories')).then(snap => {
+      setCategories(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
+    }).catch(err => {
+      console.error("Error loading categories:", err);
+      setCategories([
+        { id: '1', name: 'إلكترونيات' },
+        { id: '2', name: 'ملابس وأزياء' },
+        { id: '3', name: 'منزل ومطبخ' },
+        { id: '4', name: 'جمال وعناية' }
+      ]);
+    });
+
+    // 2. Load stored AliExpress Token
+    getDoc(doc(db, 'panda_settings', 'aliexpress_token')).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setToken(data.access_token || '');
+        setTokenStatus(data);
+      }
+      setLoadingToken(false);
+    }).catch(() => {
+      setLoadingToken(false);
+    });
+  }, []);
+
+  const handleFetchToken = async () => {
+    setLoadingToken(true);
+    try {
+      const res = await fetch('/api/aliexpress-token');
+      const data = await res.json();
+      if (data.access_token) {
+        // STEP 4: SAVE ACCESS TOKEN
+        const payload = {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token || '',
+          expires_in: data.expire_time || data.expires_in || 31536000,
+          updatedAt: new Date()
+        };
+        await setDoc(doc(db, 'panda_settings', 'aliexpress_token'), payload);
+        setToken(data.access_token);
+        setTokenStatus(payload);
+        toast.success('تم جلب وتخزين رمز الوصول للـ API بنجاح! 🔑');
+      } else {
+        toast.error('فشل في استلام رمز الوصول: ' + JSON.stringify(data.details || data));
+      }
+    } catch (err: any) {
+      toast.error('خطأ أثناء جلب رمز الوصول: ' + err.message);
+    } finally {
+      setLoadingToken(false);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyword.trim()) return;
+    if (!token) {
+      toast.error('يرجى جلب رمز الوصول أولاً');
+      return;
+    }
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const url = `/api/aliexpress-search?keyword=${encodeURIComponent(keyword)}&access_token=${token}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.products) {
+        setSearchResults(data.products);
+        if (data.products.length === 0) {
+          toast('لم يتم العثور على أي نتائج مطابقة');
+        } else {
+          toast.success(`تم العثور على ${data.products.length} منتج من AliExpress API`);
+        }
+      } else {
+        toast.error('خطأ في استدعاء محرك البحث: ' + JSON.stringify(data));
+      }
+    } catch (err: any) {
+      toast.error('خطأ الاتصال بـ API: ' + err.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleImportSingle = async (prod: any) => {
+    if (!selectedCategory) {
+      toast.error('يرجى اختيار القسم أولاً لتصنيف المنتج المستورد');
+      return;
+    }
+
+    const rawPrice = parseFloat(prod.sale_price) || 20.0;
+    const finalPrice = Math.round(rawPrice * usdToMru * profitMargin);
+
+    const docData = {
+      name: prod.product_title || 'AliExpress Product',
+      priceUSD: rawPrice,
+      originalPriceUSD: rawPrice,
+      discount: 0,
+      soldCount: Math.floor(Math.random() * 150) + 12,
+      price: finalPrice,
+      usdToMru: usdToMru,
+      profitMargin: profitMargin,
+      images: [prod.product_main_image_url || 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&auto=format&fit=crop'],
+      mainImage: prod.product_main_image_url || 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&auto=format&fit=crop',
+      brand: 'ALIEXPRESS',
+      category: selectedCategory,
+      active: true,
+      stock: 100,
+      sold: Math.floor(Math.random() * 80) + 5,
+      createdAt: serverTimestamp(),
+      platform: 'aliexpress',
+      importedFrom: 'aliexpress',
+      aliexpressUrl: prod.product_detail_url || `https://www.aliexpress.com/item/${prod.product_id}.html`
+    };
+
+    try {
+      await addDoc(collection(db, 'panda_products'), docData);
+      toast.success('تم استيراد المنتج بنجاح إلى متجر باندا! 🐼');
+    } catch (err: any) {
+      toast.error('حدث عطل في الحفظ: ' + err.message);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-[40px] p-6 md:p-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative text-right font-cairo border" dir="rtl">
+        <button onClick={onClose} className="absolute left-6 top-6 p-2 text-gray-400 hover:text-gray-600 cursor-pointer">
+          <Icons.X className="w-6 h-6" />
+        </button>
+
+        <h3 className="text-2xl font-black text-primary mb-6 border-r-4 border-orange-500 pr-3">🔗 استيراد المنتجات عبر AliExpress Dropship API</h3>
+
+        {/* Token Management Section */}
+        <div className="bg-orange-50/50 border border-orange-100 p-6 rounded-3xl mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h4 className="font-black text-orange-900 text-lg mb-1">🔑 إدارة مفتاح ورمز الوصول للـ API</h4>
+              <p className="text-xs font-bold text-orange-700/80">
+                {token 
+                  ? `رمز الوصول نشط ومعرّف في النظام. تحديث أخير: ${tokenStatus?.updatedAt ? new Date(tokenStatus.updatedAt.seconds * 1000).toLocaleString() : 'الآن'}` 
+                  : 'رمز الوصول غير معرّف حالياً. يرجى جلبه لتشغيل عمليات البحث من AliExpress.'}
+              </p>
+            </div>
+            <button 
+              type="button"
+              onClick={handleFetchToken}
+              disabled={loadingToken}
+              className="bg-orange-600 hover:bg-orange-700 text-white font-black px-5 py-3 rounded-xl transition-all cursor-pointer text-xs disabled:opacity-50"
+            >
+              {loadingToken ? 'جاري الاتصال...' : '🔑 جلب وتجديد رمز الوصول'}
+            </button>
+          </div>
+        </div>
+
+        {/* Global Settings for Import Pricing */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-2">سعر تحويل الدولار للموريتاني ($1 = الأوقية)</label>
+            <input 
+              type="number" 
+              value={usdToMru}
+              onChange={e => setUsdToMru(parseFloat(e.target.value) || 37)}
+              className="w-full bg-white border border-gray-200 px-4 py-3 rounded-xl font-bold font-mono text-center text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-2">هامش الربح الافتراضي (مثال: 1.30 = +30%)</label>
+            <input 
+              type="number" 
+              step="0.05"
+              value={profitMargin}
+              onChange={e => setProfitMargin(parseFloat(e.target.value) || 1.30)}
+              className="w-full bg-white border border-gray-200 px-4 py-3 rounded-xl font-bold font-mono text-center text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-2">القسم المستهدف لحفظ المنتجات <span className="text-red-500">*</span></label>
+            <select 
+              value={selectedCategory} 
+              onChange={e => setSelectedCategory(e.target.value)}
+              className="w-full bg-white border border-gray-200 px-4 py-3 rounded-xl font-bold text-sm"
+              style={{ fontFamily: 'Cairo' }}
+            >
+              <option value="">-- اختر القسم --</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Product Keyword Search Form */}
+        <form onSubmit={handleSearch} className="flex gap-3 mb-8">
+          <input 
+            type="text" 
+            placeholder="ابحث عن منتجات باللغة الإيطالية، الإنجليزية أو العربية... (مثال: watch, phone, bag, ملابس)" 
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            className="flex-1 bg-white border border-gray-200 px-5 py-4 rounded-2xl font-bold text-sm shadow-sm"
+          />
+          <button 
+            type="submit"
+            disabled={searching || !token}
+            className="bg-primary text-white font-black px-8 py-4 rounded-2xl shadow-lg shadow-primary/25 hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {searching ? (
+              'جاري البحث...'
+            ) : (
+              <>
+                <Icons.Search className="w-5 h-5" /> ابحث الآن
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Results Stream */}
+        <div className="mb-6">
+          <h4 className="font-black text-gray-900 border-r-4 border-primary pr-2 mb-4">نتائج البحث من AliExpress ({searchResults.length})</h4>
+          
+          {searchResults.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 bg-gray-50/50 rounded-3xl border border-dashed">
+              <Icons.Layers className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p className="font-bold text-sm">أدخل الكلمة المفتاحية واضغط ابحث لعرض السلع.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-1">
+              {searchResults.map((prod) => {
+                const finalPrice = Math.round((parseFloat(prod.sale_price) || 20.0) * usdToMru * profitMargin);
+                return (
+                  <div key={prod.product_id} className="bg-white border rounded-2xl p-4 flex gap-4 items-center hover:shadow-md transition-shadow">
+                    <img 
+                      src={prod.product_main_image_url} 
+                      alt="" 
+                      className="w-16 h-16 object-contain rounded-lg border bg-gray-50 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0 text-right">
+                      <p className="font-bold text-xs text-gray-900 truncate mb-1" title={prod.product_title}>
+                        {prod.product_title}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mb-1">المعرّف: {prod.product_id}</p>
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <span className="font-black text-primary">السعر: {finalPrice} أوقية</span>
+                        <span className="text-gray-400">(${prod.sale_price || '20'})</span>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => handleImportSingle(prod)}
+                      className="px-4 py-2 bg-primary hover:bg-opacity-95 text-white text-xs font-black rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+                    >
+                      استيراد 📥
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex justify-end p-4 border-t gap-3 mt-6">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="px-6 py-3 bg-gray-50 hover:bg-gray-100 border text-gray-800 rounded-xl font-bold cursor-pointer transition-all"
+          >
+            إغلاق
           </button>
         </div>
       </div>

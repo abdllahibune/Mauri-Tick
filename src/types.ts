@@ -21,6 +21,7 @@ export interface Product {
   };
   variants?: ProductVariant[];
   colors?: string[];
+  sizes?: string[];
   tier?: 'economy' | 'mid' | 'flagship' | '';
   isFeatured?: boolean;
   isBestSeller?: boolean;

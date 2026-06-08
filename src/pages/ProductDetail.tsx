@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { Product } from '../types';
 import { contactWhatsApp, getProductTier, proxyImage, getDisplayPrice } from '../lib/utils';
-import { MessageCircle, Star } from 'lucide-react';
+import { MessageCircle, Star, Truck, Clock, Shield, Package, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Error Boundary as specifically requested
@@ -58,6 +58,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
   const [related, setRelated] = useState<Product[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const DESC_LIMIT = 120;
 
@@ -96,6 +97,9 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       }
       if (product.colors && product.colors.length > 0) {
         setSelectedColor(product.colors[0]);
+      }
+      if (product.sizes && product.sizes.length > 0) {
+        setSelectedSize(product.sizes[0]);
       }
     }
   }, [product]);
@@ -174,44 +178,17 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
 
   async function loadRelated(currentProduct: Product) {
     try {
-      if (allProducts && allProducts.length > 0) {
-        const matched = allProducts.filter(p => 
-          p.id !== currentProduct.id && 
-          (p.brand === currentProduct.brand || p.category === currentProduct.category)
-        ).slice(0, 8);
-        setRelated(matched);
-        return;
-      }
-
-      // Legacy fallback
-      const q1 = query(
-        collection(db, 'mt_products'),
-        where('brand', '==', currentProduct.brand),
+      const q = query(
+        collection(db, 'panda_products'),
         where('category', '==', currentProduct.category),
-        limit(8)
+        limit(13)
       );
-      const s1 = await getDocs(q1);
-      let suggested = s1.docs
+      const snap = await getDocs(q);
+      const items = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as Product))
-        .filter(p => p.id !== currentProduct.id);
-
-      if (suggested.length < 4) {
-        const q2 = query(
-          collection(db, 'mt_products'),
-          where('category', '==', currentProduct.category),
-          limit(10)
-        );
-        const s2 = await getDocs(q2);
-        const extra = s2.docs
-          .map(d => ({ id: d.id, ...d.data() } as Product))
-          .filter(p => 
-            p.id !== currentProduct.id && 
-            !suggested.find(s => s.id === p.id)
-          );
-        suggested = [...suggested, ...extra].slice(0, 6);
-      }
-
-      setRelated(suggested);
+        .filter(p => p.id !== currentProduct.id)
+        .slice(0, 12);
+      setRelated(items);
     } catch (e) {
       console.error('Related products fetch error:', e);
     }
@@ -467,32 +444,69 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             );
           })()}
 
-          {/* Colors Selector */}
-          {product.colors && product.colors.length > 0 && (
-            <div style={{marginTop:16, marginBottom: 20, direction:'rtl'}}>
-              <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px', color: '#444' }}>
-                🎨 اللون: <span style={{fontWeight:'normal', color:'#666', marginRight:8}}>{selectedColor}</span>
-              </p>
-              <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                {product.colors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    style={{
-                      padding:'8px 16px',
-                      border: selectedColor === color ? '2px solid #FF6600' : '1px solid #ddd',
-                      borderRadius:20,
-                      background: selectedColor === color ? '#FF6600' : 'white',
-                      color: selectedColor === color ? 'white' : '#333',
-                      fontSize:13,
-                      cursor:'pointer',
-                      transition:'all 0.2s'
-                    }}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
+          {/* Colors & Sizes Selector */}
+          {((product.colors && product.colors.length > 0) || (product.sizes && product.sizes.length > 0)) ? (
+            <>
+              {product.colors && product.colors.length > 0 && (
+                <div style={{marginTop:16, marginBottom: 20, direction:'rtl'}}>
+                  <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px', color: '#444' }}>
+                    اللون: <span style={{fontWeight:'normal', color:'#666', marginRight:8}}>{selectedColor}</span>
+                  </p>
+                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                    {product.colors.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        style={{
+                          padding:'8px 16px',
+                          border: selectedColor === color ? '2px solid #FF6600' : '1px solid #ddd',
+                          borderRadius:20,
+                          background: selectedColor === color ? '#FF6600' : 'white',
+                          color: selectedColor === color ? 'white' : '#333',
+                          fontSize:13,
+                          cursor:'pointer',
+                          transition:'all 0.2s'
+                        }}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {product.sizes && product.sizes.length > 0 && (
+                <div style={{marginTop:16, marginBottom: 20, direction:'rtl'}}>
+                  <p style={{ fontWeight:'bold', marginBottom:10, fontSize: '14px', color: '#444' }}>
+                    المقاس: <span style={{fontWeight:'normal', color:'#666', marginRight:8}}>{selectedSize}</span>
+                  </p>
+                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                    {product.sizes.map(size => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        style={{
+                          padding:'8px 16px',
+                          border: selectedSize === size ? '2px solid #FF6600' : '1px solid #ddd',
+                          borderRadius:20,
+                          background: selectedSize === size ? '#FF6600' : 'white',
+                          color: selectedSize === size ? 'white' : '#333',
+                          fontSize:13,
+                          cursor:'pointer',
+                          transition:'all 0.2s'
+                        }}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{padding:'12px 16px', background:'#FFF8F0', borderRadius:10, 
+            border:'1px solid #FFE0B2', color:'#FF6600', fontFamily:'Cairo', fontSize:13, marginBottom: 20}}>
+              تواصل معنا لمعرفة الألوان والمقاسات المتاحة
             </div>
           )}
 
@@ -507,10 +521,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               gap: '6px',
               fontSize: '14px'
             }}>
-              {product.stock > 5 ? '✅ متوفر بالمخزون للتوصيل الفوري'
+              {product.stock > 5 ? 'متوفر بالمخزون للتوصيل الفوري'
                 : product.stock > 0 
-                  ? `⚠️ متبقي ${product.stock} قطع فقط`
-                  : '❌ نفذ المخزون'}
+                  ? `متبقي ${product.stock} قطع فقط`
+                  : 'نفذ المخزون'}
             </p>
           </div>
           
@@ -527,8 +541,8 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               alignItems:'center',
               marginBottom:8,
             }}>
-              <span style={{color:'#666', fontSize:13}}>
-                🚚 الشحن إلى موريتانيا
+              <span style={{color:'#666', fontSize:13, display:'inline-flex', alignItems:'center', gap:4}}>
+                <Truck size={16} /> الشحن إلى موريتانيا
               </span>
               <span style={{
                 fontWeight:'bold',
@@ -547,7 +561,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               justifyContent:'space-between',
               fontSize:12, color:'#888',
             }}>
-              <span>⏱️ مدة التوصيل</span>
+              <span style={{display:'inline-flex', alignItems:'center', gap:4}}><Clock size={16} /> مدة التوصيل</span>
               <span>15 - 30 يوم عمل</span>
             </div>
             
@@ -560,7 +574,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                 fontSize:12,
                 color:'#0A1628',
               }}>
-                💰 الإجمالي التقديري:{' '}
+                الإجمالي التقديري:{' '}
                 <strong>
                   {(currentPrice + shippingCost)
                     .toLocaleString()} أوقية
@@ -601,7 +615,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               textAlign: 'center'
             }}
           >
-            اطلب الآن عبر واتساب 💬
+            اطلب الآن عبر واتساب
           </a>
 
           {/* Add to Cart button */}
@@ -610,10 +624,11 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                 const cartVariant = selectedVariant ? {
                   storage: selectedVariant.storage,
                   color: selectedColor || undefined,
+                  size: selectedSize || undefined,
                   price: currentPrice
                 } : undefined;
                 addToCart(product, 1, cartVariant);
-                toast.success('✅ تمت الإضافة للسلة');
+                toast.success('تمت الإضافة للسلة');
             }}
             disabled={product.stock === 0}
             style={{
@@ -630,7 +645,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
               textAlign: 'center'
             }}
           >
-            {product.stock === 0 ? 'نفذ المخزون' : '🛒 أضف إلى سلة المشتريات'}
+            {product.stock === 0 ? 'نفذ المخزون' : 'أضف إلى سلة المشتريات'}
           </button>
           
           {/* Guarantee badges */}
@@ -640,10 +655,10 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
             gap:8,
           }}>
             {[
-              {icon:'🛡️', text:'ضمان Panda 100%'},
-              {icon:'📦', text:'تغليف آمن'},
-              {icon:'↩️', text:'إرجاع مضمون'},
-              {icon:'💬', text:'دعم على واتساب'},
+              {icon: <Shield size={16} style={{ color: '#FF6600' }} />, text:'ضمان Panda 100%'},
+              {icon: <Package size={16} style={{ color: '#FF6600' }} />, text:'تغليف آمن'},
+              {icon: <RotateCcw size={16} style={{ color: '#FF6600' }} />, text:'إرجاع مضمون'},
+              {icon: <MessageCircle size={16} style={{ color: '#FF6600' }} />, text:'دعم على واتساب'},
             ].map((b, idx) => (
               <div style={{
                 display:'flex',
@@ -655,7 +670,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                 fontSize:12,
                 color:'#444',
               }} key={idx}>
-                <span>{b.icon}</span>
+                {b.icon}
                 <span>{b.text}</span>
               </div>
             ))}
@@ -664,7 +679,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
           {/* Full description */}
           {product.description && (
             <div style={{ marginTop: 24, padding: '16px', background: '#FAFAFA', borderRadius: 12, border: '1px solid #f0f0f0' }}>
-              <p style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 8, color: '#333' }}>📝 وصف المنتج:</p>
+              <p style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 8, color: '#333' }}>وصف المنتج:</p>
               <p style={{ color: '#555', fontSize: 14, lineHeight: '1.6', margin: 0 }}>
                 {showFullDesc || product.description.length <= DESC_LIMIT
                   ? product.description
@@ -727,19 +742,15 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
       {/* Related Products */}
       {related.length > 0 && (
          <div style={{marginTop:'40px'}} id="productPageRoot">
-            <div style={{
-              borderRight: '4px solid #FF6600', 
-              paddingRight: '12px', 
-              marginBottom: '20px'
-            }}>
-                 <h2 style={{fontSize:'18px', fontWeight: 'bold', color: '#111', fontFamily: 'Cairo'}}>قد يعجبك أيضاً 💡</h2>
+            <div style={{ marginBottom: '20px' }}>
+                 <h2 style={{borderRight:'4px solid #FF6600', paddingRight:12, fontSize:18, fontWeight: 'bold', color: '#111', fontFamily: 'Cairo'}}>منتجات مشابهة</h2>
             </div>
             <div 
               id="suggestedGrid" 
               style={{
                 display: 'grid',
-                gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: window.innerWidth < 768 ? '8px' : '20px'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '16px'
               }}
             >
                 {related.map(p => {
@@ -757,11 +768,13 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                         transition: 'transform 0.2s',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        padding: '12px',
+                        border: '1px solid #f0f0f0'
                       }}>
-                          <div style={{height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8f8f8'}}>
+                          <div style={{height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f8f8f8', borderRadius: '8px', marginBottom: '8px'}}>
                               <img 
-                                src={proxyImage(p.images?.[0] || 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=📱')} 
+                                src={proxyImage(p.images?.[0] || 'https://via.placeholder.com/300x300/f5f5f5/1A237E?text=Panda')} 
                                 style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '10px'}} 
                                 onError={(e: any) => {
                                   e.target.onerror = null;
@@ -769,29 +782,7 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                                 }}
                               />
                           </div>
-                          <div style={{padding: '10px'}}>
-                            {(() => {
-                              const tier = getProductTier(p);
-                              return (
-                                <span 
-                                  style={{ 
-                                    background: tier.color, 
-                                    color: tier.textColor, 
-                                    border: `1px solid ${tier.border}`,
-                                    padding: '3px 10px',
-                                    borderRadius: '20px',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    fontFamily: 'Cairo',
-                                    display: 'inline-block',
-                                    marginBottom: '6px'
-                                  }}
-                                >
-                                  {tier.label}
-                                </span>
-                              );
-                            })()}
-                            <p style={{fontSize: '11px', color: '#999', margin: '0'}}>{p.brand}</p>
+                          <div style={{padding: '4px 0', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between'}}>
                             <h3 style={{
                               fontSize: '13px', 
                               fontWeight: 'bold', 
@@ -803,14 +794,16 @@ function ProductPageContent({ allProducts }: { allProducts: Product[] }) {
                               overflow: 'hidden',
                               height: '34px'
                             }}>{p.name}</h3>
-                            {p.discount > 0 && (
-                              <p style={{textDecoration: 'line-through', color: '#999', fontSize: '11px', margin: '0'}}>
-                                {p.price.toLocaleString()} أوقية
-                              </p>
-                            )}
-                            <p style={{color: '#FF6600', fontWeight: 'bold', fontSize: '14px', margin: '2px 0'}}>
-                              {price.toLocaleString()} أوقية
-                            </p>
+                            <div>
+                                {p.discount > 0 && (
+                                  <p style={{textDecoration: 'line-through', color: '#999', fontSize: '11px', margin: '0'}}>
+                                    {p.price.toLocaleString()} أوقية
+                                  </p>
+                                )}
+                                <p style={{color: '#FF6600', fontWeight: 'bold', fontSize: '14px', margin: '2px 0'}}>
+                                  {price.toLocaleString()} أوقية
+                                </p>
+                            </div>
                           </div>
                       </Link>
                     );
