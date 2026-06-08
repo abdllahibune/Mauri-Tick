@@ -5548,10 +5548,6 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [usdToMru, setUsdToMru] = useState(37);
   const [profitMargin, setProfitMargin] = useState(1.30);
-  
-  const [token, setToken] = useState('');
-  const [loadingToken, setLoadingToken] = useState(true);
-  const [tokenStatus, setTokenStatus] = useState<any>(null);
 
   const [keyword, setKeyword] = useState('');
   const [searching, setSearching] = useState(false);
@@ -5570,62 +5566,15 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
         { id: '4', name: 'جمال وعناية' }
       ]);
     });
-
-    // 2. Load stored AliExpress Token
-    getDoc(doc(db, 'panda_settings', 'aliexpress_token')).then(snap => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setToken(data.access_token || '');
-        setTokenStatus(data);
-      }
-      setLoadingToken(false);
-    }).catch(() => {
-      setLoadingToken(false);
-    });
   }, []);
-
-  const handleFetchToken = async () => {
-    setLoadingToken(true);
-    try {
-      const res = await fetch('/api/aliexpress-token');
-      const data = await res.json();
-      if (data.access_token) {
-        await setDoc(
-          doc(db, 'panda_settings', 'aliexpress_token'),
-          { 
-            access_token: data.access_token,
-            refresh_token: data.refresh_token || '',
-            updatedAt: new Date() 
-          }
-        );
-        setToken(data.access_token);
-        setTokenStatus({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token || '',
-          updatedAt: new Date()
-        });
-        alert('✅ تم جلب رمز الوصول بنجاح');
-      } else {
-        alert('❌ فشل في جلب رمز الوصول: ' + JSON.stringify(data));
-      }
-    } catch (err: any) {
-      alert('❌ خطأ أثناء جلب رمز الوصول: ' + err.message);
-    } finally {
-      setLoadingToken(false);
-    }
-  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!keyword.trim()) return;
-    if (!token) {
-      toast.error('يرجى جلب رمز الوصول أولاً');
-      return;
-    }
     setSearching(true);
     setSearchResults([]);
     try {
-      const url = `/api/aliexpress-search?keyword=${encodeURIComponent(keyword)}&access_token=${token}`;
+      const url = `/api/aliexpress-search?keyword=${encodeURIComponent(keyword)}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.products) {
@@ -5651,7 +5600,7 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    const rawPrice = parseFloat(prod.sale_price) || 20.0;
+    const rawPrice = parseFloat(prod.target_sale_price || prod.sale_price) || 20.0;
     const finalPrice = Math.round(rawPrice * usdToMru * profitMargin);
 
     const docData = {
@@ -5691,29 +5640,7 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
           <Icons.X className="w-6 h-6" />
         </button>
 
-        <h3 className="text-2xl font-black text-primary mb-6 border-r-4 border-orange-500 pr-3">🔗 استيراد المنتجات عبر AliExpress Dropship API</h3>
-
-        {/* Token Management Section */}
-        <div className="bg-orange-50/50 border border-orange-100 p-6 rounded-3xl mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h4 className="font-black text-orange-900 text-lg mb-1">🔑 إدارة مفتاح ورمز الوصول للـ API</h4>
-              <p className="text-xs font-bold text-orange-700/80">
-                {token 
-                  ? `رمز الوصول نشط ومعرّف في النظام. تحديث أخير: ${tokenStatus?.updatedAt ? new Date(tokenStatus.updatedAt.seconds * 1000).toLocaleString() : 'الآن'}` 
-                  : 'رمز الوصول غير معرّف حالياً. يرجى جلبه لتشغيل عمليات البحث من AliExpress.'}
-              </p>
-            </div>
-            <button 
-              type="button"
-              onClick={handleFetchToken}
-              disabled={loadingToken}
-              className="bg-orange-600 hover:bg-orange-700 text-white font-black px-5 py-3 rounded-xl transition-all cursor-pointer text-xs disabled:opacity-50"
-            >
-              {loadingToken ? 'جاري الاتصال...' : '🔑 جلب وتجديد رمز الوصول'}
-            </button>
-          </div>
-        </div>
+        <h3 className="text-2xl font-black text-primary mb-6 border-r-4 border-orange-500 pr-3">🔗 استيراد المنتجات عبر AliExpress Affiliate API</h3>
 
         {/* Global Settings for Import Pricing */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
@@ -5763,7 +5690,7 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
           />
           <button 
             type="submit"
-            disabled={searching || !token}
+            disabled={searching}
             className="bg-primary text-white font-black px-8 py-4 rounded-2xl shadow-lg shadow-primary/25 hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {searching ? (
@@ -5788,7 +5715,8 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto p-1">
               {searchResults.map((prod) => {
-                const finalPrice = Math.round((parseFloat(prod.sale_price) || 20.0) * usdToMru * profitMargin);
+                const rawPrice = parseFloat(prod.target_sale_price || prod.sale_price) || 20.0;
+                const finalPrice = Math.round(rawPrice * usdToMru * profitMargin);
                 return (
                   <div key={prod.product_id} className="bg-white border rounded-2xl p-4 flex gap-4 items-center hover:shadow-md transition-shadow">
                     <img 
@@ -5803,7 +5731,7 @@ function AliExpressImportModal({ onClose }: { onClose: () => void }) {
                       <p className="text-[10px] text-gray-400 mb-1">المعرّف: {prod.product_id}</p>
                       <div className="flex items-center gap-2 text-xs font-mono">
                         <span className="font-black text-primary">السعر: {finalPrice} أوقية</span>
-                        <span className="text-gray-400">(${prod.sale_price || '20'})</span>
+                        <span className="text-gray-400">(${rawPrice})</span>
                       </div>
                     </div>
                     <button 

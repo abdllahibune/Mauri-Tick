@@ -1,85 +1,56 @@
-const crypto = require('crypto');
-
-function signRequest(params, appSecret) {
-  const sorted = Object.keys(params).sort();
-  let str = appSecret;
-  for (const key of sorted) {
-    str += key + params[key];
-  }
-  str += appSecret;
-  return crypto.createHash('md5')
-    .update(str).digest('hex').toUpperCase();
-}
-
 export default async function handler(req, res) {
-  const { keyword, access_token } = req.query;
+  const { keyword = 'shirt', pageSize = 20 } = req.query;
   
-  if (!access_token) {
-    return res.status(400).json({ error: 'access_token is required' });
-  }
-
-  const appKey = '536002';
-  const appSecret = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
+  const APP_KEY = '536002';
+  const APP_SECRET = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
+  const TRACKING_ID = 'panda_store';
   
-  const d = new Date();
-  const formatNum = (n) => n.toString().padStart(2, '0');
-  const timestamp = `${d.getUTCFullYear()}-${formatNum(d.getUTCMonth() + 1)}-${formatNum(d.getUTCDate())} ${formatNum(d.getUTCHours())}:${formatNum(d.getUTCMinutes())}:${formatNum(d.getUTCSeconds())}`;
-
+  const timestamp = new Date()
+    .toISOString()
+    .replace('T', ' ')
+    .substring(0, 19);
+  
   const params = {
-    method: 'aliexpress.ds.recommend.feed.get',
-    app_key: appKey,
-    session: access_token,
-    timestamp: timestamp,
-    v: '2.0',
+    app_key: APP_KEY,
+    format: 'json',
+    method: 'aliexpress.affiliate.product.query',
     sign_method: 'md5',
-    feed_id: '10100',
+    timestamp,
+    v: '2.0',
+    fields: 'product_id,product_title,target_sale_price,target_original_price,target_sale_price_currency,evaluate_rate,product_main_image_url,product_detail_url,lastest_volume,discount',
+    keywords: keyword,
+    page_size: pageSize,
+    page_no: 1,
+    tracking_id: TRACKING_ID,
     target_currency: 'USD',
     target_language: 'AR',
+    sort: 'SALE_PRICE_ASC',
   };
   
-  const sign = signRequest(params, appSecret);
-  
-  try {
-    const queryStr = new URLSearchParams({ ...params, sign }).toString();
-    const apiUrl = `https://api-sg.aliexpress.com/sync?${queryStr}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    
-    const data = await response.json();
-    
-    let products = [];
-    let respObj = data.aliexpress_ds_recommend_feed_get_response || data.rsp;
-    if (respObj && respObj.result && respObj.result.products) {
-      products = respObj.result.products.product || [];
-    }
-    
-    if (keyword) {
-      const keywordLower = keyword.toLowerCase();
-      const matched = products.filter(p => p.product_title && p.product_title.toLowerCase().includes(keywordLower));
-      
-      if (matched.length > 0) {
-        products = matched;
-      } else {
-        const mockedBrands = ['Samsung', 'Sony', 'Xiaomi', 'Panda', 'Anker'];
-        const mockedBrand = mockedBrands[Math.floor(Math.random() * mockedBrands.length)];
-        products = Array.from({ length: 4 }).map((_, i) => ({
-          product_id: (1000213032 + i * 29).toString(),
-          product_title: `${mockedBrand} ${keyword} - Premium AliExpress Edition`,
-          first_level_category_name: 'Electronics',
-          sale_price: (20 + i * 15).toString(),
-          product_main_image_url: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&auto=format&fit=crop',
-          product_detail_url: `https://www.aliexpress.com/item/${1000213032 + i * 29}.html`
-        }));
-      }
-    }
-    
-    return res.status(200).json({ products, raw: data });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+  // Sign
+  const crypto = require('crypto');
+  const sortedKeys = Object.keys(params).sort();
+  let signStr = APP_SECRET;
+  for (const key of sortedKeys) {
+    signStr += key + params[key];
   }
+  signStr += APP_SECRET;
+  params.sign = crypto
+    .createHash('md5')
+    .update(signStr)
+    .digest('hex')
+    .toUpperCase();
+  
+  const query = new URLSearchParams(params).toString();
+  const url = `https://api-sg.aliexpress.com/sync?${query}`;
+  
+  const response = await fetch(url);
+  const data = await response.json();
+  
+  // Extract products
+  const products = data
+    ?.aliexpress_affiliate_product_query_response
+    ?.resp_result?.result?.products?.product || [];
+  
+  res.json({ products });
 }

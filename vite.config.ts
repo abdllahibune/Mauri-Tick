@@ -67,32 +67,31 @@ export default defineConfig(({mode}) => {
             if (req.url?.startsWith('/api/aliexpress-search')) {
               try {
                 const urlParsed = new URL(req.url, 'http://localhost');
-                const keyword = urlParsed.searchParams.get('keyword') || '';
-                const access_token = urlParsed.searchParams.get('access_token') || '';
-
-                if (!access_token) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ error: 'access_token is required' }));
-                  return;
-                }
+                const keyword = urlParsed.searchParams.get('keyword') || 'shirt';
 
                 const appKey = '536002';
                 const appSecret = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
+                const trackingId = 'panda_store';
                 
                 const d = new Date();
                 const formatNum = (n: number) => n.toString().padStart(2, '0');
                 const timestamp = `${d.getUTCFullYear()}-${formatNum(d.getUTCMonth() + 1)}-${formatNum(d.getUTCDate())} ${formatNum(d.getUTCHours())}:${formatNum(d.getUTCMinutes())}:${formatNum(d.getUTCSeconds())}`;
 
                 const params: any = {
-                  method: 'aliexpress.ds.recommend.feed.get',
                   app_key: appKey,
-                  session: access_token,
-                  timestamp: timestamp,
-                  v: '2.0',
+                  format: 'json',
+                  method: 'aliexpress.affiliate.product.query',
                   sign_method: 'md5',
-                  feed_id: '10100',
+                  timestamp,
+                  v: '2.0',
+                  fields: 'product_id,product_title,target_sale_price,target_original_price,target_sale_price_currency,evaluate_rate,product_main_image_url,product_detail_url,lastest_volume,discount',
+                  keywords: keyword,
+                  page_size: '20',
+                  page_no: '1',
+                  tracking_id: trackingId,
                   target_currency: 'USD',
                   target_language: 'AR',
+                  sort: 'SALE_PRICE_ASC',
                 };
 
                 const signRequest = (p: any, secret: string) => {
@@ -109,37 +108,12 @@ export default defineConfig(({mode}) => {
                 const queryStr = new URLSearchParams({ ...params, sign }).toString();
                 const apiUrl = `https://api-sg.aliexpress.com/sync?${queryStr}`;
                 
-                const response = await fetch(apiUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                });
-                
+                const response = await fetch(apiUrl);
                 const data = await response.json();
                 
-                let products = [];
-                let respObj = data.aliexpress_ds_recommend_feed_get_response || data.rsp;
-                if (respObj && respObj.result && respObj.result.products) {
-                  products = respObj.result.products.product || [];
-                }
-
-                if (keyword) {
-                  const keywordLower = keyword.toLowerCase();
-                  const matched = products.filter((p: any) => p.product_title && p.product_title.toLowerCase().includes(keywordLower));
-                  if (matched.length > 0) {
-                    products = matched;
-                  } else {
-                    const mockedBrands = ['Samsung', 'Sony', 'Xiaomi', 'Panda', 'Anker'];
-                    const mockedBrand = mockedBrands[Math.floor(Math.random() * mockedBrands.length)];
-                    products = Array.from({ length: 4 }).map((_, i) => ({
-                      product_id: (1000213032 + i * 29).toString(),
-                      product_title: `${mockedBrand} ${keyword} - Premium AliExpress Edition`,
-                      first_level_category_name: 'Electronics',
-                      sale_price: (20 + i * 15).toString(),
-                      product_main_image_url: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=300&auto=format&fit=crop',
-                      product_detail_url: `https://www.aliexpress.com/item/${1000213032 + i * 29}.html`
-                    }));
-                  }
-                }
+                let products = data
+                  ?.aliexpress_affiliate_product_query_response
+                  ?.resp_result?.result?.products?.product || [];
 
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ products, raw: data }));
