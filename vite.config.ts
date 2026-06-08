@@ -32,32 +32,29 @@ export default defineConfig(({mode}) => {
                 const sortedKeys = Object.keys(params).sort();
                 let signStr = appSecret;
                 for (const key of sortedKeys) {
-                  signStr += key + String(params[key]);
+                  signStr += key + params[key];
                 }
                 signStr += appSecret;
                 
                 params.sign = crypto
                   .createHash('md5')
-                  .update(signStr, 'utf8')
+                  .update(signStr)
                   .digest('hex')
                   .toUpperCase();
                 
-                const formBody = Object.keys(params)
-                  .map(k => `${k}=${encodeURIComponent(params[k])}`)
+                const queryString = Object.keys(params)
+                  .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
                   .join('&');
                 
-                const response = await fetch(
-                  'https://api-sg.aliexpress.com/rest/auth/token/create',
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: formBody,
-                  }
-                );
+                const url = `https://api-sg.aliexpress.com/rest/auth/token/create?${queryString}`;
                 
-                const data = await response.json();
+                const response = await fetch(url, {
+                  method: 'GET',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                
+                const text = await response.text();
+                const data = JSON.parse(text);
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify(data));
               } catch (err: any) {
