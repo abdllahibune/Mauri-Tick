@@ -5177,24 +5177,34 @@ function parseRow(cols: any[], platform: string) {
     return parseTemuRow(cols);
   }
   
-  // AliExpress - new format
-  const priceUSD = parseFloat(
-    (cols[5] || '0').replace(/[^0-9.]/g, '')
-  ) || 0;
+  const name = (cols[2] || '').trim();
+  if (!name || name.length < 3) return null;
   
+  // Price ALWAYS in col[3] and col[4]
+  const priceInt = (cols[3] || '0').trim();
+  const priceDec = (cols[4] || '00').trim().padStart(2, '0');
+  const priceUSD = parseFloat(priceInt + '.' + priceDec);
+  
+  if (!priceUSD || priceUSD <= 0 || priceUSD > 500) return null;
+  
+  // Discount from col[6]
   const discount = parseInt(
-    (cols[6] || '0').replace(/[^0-9]/g, '')
+    (cols[6] || '').replace(/[^0-9]/g, '')
   ) || 0;
   
-  const originalPriceUSD = (discount > 0 && priceUSD > 0)
+  // Original price calculated from discount
+  const originalPriceUSD = discount > 0
     ? parseFloat((priceUSD / (1 - discount/100)).toFixed(2))
     : null;
   
+  // Image from col[1]
   const image = (cols[1] || '').trim();
   
-  const name = (cols[2] || '').trim();
+  // Rating from col[9]
+  const rating = parseFloat(cols[9]) || null;
   
-  if (!name || priceUSD === 0) return null;
+  // Sales from col[10]
+  const salesCount = (cols[10] || '').trim();
   
   return {
     name,
@@ -5205,9 +5215,9 @@ function parseRow(cols: any[], platform: string) {
     mainImage: image,
     sourceUrl: (cols[0] || '').trim(),
     url: (cols[0] || '').trim(),
-    rating: parseFloat(cols[9]) || null,
-    salesCount: (cols[10] || '').trim(),
-    soldCount: (cols[10] || '').trim(),
+    rating,
+    salesCount,
+    soldCount: salesCount,
     platform: 'aliexpress',
   };
 }
