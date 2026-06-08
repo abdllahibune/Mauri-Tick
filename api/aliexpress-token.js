@@ -1,49 +1,52 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 export default async function handler(req, res) {
-  const appKey = '536002';
-  const appSecret = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
-  const code = '3_536002_GU9CuJ25QUe4z7d9b3Eyh8j51353';
-  
-  const timestamp = String(Date.now());
-  
-  // Build params object
+  const APP_KEY = '536002';
+  const APP_SECRET = 'emexeL3m2hHgoeXQdLVEEMT5sZ8stamy';
+  const CODE = '3_536002_GU9CuJ25QUe4z7d9b3Eyh8j51353';
+
   const params = {
-    app_key: appKey,
-    code: code,
+    app_key: APP_KEY,
+    code: CODE,
     grant_type: 'authorization_code',
-    timestamp: timestamp,
     sign_method: 'md5',
+    timestamp: String(Date.now()),
   };
-  
-  // Generate signature
+
+  // Sort keys and concatenate
   const sortedKeys = Object.keys(params).sort();
-  let signStr = appSecret;
+  let signStr = APP_SECRET;
   for (const key of sortedKeys) {
-    signStr += key + params[key];
+    signStr += key + String(params[key]);
   }
-  signStr += appSecret;
-  
+  signStr += APP_SECRET;
+
+  // Generate MD5 signature uppercase
   params.sign = crypto
     .createHash('md5')
-    .update(signStr)
+    .update(signStr, 'utf8')
     .digest('hex')
     .toUpperCase();
-  
-  // Build query string
-  const queryString = Object.keys(params)
-    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+
+  // POST request with form data
+  const formBody = Object.keys(params)
+    .map(k => `${k}=${encodeURIComponent(params[k])}`)
     .join('&');
-  
+
   try {
     const response = await fetch(
-      `https://api-sg.aliexpress.com/rest/auth/token/create?${queryString}`,
-      { method: 'POST' }
+      'https://api-sg.aliexpress.com/rest/auth/token/create',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formBody,
+      }
     );
     const data = await response.json();
-    console.log('Token response:', data);
-    res.json(data);
-  } catch(e) {
-    res.status(500).json({ error: e.message });
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
