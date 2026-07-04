@@ -730,3 +730,21 @@ button[class*="accent"],
   color: #0A1628 !important;
   font-weight: 700 !important;
 }
+
+/* FIX 1: TOP BAR + NAVBAR COLOR */
+nav, header, .navbar, .top-bar, .navbar-right-icons button, .navbar-right button {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+}
+
+nav a, .nav-link, .navbar-brand, .logo, .logo *, .navbar-logo {
+  color: #0A1628 !important;
+}
+
+nav svg, nav i, header svg, header i, .navbar-right-icons svg {
+  color: #0A1628 !important;
+}
+
+/* Active/hover state */
+nav a:hover, nav button:hover { color: #C9A84C !important; }

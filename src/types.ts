@@ -167,6 +167,7 @@ export interface StoreConfig {
   heroSubtitle: string;
   heroImage: string;
   mt_heroImage?: string;
+  banda_hero_image?: string;
   heroBackgroundColor?: string;
   themeColors?: {
     primary: string;

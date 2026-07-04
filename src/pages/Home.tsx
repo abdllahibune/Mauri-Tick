@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Product, StoreConfig } from '../types';
 import { ProductCard } from '../components/ProductCard';
 import { db, ensureAuth } from '../lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { DEMO_PRODUCTS } from '../constants';
 
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -66,6 +66,28 @@ export function Home({ products }: { products: Product[] }) {
     const unsubscribe = onSnapshot(doc(db, 'mt_settings', 'general'), (snap) => {
       if (snap.exists()) setConfig(snap.data() as StoreConfig);
     });
+
+    async function loadHeroBg() {
+      try {
+        const snap = await getDoc(
+          doc(db, 'mt_settings', 'general')
+        );
+        const url = snap.data()?.banda_hero_image;
+        if (url) {
+          const hero = document.querySelector(
+            '.hero, [class*="hero"], [class*="banner-main"]'
+          );
+          if (hero && hero instanceof HTMLElement) {
+            hero.style.backgroundImage = `url(${url})`;
+            hero.style.backgroundSize = 'cover';
+            hero.style.backgroundPosition = 'center';
+            hero.style.position = 'relative';
+          }
+        }
+      } catch(e) {}
+    }
+    loadHeroBg();
+
     return () => unsubscribe();
   }, []);
 
@@ -158,20 +180,25 @@ export function Home({ products }: { products: Product[] }) {
         <div style={{flex:1, minWidth:0}}>
 
           {/* HERO BANNER */}
-          <div style={{
-            background:'linear-gradient(135deg, #0C3299 0%, #1565C0 60%, #0C3299 100%)',
-            borderRadius:12,
-            padding:'32px 28px',
-            direction:'rtl',
-            display:'flex',
-            flexWrap: 'wrap',
-            justifyContent:'space-between',
-            alignItems:'center',
-            marginBottom:16,
-            position:'relative',
-            overflow:'hidden',
-            gap: 24,
-          }}>
+          <div 
+            className="hero"
+            style={{
+              background: config?.banda_hero_image 
+                ? `url(${config.banda_hero_image}) center/cover no-repeat` 
+                : 'linear-gradient(135deg, #0C3299 0%, #1565C0 60%, #0C3299 100%)',
+              borderRadius:12,
+              padding:'32px 28px',
+              direction:'rtl',
+              display:'flex',
+              flexWrap: 'wrap',
+              justifyContent:'space-between',
+              alignItems:'center',
+              marginBottom:16,
+              position:'relative',
+              overflow:'hidden',
+              gap: 24,
+            }}
+          >
             {/* Left side info */}
             <div style={{zIndex:1, flex: '1 1 300px'}}>
               <div style={{

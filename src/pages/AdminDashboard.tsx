@@ -2445,6 +2445,60 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
     }
   };
 
+  async function handleHeroBgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Preview
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const preview = document.getElementById('heroBgPreview');
+      if (preview && ev.target) {
+        preview.innerHTML = `
+          <img src="${ev.target.result}"
+            style="width:100%;height:100%;object-fit:cover;">
+        `;
+      }
+      const saveBtn = document.getElementById('saveHeroBgBtn');
+      if (saveBtn) {
+        saveBtn.style.display = 'inline-block';
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to Cloudinary
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'mauri_uploads');
+    try {
+      const res = await fetch(
+        'https://api.cloudinary.com/v1_1/dy5qfryut/image/upload',
+        { method:'POST', body:formData }
+      );
+      const data = await res.json();
+      if (data.secure_url) {
+        (window as any)._heroBgUrl = data.secure_url;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function saveHeroBg() {
+    if (!(window as any)._heroBgUrl) return;
+    const db_inst = getFirestore();
+    await setDoc(
+      doc(db_inst, 'mt_settings', 'general'),
+      { banda_hero_image: (window as any)._heroBgUrl },
+      { merge: true }
+    );
+    alert('✅ تم حفظ الصورة');
+    const saveBtn = document.getElementById('saveHeroBgBtn');
+    if (saveBtn) {
+      saveBtn.style.display = 'none';
+    }
+  }
+
   return (
     <div className="flex flex-col gap-12">
        <div className="flex justify-between items-center">
@@ -2566,6 +2620,64 @@ function SettingsSection({ config }: { config: StoreConfig | null }) {
                         <input type="color" value={form.heroBackgroundColor} onChange={e => setForm({...form, heroBackgroundColor: e.target.value})} className="w-8 h-8 rounded-lg cursor-pointer" />
                         <span className="text-xs font-mono font-bold text-gray-500" dir="ltr">{form.heroBackgroundColor}</span>
                       </div>
+                   </div>
+
+                   {/* NEW SECTION FOR HERO BACKGROUND IMAGE (FIX 2) */}
+                   <div style={{marginTop:'24px', marginBottom:'24px', direction:'rtl', fontFamily:'Cairo'}}>
+                     <h3 style={{fontSize:'15px', fontWeight:'800', marginBottom:'12px'}}>
+                       صورة خلفية الواجهة
+                     </h3>
+
+                     {/* Preview */}
+                     <div id="heroBgPreview" style={{
+                       width:'100%', height:'160px',
+                       borderRadius:'12px', marginBottom:'12px',
+                       background:'#F0F0F0', overflow:'hidden',
+                       border:'1.5px dashed #CBD5E1',
+                       display:'flex', alignItems:'center',
+                       justifyContent:'center',
+                     }}>
+                       {config?.banda_hero_image ? (
+                         <img src={config.banda_hero_image} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                       ) : (
+                         <span style={{color:'#9CA3AF', fontSize:'13px', fontFamily:'Cairo'}}>
+                           لا توجد صورة
+                         </span>
+                       )}
+                     </div>
+
+                     {/* Upload button */}
+                     <input type="file" id="heroBgInput"
+                       accept="image/*" style={{display:'none'}}
+                       onChange={handleHeroBgUpload}
+                     />
+                     <button
+                       type="button"
+                       onClick={() => {
+                         const inputEl = document.getElementById('heroBgInput') as HTMLInputElement | null;
+                         if (inputEl) inputEl.click();
+                       }}
+                       style={{
+                         padding:'10px 20px',
+                         background:'#0A1628', color:'white',
+                         border:'none', borderRadius:'10px',
+                         fontFamily:'Cairo', fontSize:'14px',
+                         cursor:'pointer', marginLeft:'8px',
+                       }}>
+                       رفع صورة
+                     </button>
+                     <button id="saveHeroBgBtn"
+                       type="button"
+                       onClick={saveHeroBg}
+                       style={{
+                         display:'none', padding:'10px 20px',
+                         background:'#22C55E', color:'white',
+                         border:'none', borderRadius:'10px',
+                         fontFamily:'Cairo', fontSize:'14px',
+                         cursor:'pointer',
+                       }}>
+                       حفظ
+                     </button>
                    </div>
                 </div>
 

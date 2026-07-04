@@ -110,25 +110,26 @@ export function Navbar() {
   return (
     <div style={{ width: '100%' }}>
       {/* 1. TOP UTILITY BAR */}
-      <div style={{
-        background: '#0C3299',
+      <div className="top-bar" style={{
+        background: '#FFFFFF',
         padding: '6px 20px',
         direction: 'rtl',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        borderBottom: '1px solid #E5E7EB',
       }}>
         <div style={{display:'flex', gap:16, alignItems:'center'}}>
-          <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/products')}>
+          <span style={{color:'#0A1628', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/products')}>
             AR | MRU أوقية
           </span>
-          <span style={{color:'rgba(255,255,255,0.3)'}}>|</span>
-          <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/orders')}>تتبع طلبك</span>
-          <span style={{color:'rgba(255,255,255,0.3)'}}>|</span>
-          <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/contact')}>المساعدة</span>
+          <span style={{color:'rgba(10,22,40,0.3)'}}>|</span>
+          <span style={{color:'#0A1628', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/orders')}>تتبع طلبك</span>
+          <span style={{color:'rgba(10,22,40,0.3)'}}>|</span>
+          <span style={{color:'#0A1628', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate('/contact')}>المساعدة</span>
         </div>
         <div style={{display:'flex', gap:12, alignItems:'center'}}>
-          <span style={{color:'#BBDEFB', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate(user ? '/account' : '/login')}>
+          <span style={{color:'#0A1628', fontSize:12, fontFamily:'Cairo', cursor:'pointer'}} onClick={() => navigate(user ? '/account' : '/login')}>
             {user ? `مرحباً، ${user.name || 'حسابي'}` : 'تسجيل الدخول / إنشاء حساب'}
           </span>
         </div>
@@ -143,17 +144,17 @@ export function Navbar() {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16,
-        borderBottom: '1px solid #E8E8E8',
+        borderBottom: '1px solid #E5E7EB',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
       }}>
         {/* Logo */}
         <div onClick={handleLogoClick} style={{cursor:'pointer', flexShrink:0}}>
-          <div style={{
+          <div className="logo" style={{
             fontFamily:'Cairo', fontWeight:900,
-            fontSize:22, color:'#0C3299',
+            fontSize:22, color:'#0A1628',
             userSelect:'none',
           }}>
             Panda
@@ -170,7 +171,7 @@ export function Navbar() {
         <form onSubmit={handleSearchSubmit} style={{
           flex:1,
           display:'flex',
-          border:'2px solid #0C3299',
+          border:'2px solid #0A1628',
           borderRadius:8,
           overflow:'hidden',
           maxWidth:600,
@@ -183,7 +184,7 @@ export function Navbar() {
               background:'#F0F4FF',
               padding:'0 12px',
               fontFamily:'Cairo', fontSize:12,
-              color:'#0C3299', cursor:'pointer',
+              color:'#0A1628', cursor:'pointer',
               borderLeft:'1px solid #E8E8E8',
             }}
           >
@@ -205,7 +206,7 @@ export function Navbar() {
             }}
           />
           <button type="submit" style={{
-            background:'#0C3299',
+            background:'#0A1628',
             border:'none', cursor:'pointer',
             padding:'0 20px',
             display:'flex',
@@ -231,7 +232,7 @@ export function Navbar() {
               borderRadius:'50%',
               background: 'none',
               border: 'none',
-              color: '#0C3299',
+              color: '#0A1628',
             }}
           >
             {ICONS.heart}
@@ -250,7 +251,7 @@ export function Navbar() {
               position:'relative',
               background: 'none',
               border: 'none',
-              color: '#0C3299',
+              color: '#0A1628',
             }}
           >
             <div style={{position:'relative'}}>
@@ -281,7 +282,7 @@ export function Navbar() {
               borderRadius:'50%',
               background: 'none',
               border: 'none',
-              color: '#0C3299',
+              color: '#0A1628',
             }}
           >
             {ICONS.user}
@@ -292,7 +293,7 @@ export function Navbar() {
       {/* 3. CATEGORY NAV BAR */}
       <nav style={{
         background:'#FFFFFF',
-        borderBottom:'1px solid #E8E8E8',
+        borderBottom:'1px solid #E5E7EB',
         padding:'0 20px',
         direction:'rtl',
         overflowX:'auto',
@@ -327,9 +328,9 @@ export function Navbar() {
                   background:'none', border:'none',
                   padding:'13px 18px',
                   fontFamily:'Cairo', fontSize:13,
-                  color: isMatch ? '#0C3299' : '#333',
+                  color: isMatch ? '#0A1628' : '#333',
                   fontWeight: isMatch ? '700' : '400',
-                  borderBottom: isMatch ? '2px solid #0C3299' : '2px solid transparent',
+                  borderBottom: isMatch ? '2px solid #0A1628' : '2px solid transparent',
                   cursor:'pointer', whiteSpace:'nowrap',
                   transition:'all 0.2s',
                   display:'flex', alignItems:'center', gap:4,
