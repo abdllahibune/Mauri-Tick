@@ -275,6 +275,7 @@ export function AdminDashboard() {
     ensureAuth();
     if (!isLoggedIn) return;
 
+    (window as any).loadProducts = loadProducts;
     loadProducts();
     const unsubProductsPanda = onSnapshot(collection(db, 'panda_products'), () => {
       loadProducts();
@@ -735,6 +736,8 @@ function VisitsChart({ dailyData }: { dailyData: Record<string, number> }) {
   );
 }
 
+const selectedProducts = new Set<string>();
+
 function ProductsSection({ products }: { products: Product[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -744,7 +747,6 @@ function ProductsSection({ products }: { products: Product[] }) {
   const [prefilledProduct, setPrefilledProduct] = useState<any | null>(null);
 
   const [platformFilter, setPlatformFilter] = useState('');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   // Filter products by platform:
   const filteredProducts = platformFilter
@@ -752,43 +754,214 @@ function ProductsSection({ products }: { products: Product[] }) {
         p.importedFrom === platformFilter)
     : products;
 
-  const selectAll = () => {
-    const currentFilteredIds = filteredProducts.map(p => p.id);
-    const allSelected = currentFilteredIds.every(id => selectedProducts.includes(id));
-    if (allSelected) {
-      setSelectedProducts(prev => prev.filter(id => !currentFilteredIds.includes(id)));
+  // Clear selections on mount/unmount and handle lifecycle of bulk bar
+  useEffect(() => {
+    selectedProducts.clear();
+    const all = document.getElementById('selectAllCb') as HTMLInputElement | null;
+    if (all) { all.checked = false; all.indeterminate = false; }
+    (window as any).updateBulkBar?.();
+
+    return () => {
+      selectedProducts.clear();
+      const bar = document.getElementById('bulkActionBar');
+      if (bar) bar.style.display = 'none';
+    };
+  }, []);
+
+  // Expose variables and functions to window so inline onclick handlers can access them
+  (window as any).selectedProducts = selectedProducts;
+  (window as any).toggleSelectAll = (checked: boolean) => {
+    const checkboxes = document.querySelectorAll('.product-checkbox');
+    checkboxes.forEach((cb: any) => {
+      cb.checked = checked;
+      const id = cb.dataset.id;
+      if (checked) {
+        selectedProducts.add(id);
+      } else {
+        selectedProducts.delete(id);
+      }
+    });
+    (window as any).updateBulkBar();
+  };
+
+  (window as any).toggleProduct = (id: string, checked: boolean) => {
+    if (checked) {
+      selectedProducts.add(id);
     } else {
-      setSelectedProducts(prev => {
-        const next = [...prev];
-        currentFilteredIds.forEach(id => {
-          if (!next.includes(id)) next.push(id);
-        });
-        return next;
+      selectedProducts.delete(id);
+    }
+    // Update select-all state
+    const all = document.querySelectorAll('.product-checkbox');
+    const selectAllCb = document.getElementById('selectAllCb') as HTMLInputElement | null;
+    if (selectAllCb) {
+      selectAllCb.checked = selectedProducts.size === all.length;
+      selectAllCb.indeterminate = selectedProducts.size > 0 && selectedProducts.size < all.length;
+    }
+    (window as any).updateBulkBar();
+  };
+
+  (window as any).updateBulkBar = () => {
+    let bar = document.getElementById('bulkActionBar');
+    
+    if (selectedProducts.size === 0) {
+      if (bar) bar.style.display = 'none';
+      return;
+    }
+
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'bulkActionBar';
+      document.body.appendChild(bar);
+    }
+
+    bar.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0A1628;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 9999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      font-family: Cairo;
+      direction: rtl;
+      white-space: nowrap;
+    `;
+
+    bar.innerHTML = `
+      <span style="font-size:14px;">
+        تم تحديد 
+        <strong style="color:#C9A84C;">
+          ${selectedProducts.size}
+        </strong> 
+        منتج
+      </span>
+
+      <button onclick="bulkDelete()"
+        style="
+          background: #EF4444;
+          color: white;
+          border: none;
+          padding: 8px 20px;
+          border-radius: 10px;
+          font-family: Cairo;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+        ">
+        حذف المحدد
+      </button>
+
+      <button onclick="bulkSetFeatured(true)"
+        style="
+          background: #C9A84C;
+          color: #0A1628;
+          border: none;
+          padding: 8px 20px;
+          border-radius: 10px;
+          font-family: Cairo;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+        ">
+        تمييز كمطلوب
+      </button>
+
+      <button onclick="
+        window.selectedProducts.clear();
+        document.querySelectorAll('.product-checkbox')
+          .forEach(cb => cb.checked = false);
+        const all = document.getElementById('selectAllCb');
+        if(all) { all.checked=false; all.indeterminate=false; }
+        window.updateBulkBar();
+      " style="
+        background: rgba(255,255,255,0.15);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-family: Cairo;
+        font-size: 13px;
+        cursor: pointer;
+      ">
+        إلغاء
+      </button>
+    `;
+
+    bar.style.display = 'flex';
+  };
+
+  (window as any).bulkDelete = async () => {
+    if (selectedProducts.size === 0) return;
+    
+    const confirmed = confirm(
+      `هل تريد حذف ${selectedProducts.size} منتج؟\n` +
+      `لا يمكن التراجع عن هذا الإجراء.`
+    );
+    if (!confirmed) return;
+
+    const db_inst = getFirestore();
+    const bar = document.getElementById('bulkActionBar');
+    if (bar) bar.innerHTML = `
+      <span style="font-family:Cairo;">
+        ⏳ جاري الحذف...
+      </span>
+    `;
+
+    try {
+      const promises = [...selectedProducts].map(id => {
+        const p = (window as any)._allProducts?.find((prod: any) => prod.id === id);
+        const col = p?._col || 'mt_products';
+        return deleteDoc(doc(db_inst, col, id));
       });
+      await Promise.all(promises);
+      
+      selectedProducts.clear();
+      (window as any).updateBulkBar();
+      alert(`✅ تم حذف المنتجات بنجاح`);
+      if ((window as any).loadProducts) {
+        (window as any).loadProducts();
+      }
+    } catch(e: any) {
+      alert('❌ خطأ في الحذف: ' + e.message);
     }
   };
+
+  (window as any).bulkSetFeatured = async (value: boolean) => {
+    if (selectedProducts.size === 0) return;
+    const db_inst = getFirestore();
+    try {
+      const promises = [...selectedProducts].map(id => {
+        const p = (window as any)._allProducts?.find((prod: any) => prod.id === id);
+        const col = p?._col || 'mt_products';
+        return setDoc(
+          doc(db_inst, col, id),
+          { featured: value },
+          { merge: true }
+        );
+      });
+      await Promise.all(promises);
+      alert(`✅ تم تمييز ${selectedProducts.size} منتج`);
+      selectedProducts.clear();
+      (window as any).updateBulkBar();
+      if ((window as any).loadProducts) {
+        (window as any).loadProducts();
+      }
+    } catch(e: any) {
+      alert('❌ خطأ في التحديث: ' + e.message);
+    }
+  };
+
+  (window as any)._allProducts = products;
 
   const loadAllProducts = () => {
     console.log('Realtime onSnapshot auto-updates products');
   };
-
-  async function deleteSelected() {
-    if (!confirm(`هل تريد حذف ${selectedProducts.length} منتج؟`)) return;
-    
-    let deleted = 0;
-    const db_inst = getFirestore();
-    for (const id of selectedProducts) {
-      const p = products.find(prod => prod.id === id) as any;
-      const col = p?._col || 'mt_products';
-      try {
-        await deleteDoc(doc(db_inst, col, id));
-        deleted++;
-      } catch(e) {}
-    }
-    
-    alert(`✅ تم حذف ${deleted} منتج`);
-    setSelectedProducts([]);
-  }
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
@@ -840,38 +1013,6 @@ function ProductsSection({ products }: { products: Product[] }) {
           <option value="aliexpress">AliExpress</option>
           <option value="temu">Temu</option>
         </select>
-        
-        {selectedProducts.length > 0 && (
-          <button
-            onClick={deleteSelected}
-            style={{
-              padding:'8px 20px',
-              background:'#c62828',
-              color:'white',
-              border:'none',
-              borderRadius:8,
-              fontFamily:'Cairo',
-              fontWeight:'bold',
-              cursor:'pointer',
-            }}
-          >
-            🗑️ حذف المحدد ({selectedProducts.length})
-          </button>
-        )}
-        
-        <button
-          onClick={selectAll}
-          style={{
-            padding:'8px 16px',
-            background:'#f0f0f0',
-            border:'none',
-            borderRadius:8,
-            fontFamily:'Cairo',
-            cursor:'pointer',
-          }}
-        >
-          تحديد الكل
-        </button>
       </div>
 
       <div className="admin-table-container">
@@ -889,7 +1030,18 @@ function ProductsSection({ products }: { products: Product[] }) {
           <table className="w-full text-right min-w-[800px]">
             <thead>
               <tr className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                <th className="pb-4 pr-12">المنتج</th>
+                <th style={{width:'40px', padding:'10px'}}>
+                  <input
+                    type="checkbox"
+                    id="selectAllCb"
+                    onChange={e => (window as any).toggleSelectAll(e.target.checked)}
+                    style={{
+                      width:'18px', height:'18px',
+                      cursor:'pointer', accentColor:'#0A1628',
+                    }}
+                  />
+                </th>
+                <th className="pb-4 pr-12 text-right">المنتج</th>
                 <th className="pb-4">الماركة</th>
                 <th className="pb-4">السعر</th>
                 <th className="pb-4">المخزون</th>
@@ -900,28 +1052,21 @@ function ProductsSection({ products }: { products: Product[] }) {
             <tbody className="divide-y divide-gray-50">
               {filteredProducts.map((p) => (
               <tr key={p.id} className="group hover:bg-gray-50/50 transition-colors">
+                <td style={{width:'40px', padding:'10px'}}>
+                  <input
+                    type="checkbox"
+                    className="product-checkbox"
+                    data-id={p.id}
+                    defaultChecked={selectedProducts.has(p.id)}
+                    onChange={e => (window as any).toggleProduct(p.id, e.target.checked)}
+                    style={{
+                      width:'18px', height:'18px',
+                      cursor:'pointer', accentColor:'#0A1628',
+                    }}
+                  />
+                </td>
                 <td className="py-6 pr-4 relative">
-                  <div className="flex items-center gap-4 relative pr-8">
-                    <input
-                      type="checkbox"
-                      checked={selectedProducts.includes(p.id)}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setSelectedProducts(prev => [...prev, p.id]);
-                        } else {
-                          setSelectedProducts(prev => 
-                            prev.filter(id => id !== p.id)
-                          );
-                        }
-                      }}
-                      style={{
-                        position:'absolute',
-                        top:12, right:4,
-                        width:20, height:20,
-                        cursor:'pointer',
-                        zIndex:10,
-                      }}
-                    />
+                  <div className="flex items-center gap-4 relative">
                     <div className="w-12 h-12 overflow-hidden relative flex items-center justify-center bg-gray-50 rounded-lg border">
                       <img 
                         src={proxyImage(p.images[0])} 
